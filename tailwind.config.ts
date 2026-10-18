@@ -23,8 +23,16 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ["var(--font-display)", "Georgia", "serif"],
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        // Didone / modern serif (Playfair Display) — wordmark + display headings
+        display: ["var(--font-display)", "Playfair Display", "Georgia", "serif"],
+        brand: ["var(--font-display)", "Playfair Display", "Georgia", "serif"],
+        sans: ["var(--font-sans)", "DM Sans", "system-ui", "sans-serif"],
+      },
+      letterSpacing: {
+        brand: "-0.03em",
+      },
+      fontWeight: {
+        brand: "900",
       },
       backgroundImage: {
         "hero-mesh":

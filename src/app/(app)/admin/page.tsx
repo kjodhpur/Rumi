@@ -49,7 +49,7 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="font-display text-3xl font-semibold text-asu-maroon">Rumi admin</h1>
+      <h1 className="font-display text-3xl font-black tracking-brand text-asu-maroon">Rumi admin</h1>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[

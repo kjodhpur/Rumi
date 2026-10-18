@@ -48,7 +48,7 @@ export default async function MatchesPage({
   if (!otherIds.length) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-3xl font-semibold text-asu-maroon">Your matches</h1>
+        <h1 className="font-display text-3xl font-black tracking-brand text-asu-maroon">Your matches</h1>
         <EmptyState
           title="No matches yet"
           description="Finish onboarding, or wait for the match cache to refresh. Seed profiles help demos — run npm run seed after setting up Supabase."
@@ -111,7 +111,7 @@ export default async function MatchesPage({
   return (
     <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
       <aside>
-        <h1 className="mb-4 font-display text-3xl font-semibold text-asu-maroon lg:hidden">
+        <h1 className="mb-4 font-display text-3xl font-black tracking-brand text-asu-maroon lg:hidden">
           Matches
         </h1>
         <MatchesFilters
@@ -134,7 +134,7 @@ export default async function MatchesPage({
       </aside>
       <div className="space-y-4">
         <div className="flex items-end justify-between">
-          <h1 className="hidden font-display text-3xl font-semibold text-asu-maroon lg:block">
+          <h1 className="hidden font-display text-3xl font-black tracking-brand text-asu-maroon lg:block">
             Your matches
           </h1>
           <p className="text-sm text-rumi-muted">{total} people</p>

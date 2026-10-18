@@ -7,6 +7,10 @@
   --foreground: #1a1215;
   --asu-maroon: #8c1d40;
   --asu-gold: #ffc627;
+  /* Brand typography — Didone/modern serif (Playfair Display via next/font) */
+  --font-brand: var(--font-display);
+  --brand-tracking: -0.03em;
+  --brand-weight: 900;
 }
 
 html {
@@ -18,9 +22,28 @@ body {
   background: var(--background);
 }
 
+@layer components {
+  /**
+   * Rumi wordmark — high-contrast Didone look (thick stems, hairline serifs).
+   * Use for logo + hero brand only; keep body UI on font-sans.
+   */
+  .rumi-wordmark {
+    font-family: var(--font-brand), "Playfair Display", Georgia, "Times New Roman", serif;
+    font-weight: var(--brand-weight);
+    letter-spacing: var(--brand-tracking);
+    line-height: 0.95;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .tracking-brand {
+    letter-spacing: var(--brand-tracking);
   }
 }
 

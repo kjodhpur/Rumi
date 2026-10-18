@@ -3,10 +3,10 @@
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import { sendMagicLink, type AuthState } from "@/app/actions/auth";
-import { APP_NAME } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Wordmark } from "@/components/brand/wordmark";
 
 function Submit() {
   const { pending } = useFormStatus();
@@ -30,8 +30,8 @@ export default function LoginPage({
     <div className="flex min-h-screen items-center justify-center bg-hero-mesh px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <Link href="/" className="font-display text-3xl font-bold text-asu-maroon">
-            {APP_NAME}
+          <Link href="/" className="inline-block text-asu-maroon" aria-label="Rumi home">
+            <Wordmark size="lg" />
           </Link>
           <p className="mt-2 text-sm text-rumi-muted">
             Sign in with your ASU email. We&apos;ll send a magic link — no password.

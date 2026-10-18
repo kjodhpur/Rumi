@@ -24,7 +24,7 @@ export default async function SavedPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-3xl font-semibold text-asu-maroon">Saved</h1>
+      <h1 className="font-display text-3xl font-black tracking-brand text-asu-maroon">Saved</h1>
       {!profiles?.length ? (
         <EmptyState
           title="No saved profiles"
