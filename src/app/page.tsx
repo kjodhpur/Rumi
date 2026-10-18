@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/brand/wordmark";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-hero-mesh text-rumi-ink">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
-        <span className="font-display text-2xl font-bold tracking-tight text-asu-maroon">
-          {APP_NAME}
-        </span>
+        <Wordmark size="md" className="text-asu-maroon" />
         <Link
           href="/login"
           className="text-sm font-semibold text-asu-maroon underline-offset-4 hover:underline"
@@ -20,10 +19,8 @@ export default function LandingPage() {
       <main>
         <section className="relative mx-auto grid min-h-[calc(100vh-4.5rem)] max-w-6xl items-center gap-10 px-4 pb-16 pt-6 lg:grid-cols-2">
           <div className="animate-fade-up space-y-6">
-            <p className="font-display text-5xl font-bold leading-[1.05] tracking-tight text-asu-maroon sm:text-6xl md:text-7xl">
-              {APP_NAME}
-            </p>
-            <h1 className="max-w-xl text-balance text-2xl font-medium text-rumi-ink sm:text-3xl">
+            <Wordmark as="p" size="hero" className="text-asu-maroon" />
+            <h1 className="max-w-xl text-balance font-display text-2xl font-medium tracking-brand text-rumi-ink sm:text-3xl">
               Ranked roommate matches for ASU students — free, filterable, no swiping.
             </h1>
             <p className="max-w-md text-rumi-muted">{APP_TAGLINE}</p>
@@ -49,7 +46,9 @@ export default function LandingPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-asu-maroon">
                 Compatibility
               </p>
-              <p className="mt-1 font-display text-3xl font-bold text-rumi-ink">92% match</p>
+              <p className="mt-1 font-display text-3xl font-black tracking-brand text-rumi-ink">
+                92% match
+              </p>
               <p className="text-sm text-rumi-muted">Lifestyle + music taste · Tempe · Fall 2027</p>
             </div>
           </div>
@@ -57,7 +56,9 @@ export default function LandingPage() {
 
         <section id="how" className="border-t border-rumi-sand bg-white/50 py-20">
           <div className="mx-auto max-w-6xl px-4">
-            <h2 className="font-display text-3xl font-semibold text-asu-maroon">How it works</h2>
+            <h2 className="font-display text-3xl font-black tracking-brand text-asu-maroon">
+              How it works
+            </h2>
             <p className="mt-2 max-w-xl text-rumi-muted">
               Three steps. No endless swiping — just ranked compatibility.
             </p>
@@ -93,7 +94,9 @@ export default function LandingPage() {
 
         <section className="py-20">
           <div className="mx-auto max-w-6xl px-4">
-            <h2 className="font-display text-3xl font-semibold text-asu-maroon">Privacy promise</h2>
+            <h2 className="font-display text-3xl font-black tracking-brand text-asu-maroon">
+              Privacy promise
+            </h2>
             <p className="mt-3 max-w-2xl text-rumi-muted">
               We never show your full last name, email, or exact address. Blocks work both ways.
               Reports go to admins. Spotify tokens are encrypted. You can pause or delete your account
@@ -104,7 +107,7 @@ export default function LandingPage() {
 
         <section className="border-t border-rumi-sand bg-white/60 py-20">
           <div className="mx-auto max-w-3xl px-4">
-            <h2 className="font-display text-3xl font-semibold text-asu-maroon">FAQ</h2>
+            <h2 className="font-display text-3xl font-black tracking-brand text-asu-maroon">FAQ</h2>
             <dl className="mt-8 space-y-6">
               {[
                 {

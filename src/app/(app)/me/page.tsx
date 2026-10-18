@@ -29,7 +29,7 @@ export default async function MePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="font-display text-3xl font-semibold text-asu-maroon">
+        <h1 className="font-display text-3xl font-black tracking-brand text-asu-maroon">
           {profile
             ? displayName(profile.first_name, profile.last_initial)
             : "Your profile"}

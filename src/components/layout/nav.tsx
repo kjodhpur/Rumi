@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Heart, MessageCircle, User, Bookmark, Shield } from "lucide-react";
-import { APP_NAME } from "@/lib/constants";
+import { Wordmark } from "@/components/brand/wordmark";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -24,8 +24,8 @@ export function AppNav({
   return (
     <header className="sticky top-0 z-40 border-b border-rumi-sand/80 bg-rumi-cream/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link href="/matches" className="font-display text-xl font-bold text-asu-maroon">
-          {APP_NAME}
+        <Link href="/matches" className="text-asu-maroon" aria-label="Rumi home">
+          <Wordmark size="sm" />
         </Link>
         <nav className="flex items-center gap-1" aria-label="Main">
           {links.map(({ href, label, icon: Icon }) => {

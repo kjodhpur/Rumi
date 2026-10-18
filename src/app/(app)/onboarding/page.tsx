@@ -24,7 +24,7 @@ export default async function OnboardingPage() {
 
   return (
     <div>
-      <h1 className="px-4 pt-4 font-display text-3xl font-semibold text-asu-maroon">
+      <h1 className="px-4 pt-4 font-display text-3xl font-black tracking-brand text-asu-maroon">
         Welcome to {APP_NAME}
       </h1>
       <p className="px-4 text-sm text-rumi-muted">

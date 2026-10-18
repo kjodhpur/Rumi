@@ -19,7 +19,7 @@ export default async function MessagesPage() {
   if (!parts?.length) {
     return (
       <div className="space-y-6">
-        <h1 className="font-display text-3xl font-semibold text-asu-maroon">Messages</h1>
+        <h1 className="font-display text-3xl font-black tracking-brand text-asu-maroon">Messages</h1>
         <EmptyState
           title="No conversations yet"
           description="Message someone from their profile to start chatting."
@@ -70,7 +70,7 @@ export default async function MessagesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-display text-3xl font-semibold text-asu-maroon">Messages</h1>
+      <h1 className="font-display text-3xl font-black tracking-brand text-asu-maroon">Messages</h1>
       <ul className="divide-y divide-rumi-sand rounded-2xl border border-rumi-sand bg-white">
         {rows.map(({ c, last, unread, profile }) => (
           <li key={c.id}>
