@@ -1085,3 +1085,38 @@ begin
   return v_count <= p_max;
 end;
 $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Match maintenance (service role only)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+/** After a recompute, drop pairs involving p_user that no longer pass hard filters. */
+create or replace function public.prune_match_scores(p_user uuid, p_keep uuid[])
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  delete from public.match_scores where viewer_id = p_user and not (candidate_id = any (p_keep));
+  delete from public.match_scores where candidate_id = p_user and not (viewer_id = any (p_keep));
+$$;
+
+/** Users whose preferences changed after their scores were last computed (repair job). */
+create or replace function public.stale_match_users(p_limit integer default 200)
+returns table (user_id uuid)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.id
+  from public.profiles p
+  join public.preferences pr on pr.user_id = p.id
+  where p.onboarding_completed_at is not null
+    and p.banned_at is null
+    and coalesce(
+      (select max(ms.computed_at) from public.match_scores ms where ms.viewer_id = p.id),
+      '-infinity'::timestamptz
+    ) < greatest(pr.updated_at, p.onboarding_completed_at)
+  limit p_limit;
+$$;

@@ -244,4 +244,8 @@ grant execute on function public.school_for_email(text) to anon, authenticated;
 
 -- Server-only.
 revoke execute on function public.rate_limit(text, integer, integer) from authenticated;
+revoke execute on function public.prune_match_scores(uuid, uuid[]) from authenticated;
+revoke execute on function public.stale_match_users(integer) from authenticated;
 grant execute on function public.rate_limit(text, integer, integer) to service_role;
+grant execute on function public.prune_match_scores(uuid, uuid[]) to service_role;
+grant execute on function public.stale_match_users(integer) to service_role;

@@ -629,6 +629,9 @@ isOneToOne: true
 "mark_conversation_read":
 { Args: { "p_conversation_id": string }; Returns: undefined
                            },
+"prune_match_scores":
+{ Args: { "p_keep": (string)[],"p_user": string }; Returns: undefined
+                           },
 "rate_limit":
 { Args: { "p_key": string,"p_max": number,"p_window_seconds": number }; Returns: boolean
                            },
@@ -649,6 +652,11 @@ isOneToOne: true
                            },
 "shares_conversation":
 { Args: { "a": string,"b": string }; Returns: boolean
+                           },
+"stale_match_users":
+{ Args: { "p_limit"?: number }; Returns: {
+              "user_id": string
+            }[]
                            },
 "unread_counts":
 { Args: Record<PropertyKey, never>; Returns: {
