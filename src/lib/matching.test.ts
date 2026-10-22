@@ -31,6 +31,10 @@ function makeProfile(overrides: Partial<Profile> & { id: string }): Profile {
     suspended: false,
     is_seed: false,
     verified: true,
+    school_id: null,
+    hide_profile: false,
+    theme_preference: "system",
+    show_social_links: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     ...overrides,
@@ -279,5 +283,15 @@ describe("computeMatch / rankMatches", () => {
     const b = candidate("b");
     const breakdown = computeMatch(a, b);
     expect(breakdown.musicScore).toBeNull();
+  });
+
+  it("applies soft mutual trust bonus (+0–5)", () => {
+    const a = candidate("a");
+    const b = candidate("b");
+    const base = computeMatch(a, b);
+    const withMutuals = computeMatch(a, b, { mutualCount: 3 });
+    expect(withMutuals.mutualBonus).toBe(3);
+    expect(withMutuals.finalScore).toBeCloseTo(Math.min(100, base.finalScore + 3), 5);
+    expect(computeMatch(a, b, { mutualCount: 10 }).mutualBonus).toBe(5);
   });
 });

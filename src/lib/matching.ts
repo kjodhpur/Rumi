@@ -188,7 +188,17 @@ export function musicScore(
   return { score, sharedArtists, sharedGenres };
 }
 
-export function computeMatch(a: MatchCandidate, b: MatchCandidate): MatchBreakdown {
+/** Soft trust bonus from mutuals (D8): +0–5, never a hard filter. */
+export function mutualTrustBonus(mutualCount: number): number {
+  if (mutualCount <= 0) return 0;
+  return Math.min(5, mutualCount);
+}
+
+export function computeMatch(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  opts?: { mutualCount?: number },
+): MatchBreakdown {
   const lifestyle = lifestyleScore(a.lifestyle, b.lifestyle);
 
   let music: ReturnType<typeof musicScore> | null = null;
@@ -200,6 +210,8 @@ export function computeMatch(a: MatchCandidate, b: MatchCandidate): MatchBreakdo
 
   const campusBonus = a.profile.campus === b.profile.campus ? 3 : 0;
   const yearBonus = a.profile.year === b.profile.year ? 2 : 0;
+  const mutualCount = opts?.mutualCount ?? 0;
+  const mutualBonus = mutualTrustBonus(mutualCount);
 
   let base: number;
   if (musicPart !== null) {
@@ -208,12 +220,29 @@ export function computeMatch(a: MatchCandidate, b: MatchCandidate): MatchBreakdo
     base = lifestyle.score;
   }
 
-  const finalScore = Math.min(100, Math.round((base + campusBonus + yearBonus) * 10) / 10);
+  const finalScore = Math.min(
+    100,
+    Math.round((base + campusBonus + yearBonus + mutualBonus) * 10) / 10,
+  );
 
   const inCommon = [...lifestyle.inCommon];
   if (campusBonus) inCommon.unshift("Same campus");
   if (music?.sharedArtists[0]) {
     inCommon.push(`Both like ${music.sharedArtists[0].name}`);
+  }
+  if (mutualCount > 0) {
+    inCommon.push(`${mutualCount} mutual${mutualCount === 1 ? "" : "s"}`);
+  }
+
+  const topReasons = [...inCommon].slice(0, 3);
+  if (topReasons.length < 3 && lifestyle.categoryScores[0]) {
+    const best = [...lifestyle.categoryScores].sort((x, y) => y.similarity - x.similarity);
+    for (const c of best) {
+      if (topReasons.length >= 3) break;
+      if (!topReasons.includes(c.label) && c.similarity >= 0.5) {
+        topReasons.push(`Similar ${c.label.toLowerCase()}`);
+      }
+    }
   }
 
   return {
@@ -222,7 +251,10 @@ export function computeMatch(a: MatchCandidate, b: MatchCandidate): MatchBreakdo
     finalScore,
     campusBonus,
     yearBonus,
+    mutualBonus,
+    mutualCount,
     inCommon: inCommon.slice(0, 3),
+    topReasons: topReasons.slice(0, 3),
     frictionPoints: lifestyle.frictionPoints,
     sharedArtists: music?.sharedArtists ?? [],
     sharedGenres: music?.sharedGenres ?? [],
@@ -234,11 +266,14 @@ export function rankMatches(
   viewer: MatchCandidate,
   candidates: MatchCandidate[],
   ctx: HardFilterContext,
+  mutualCounts?: Map<string, number>,
 ): MatchResult[] {
   const results: MatchResult[] = [];
   for (const other of candidates) {
     if (!passesHardFilters(viewer, other, ctx)) continue;
-    const breakdown = computeMatch(viewer, other);
+    const breakdown = computeMatch(viewer, other, {
+      mutualCount: mutualCounts?.get(other.profile.id) ?? 0,
+    });
     results.push({
       otherId: other.profile.id,
       score: breakdown.finalScore,

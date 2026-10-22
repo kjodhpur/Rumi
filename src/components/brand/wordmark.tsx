@@ -15,9 +15,11 @@ const sizeClass: Record<NonNullable<WordmarkProps["size"]>, string> = {
   sm: "text-xl",
 };
 
-/** Live-text Rumi lockup — Didone/modern serif (Playfair Display), high contrast. */
+/** Live-text Rumi lockup — Inter, tight tracking, lowercase "rumi". */
 export function Wordmark({ className, size = "md", as: Tag = "span" }: WordmarkProps) {
   return (
-    <Tag className={cn("rumi-wordmark", sizeClass[size], className)}>{APP_NAME}</Tag>
+    <Tag className={cn("rumi-wordmark", sizeClass[size], className)}>
+      {APP_NAME.toLowerCase()}
+    </Tag>
   );
 }

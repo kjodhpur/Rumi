@@ -2,7 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
-import { sendMagicLink, type AuthState } from "@/app/actions/auth";
+import { sendMagicLink, signInWithGoogle, type AuthState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,24 +27,32 @@ export default function LoginPage({
   const [state, action] = useFormState(sendMagicLink, initial);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-hero-mesh px-4">
+    <div className="flex min-h-screen items-center justify-center bg-hero-atmosphere px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <Link href="/" className="inline-block text-asu-maroon" aria-label="Rumi home">
+          <Link href="/" className="inline-block text-accent" aria-label="Rumi home">
             <Wordmark size="lg" />
           </Link>
-          <p className="mt-2 text-sm text-rumi-muted">
-            Sign in with your ASU email. We&apos;ll send a magic link — no password.
+          <p className="mt-2 text-sm text-ink-muted">
+            Sign in with your ASU email. Magic link or Google — school domain required.
           </p>
         </div>
 
         {searchParams.error === "suspended" ? (
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          <p className="rounded-md bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
             Your account has been suspended. Contact support if you believe this is a mistake.
           </p>
         ) : null}
+        {searchParams.error === "config" ? (
+          <p className="rounded-md bg-warning/10 px-4 py-3 text-sm text-warning" role="alert">
+            Auth isn’t configured in this environment yet.
+          </p>
+        ) : null}
 
-        <form action={action} className="space-y-4 rounded-2xl border border-rumi-sand bg-white/80 p-6 shadow-sm">
+        <form
+          action={action}
+          className="space-y-4 rounded-lg border border-border bg-bg-elevated/90 p-6 shadow-elevation2"
+        >
           <div className="space-y-2">
             <Label htmlFor="email">ASU email</Label>
             <Input
@@ -57,19 +65,25 @@ export default function LoginPage({
             />
           </div>
           {state.error ? (
-            <p className="text-sm text-red-700" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {state.error}
             </p>
           ) : null}
           {state.success ? (
-            <p className="text-sm text-green-800" role="status">
+            <p className="text-sm text-success" role="status">
               {state.success}
             </p>
           ) : null}
           <Submit />
         </form>
 
-        <p className="text-center text-xs text-rumi-muted">
+        <form action={signInWithGoogle}>
+          <Button type="submit" variant="outline" className="w-full">
+            Continue with Google
+          </Button>
+        </form>
+
+        <p className="text-center text-xs text-ink-muted">
           Only @asu.edu addresses are accepted. By continuing you agree to our{" "}
           <Link href="/terms" className="underline">
             Terms

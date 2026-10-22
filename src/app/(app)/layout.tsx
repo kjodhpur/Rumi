@@ -1,4 +1,4 @@
-import { AppNav } from "@/components/layout/nav";
+import { AppShell } from "@/components/layout/app-shell";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -8,7 +8,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     data: { user },
   } = await supabase.auth.getUser();
 
-  let unread = 0;
+  let unreadMessages = 0;
+  let unreadIntros = 0;
+
   if (user) {
     const { data: parts } = await supabase
       .from("conversation_participants")
@@ -21,14 +23,24 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         .eq("conversation_id", p.conversation_id)
         .neq("sender_id", user.id)
         .gt("created_at", p.last_read_at ?? "1970-01-01");
-      unread += count ?? 0;
+      unreadMessages += count ?? 0;
     }
+
+    const { count: introCount } = await supabase
+      .from("intros")
+      .select("*", { count: "exact", head: true })
+      .eq("to_user_id", user.id)
+      .eq("status", "pending");
+    unreadIntros = introCount ?? 0;
   }
 
   return (
-    <div className="min-h-screen bg-rumi-cream">
-      <AppNav unread={unread} isAdmin={isAdminEmail(user?.email)} />
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
-    </div>
+    <AppShell
+      unreadMessages={unreadMessages}
+      unreadIntros={unreadIntros}
+      isAdmin={isAdminEmail(user?.email)}
+    >
+      {children}
+    </AppShell>
   );
 }

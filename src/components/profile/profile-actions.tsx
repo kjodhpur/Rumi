@@ -7,35 +7,55 @@ import {
   hideProfile,
   reportUser,
   saveProfile,
-  startConversation,
   unsaveProfile,
 } from "@/app/actions/social";
+import { sendIntro } from "@/app/actions/intros";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { REPORT_REASONS } from "@/lib/constants";
+import { FIRST_MESSAGE_MIN_CHARS, REPORT_REASONS } from "@/lib/constants";
 
 export function ProfileActions({
   profileId,
   initiallySaved,
+  introStatus,
+  conversationId,
 }: {
   profileId: string;
   initiallySaved: boolean;
+  introStatus?: "none" | "pending_sent" | "pending_received" | "accepted" | "declined";
+  conversationId?: string | null;
 }) {
   const router = useRouter();
   const [saved, setSaved] = useState(initiallySaved);
   const [message, setMessage] = useState("");
-  const [showMessage, setShowMessage] = useState(false);
+  const [showIntro, setShowIntro] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reason, setReason] = useState<(typeof REPORT_REASONS)[number]>("spam");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const status = introStatus ?? "none";
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={() => setShowMessage((v) => !v)}>
-          Message
-        </Button>
+        {status === "accepted" && conversationId ? (
+          <Button type="button" onClick={() => router.push(`/messages/${conversationId}`)}>
+            Open chat
+          </Button>
+        ) : status === "pending_sent" ? (
+          <Button type="button" variant="secondary" disabled>
+            Intro pending
+          </Button>
+        ) : status === "pending_received" ? (
+          <Button type="button" variant="secondary" onClick={() => router.push("/intros")}>
+            Respond in Intros
+          </Button>
+        ) : (
+          <Button type="button" onClick={() => setShowIntro((v) => !v)}>
+            Send intro
+          </Button>
+        )}
         <Button
           type="button"
           variant="secondary"
@@ -85,41 +105,49 @@ export function ProfileActions({
         </Button>
       </div>
 
-      {showMessage ? (
-        <div className="space-y-2 rounded-xl border border-rumi-sand bg-white p-3">
+      {showIntro ? (
+        <div className="space-y-2 rounded-md border border-border bg-bg-elevated p-3 shadow-elevation1">
+          <p className="font-ui text-sm font-medium text-ink">
+            Send an intro — chat unlocks when they accept.
+          </p>
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Say hi — at least 20 characters for the first message"
+            placeholder={`Write at least ${FIRST_MESSAGE_MIN_CHARS} characters`}
           />
-          {error ? <p className="text-sm text-red-700">{error}</p> : null}
+          {error ? (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          ) : null}
           <Button
             type="button"
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
                 setError(null);
-                const res = await startConversation({
-                  recipientId: profileId,
-                  body: message,
+                const res = await sendIntro({
+                  toUserId: profileId,
+                  message,
                 });
                 if ("error" in res && res.error) {
                   setError(res.error);
                   return;
                 }
-                if (res.conversationId) router.push(`/messages/${res.conversationId}`);
+                setShowIntro(false);
+                router.push("/intros");
               })
             }
           >
-            Send
+            Send intro
           </Button>
         </div>
       ) : null}
 
       {showReport ? (
-        <div className="space-y-2 rounded-xl border border-rumi-sand bg-white p-3">
+        <div className="space-y-2 rounded-md border border-border bg-bg-elevated p-3">
           <select
-            className="h-10 w-full rounded-xl border border-rumi-sand px-2 text-sm"
+            className="font-ui h-10 w-full rounded-md border border-border bg-bg px-2 text-sm"
             value={reason}
             onChange={(e) => setReason(e.target.value as (typeof REPORT_REASONS)[number])}
           >

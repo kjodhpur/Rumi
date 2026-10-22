@@ -13,8 +13,13 @@ export async function updateSession(request: NextRequest) {
     path === "/" ||
     path.startsWith("/privacy") ||
     path.startsWith("/terms") ||
+    path.startsWith("/offline") ||
+    path.startsWith("/manifest") ||
+    path.startsWith("/sw.js") ||
+    path.startsWith("/icons") ||
     path.startsWith("/api/cron") ||
     path.startsWith("/api/spotify/callback") ||
+    path.startsWith("/api/export") ||
     isAuthRoute;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

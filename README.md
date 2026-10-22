@@ -9,8 +9,9 @@
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
 - Supabase (Auth magic link, Postgres + RLS, Realtime chat, Storage)
 - Spotify Web API (OAuth PKCE)
-- Vitest for matching unit tests
-- Deploy target: **Vercel**
+- Vitest for matching unit tests; Playwright for smoke e2e (`npm run test:e2e`)
+- Typography: **Inter** (UI chrome / wordmark) + **DM Sans** (body) via `next/font/google`
+- Deploy target: **Vercel** (ensure Production points at the Next.js app on `main`)
 
 ## Local setup
 
@@ -27,9 +28,10 @@ cp .env.example .env.local
 
 1. Create a project at [supabase.com](https://supabase.com).
 2. Copy **Project URL**, **anon key**, and **service role key** into `.env.local`.
-3. In the SQL editor, run the migration file:
+3. In the SQL editor, run the migration files in order:
 
-   `supabase/migrations/001_initial.sql`
+   - `supabase/migrations/001_initial.sql`
+   - `supabase/migrations/002_v2.sql` (schools, intros, groups, notifications, mutuals)
 
 4. Auth → URL configuration: add redirect URL  
    `http://localhost:3000/auth/callback`  

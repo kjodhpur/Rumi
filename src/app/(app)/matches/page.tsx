@@ -5,6 +5,7 @@ import { CAMPUSES, MOVE_IN_TERMS, PREFERRED_AREAS, YEARS } from "@/lib/constants
 import type { MatchBreakdown } from "@/lib/types";
 import { trackEvent } from "@/lib/analytics";
 import { MatchesFilters } from "@/components/matches/matches-filters";
+import { loadMutualCounts } from "@/lib/mutuals-server";
 
 export const metadata = { title: "Matches" };
 
@@ -35,7 +36,7 @@ export default async function MatchesPage({
 
   let cacheQuery = supabase
     .from("match_cache")
-    .select("other_id, score, breakdown")
+    .select("other_id, score, breakdown, mutual_count")
     .eq("user_id", user!.id)
     .gte("score", minScore);
 
@@ -107,11 +108,16 @@ export default async function MatchesPage({
 
   const total = rows.length;
   const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
+  const mutualCounts = await loadMutualCounts(
+    supabase,
+    user!.id,
+    pageRows.map((r) => r.profile.id),
+  );
 
   return (
     <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
       <aside>
-        <h1 className="mb-4 font-display text-3xl font-black tracking-brand text-asu-maroon lg:hidden">
+        <h1 className="font-ui mb-4 text-3xl font-bold tracking-brand text-ink lg:hidden">
           Matches
         </h1>
         <MatchesFilters
@@ -134,10 +140,10 @@ export default async function MatchesPage({
       </aside>
       <div className="space-y-4">
         <div className="flex items-end justify-between">
-          <h1 className="hidden font-display text-3xl font-black tracking-brand text-asu-maroon lg:block">
+          <h1 className="font-ui hidden text-3xl font-bold tracking-brand text-ink lg:block">
             Your matches
           </h1>
-          <p className="text-sm text-rumi-muted">{total} people</p>
+          <p className="text-sm text-ink-muted">{total} people</p>
         </div>
         {pageRows.length === 0 ? (
           <EmptyState
@@ -160,8 +166,14 @@ export default async function MatchesPage({
                 areas={r.housing.preferred_areas ?? []}
                 moveIn={r.housing.move_in_term}
                 score={Number(r.cache.score)}
-                inCommon={r.breakdown?.inCommon ?? []}
+                inCommon={r.breakdown?.inCommon ?? r.breakdown?.topReasons ?? []}
                 sharedArtists={(r.breakdown?.sharedArtists ?? []).map((a) => a.name)}
+                mutualCount={
+                  mutualCounts.get(r.profile.id) ??
+                  (r.cache as { mutual_count?: number }).mutual_count ??
+                  r.breakdown?.mutualCount ??
+                  0
+                }
               />
             ))}
           </div>

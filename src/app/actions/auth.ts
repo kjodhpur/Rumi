@@ -51,3 +51,24 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/");
 }
+
+/** Google OAuth — Supabase must have Google enabled; domain still enforced in handle_new_user. */
+export async function signInWithGoogle() {
+  const supabase = createClient();
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      queryParams: {
+        hd: "asu.edu",
+        prompt: "select_account",
+      },
+    },
+  });
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+  }
+  if (data.url) redirect(data.url);
+  redirect("/login?error=oauth");
+}

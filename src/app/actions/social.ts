@@ -3,13 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { reportSchema } from "@/lib/validations";
-import {
-  MAX_NEW_CONVERSATIONS_PER_DAY,
-  FIRST_MESSAGE_MIN_CHARS,
-} from "@/lib/constants";
+import { FIRST_MESSAGE_MIN_CHARS, MAX_NEW_CONVERSATIONS_PER_DAY } from "@/lib/constants";
 import { messageSchema, replySchema } from "@/lib/validations";
 import { trackEvent } from "@/lib/analytics";
 import { rateLimit } from "@/lib/rate-limit";
+// conversation_starts rate table still used by intros; keep import path for reply limits
 
 async function requireUser() {
   const supabase = createClient();
@@ -76,17 +74,34 @@ export async function reportUser(input: unknown) {
   return { ok: true };
 }
 
+/**
+ * @deprecated v2 — use sendIntro. Open chat only allowed when an accepted intro exists.
+ */
 export async function startConversation(input: unknown) {
   const data = messageSchema.parse(input);
   const { supabase, user } = await requireUser();
 
+  if (data.body.trim().length < FIRST_MESSAGE_MIN_CHARS) {
+    return { error: `Message must be at least ${FIRST_MESSAGE_MIN_CHARS} characters.` };
+  }
+
+  // Require accepted intro (D3)
+  const { data: intro } = await supabase
+    .from("intros")
+    .select("id")
+    .eq("status", "accepted")
+    .or(
+      `and(from_user_id.eq.${user.id},to_user_id.eq.${data.recipientId}),and(from_user_id.eq.${data.recipientId},to_user_id.eq.${user.id})`,
+    )
+    .maybeSingle();
+
+  if (!intro) {
+    return { error: "Send an intro first — chat unlocks after they accept." };
+  }
+
   const limit = rateLimit(`msg-start:${user.id}`, MAX_NEW_CONVERSATIONS_PER_DAY, 24 * 60 * 60_000);
   if (!limit.ok) {
     return { error: `You can start at most ${MAX_NEW_CONVERSATIONS_PER_DAY} conversations per day.` };
-  }
-
-  if (data.body.trim().length < FIRST_MESSAGE_MIN_CHARS) {
-    return { error: `First message must be at least ${FIRST_MESSAGE_MIN_CHARS} characters.` };
   }
 
   // Existing conversation?
@@ -111,20 +126,9 @@ export async function startConversation(input: unknown) {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: starts } = await supabase
-    .from("conversation_starts")
-    .select("count")
-    .eq("user_id", user.id)
-    .eq("day", today)
-    .maybeSingle();
-  if ((starts?.count ?? 0) >= MAX_NEW_CONVERSATIONS_PER_DAY) {
-    return { error: `You can start at most ${MAX_NEW_CONVERSATIONS_PER_DAY} conversations per day.` };
-  }
-
   const { data: conv, error } = await supabase
     .from("conversations")
-    .insert({})
+    .insert({ intro_id: intro.id })
     .select("id")
     .single();
   if (error || !conv) return { error: error?.message ?? "Could not create conversation" };
@@ -138,12 +142,7 @@ export async function startConversation(input: unknown) {
     sender_id: user.id,
     body: data.body.trim(),
   });
-  await supabase.from("conversation_starts").upsert({
-    user_id: user.id,
-    day: today,
-    count: (starts?.count ?? 0) + 1,
-  });
-  await trackEvent("conversation_started", user.id, { other: data.recipientId });
+  await trackEvent("conversation_started", user.id, { other: data.recipientId, intro: intro.id });
   revalidatePath("/messages");
   return { conversationId: conv.id };
 }

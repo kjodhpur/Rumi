@@ -1,5 +1,5 @@
 /**
- * Seed 60 realistic fake ASU student profiles for local/demo.
+ * Seed 50 realistic fake ASU student profiles for local/demo.
  * Requires SUPABASE_SERVICE_ROLE_KEY and NEXT_PUBLIC_SUPABASE_URL.
  *
  * Usage: npm run seed
@@ -57,7 +57,14 @@ function randInt(min: number, max: number) {
 }
 
 async function main() {
-  console.log("Seeding 60 Rumi demo profiles…");
+  console.log("Seeding 50 Rumi demo profiles…");
+
+  const { data: asuSchool } = await admin
+    .from("schools")
+    .select("id")
+    .eq("slug", "asu")
+    .maybeSingle();
+  const schoolId = asuSchool?.id ?? null;
 
   // Clean previous seed users (profiles marked is_seed)
   const { data: existing } = await admin
@@ -68,7 +75,7 @@ async function main() {
     await admin.auth.admin.deleteUser(row.id);
   }
 
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 50; i++) {
     const id = randomUUID();
     const email = `seed${i.toString().padStart(2, "0")}.${id.slice(0, 6)}@asu.edu`;
     const first = pick(FIRST);
@@ -103,7 +110,35 @@ async function main() {
       verified: true,
       paused: false,
       suspended: false,
+      school_id: schoolId,
+      hide_profile: false,
+      theme_preference: "system",
+      show_social_links: true,
     });
+
+    await admin.from("profile_photos").upsert(
+      {
+        user_id: id,
+        storage_path: `https://i.pravatar.cc/400?u=rumi-seed-${i}`,
+        sort_order: 0,
+      },
+      { onConflict: "user_id,sort_order" },
+    );
+
+    if (Math.random() > 0.4) {
+      await admin.from("social_links").upsert(
+        {
+          user_id: id,
+          provider: "instagram",
+          handle: `${first.toLowerCase()}${lastInitial.toLowerCase()}${i}`,
+          url: `https://instagram.com/${first.toLowerCase()}${lastInitial.toLowerCase()}${i}`,
+          verified: false,
+        },
+        { onConflict: "user_id,provider" },
+      );
+    }
+
+    await admin.from("notification_preferences").upsert({ user_id: id });
 
     const budgetMin = randInt(400, 1400);
     await admin.from("housing_prefs").upsert({

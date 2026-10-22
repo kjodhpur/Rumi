@@ -52,8 +52,53 @@ export interface Profile {
   suspended: boolean;
   is_seed: boolean;
   verified: boolean;
+  school_id: string | null;
+  hide_profile: boolean;
+  theme_preference: "light" | "dark" | "system";
+  show_social_links: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface ProfilePhoto {
+  id: string;
+  user_id: string;
+  storage_path: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface Intro {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  message: string;
+  status: "pending" | "accepted" | "declined" | "withdrawn";
+  created_at: string;
+  responded_at: string | null;
+}
+
+export interface SocialLink {
+  id: string;
+  user_id: string;
+  provider: "instagram" | "linkedin" | "tiktok" | "x" | "other";
+  handle: string;
+  url: string;
+  verified: boolean;
+}
+
+export interface MutualConnection {
+  kind: "rumi_mutual" | "intro_accepted" | "group_mate" | "asserted_social" | "org" | "handle_overlap";
+  label: string;
+  personId?: string;
+  personName?: string;
+  photoUrl?: string | null;
+}
+
+export interface MutualSummary {
+  count: number;
+  connections: MutualConnection[];
+  trustBonus: number;
 }
 
 export interface HousingPrefs {
@@ -63,6 +108,7 @@ export interface HousingPrefs {
   budget_max: number;
   preferred_areas: PreferredArea[];
   move_in_term: MoveInTerm;
+  move_in_date?: string | null;
   lease_length: LeaseLength;
   roommates_wanted: RoommateCount;
   place_status: PlaceStatus;
@@ -107,7 +153,10 @@ export interface MatchBreakdown {
   finalScore: number;
   campusBonus: number;
   yearBonus: number;
+  mutualBonus: number;
+  mutualCount: number;
   inCommon: string[];
+  topReasons: string[];
   frictionPoints: Array<{ category: string; gap: number; yours: number; theirs: number }>;
   sharedArtists: Array<{ id: string; name: string }>;
   sharedGenres: string[];
