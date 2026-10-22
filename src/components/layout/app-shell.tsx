@@ -11,6 +11,7 @@ import {
   Settings,
   Shield,
   Bookmark,
+  Bell,
 } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { cn } from "@/lib/utils";
