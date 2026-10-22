@@ -12,6 +12,7 @@ import {
 } from "@/app/actions/settings";
 import { upsertSocialLink, removeSocialLink, setProfileOrgs } from "@/app/actions/mutuals";
 import { signOut } from "@/app/actions/auth";
+import { PushEnableButton } from "@/components/pwa/push-enable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -164,6 +165,10 @@ export function SettingsClient(props: Props) {
         >
           Save notifications
         </Button>
+        <div className="border-t border-border pt-4">
+          <p className="font-ui mb-2 text-sm font-medium">Browser push</p>
+          <PushEnableButton />
+        </div>
       </section>
 
       <section className="space-y-4 rounded-lg border border-border bg-bg-elevated p-5 shadow-elevation1">

@@ -56,9 +56,14 @@ export async function saveBasics(input: unknown) {
 export async function saveHousing(input: unknown) {
   const data = housingSchema.parse(input);
   const { supabase, user } = await requireUser();
+  const move_in_date =
+    data.move_in_date && data.move_in_date.length > 0 ? data.move_in_date : null;
+  const { move_in_date: _drop, ...rest } = data;
+  void _drop;
   const { error } = await supabase.from("housing_prefs").upsert({
     user_id: user.id,
-    ...data,
+    ...rest,
+    move_in_date,
   });
   if (error) throw new Error(error.message);
   await supabase.from("profiles").update({ onboarding_step: 2 }).eq("id", user.id);

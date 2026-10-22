@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FIRST_MESSAGE_MIN_CHARS, MAX_NEW_CONVERSATIONS_PER_DAY } from "@/lib/constants";
 import { rateLimit } from "@/lib/rate-limit";
 import { trackEvent } from "@/lib/analytics";
+import { notifyUser } from "@/lib/notify";
 import { z } from "zod";
 
 async function requireUser() {
@@ -60,14 +61,26 @@ export async function sendIntro(input: unknown) {
 
   if (error || !intro) return { error: error?.message ?? "Could not send intro" };
 
-  await supabase.from("notifications").insert({
-    user_id: data.toUserId,
-    type: "intro_received",
-    title: "New intro",
-    body: data.message.trim().slice(0, 120),
-    href: "/intros",
-    meta: { intro_id: intro.id, from: user.id },
-  });
+  try {
+    await notifyUser({
+      userId: data.toUserId,
+      type: "intro_received",
+      title: "New intro",
+      body: data.message.trim().slice(0, 120),
+      href: "/intros",
+      meta: { intro_id: intro.id, from: user.id },
+      emailSubject: "Someone sent you a Rumi intro",
+    });
+  } catch {
+    await supabase.from("notifications").insert({
+      user_id: data.toUserId,
+      type: "intro_received",
+      title: "New intro",
+      body: data.message.trim().slice(0, 120),
+      href: "/intros",
+      meta: { intro_id: intro.id, from: user.id },
+    });
+  }
 
   await trackEvent("intro_sent", user.id, { to: data.toUserId });
   revalidatePath("/intros");
@@ -113,20 +126,34 @@ export async function respondToIntro(introId: string, action: "accepted" | "decl
       });
     }
 
-    await supabase.from("notifications").insert({
-      user_id: intro.from_user_id,
-      type: "intro_accepted",
-      title: "Intro accepted",
-      body: "You can start chatting now.",
-      href: conv ? `/messages/${conv.id}` : "/messages",
-      meta: { intro_id: introId },
-    });
+    try {
+      await notifyUser({
+        userId: intro.from_user_id,
+        type: "intro_accepted",
+        title: "Intro accepted",
+        body: "You can start chatting now.",
+        href: conv ? `/messages/${conv.id}` : "/messages",
+        meta: { intro_id: introId },
+        emailSubject: "Your Rumi intro was accepted",
+      });
+    } catch {
+      await supabase.from("notifications").insert({
+        user_id: intro.from_user_id,
+        type: "intro_accepted",
+        title: "Intro accepted",
+        body: "You can start chatting now.",
+        href: conv ? `/messages/${conv.id}` : "/messages",
+        meta: { intro_id: introId },
+      });
+    }
 
     revalidatePath("/messages");
+    revalidatePath("/intros");
+    return { ok: true, conversationId: conv?.id };
   }
 
   revalidatePath("/intros");
-  return { ok: true, conversationId: action === "accepted" ? undefined : undefined };
+  return { ok: true };
 }
 
 export async function withdrawIntro(introId: string) {

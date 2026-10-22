@@ -36,6 +36,31 @@ export default async function GroupDetailPage({ params }: { params: { id: string
 
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+  // Invite candidates: saved profiles + accepted intros not already in group
+  const memberSet = new Set(memberIds);
+  const [{ data: saved }, { data: acceptedIntros }] = await Promise.all([
+    supabase.from("saved_profiles").select("saved_id").eq("user_id", user!.id),
+    supabase
+      .from("intros")
+      .select("from_user_id, to_user_id")
+      .eq("status", "accepted")
+      .or(`from_user_id.eq.${user!.id},to_user_id.eq.${user!.id}`),
+  ]);
+  const candidateIds = new Set<string>();
+  for (const s of saved ?? []) if (!memberSet.has(s.saved_id)) candidateIds.add(s.saved_id);
+  for (const i of acceptedIntros ?? []) {
+    const other = i.from_user_id === user!.id ? i.to_user_id : i.from_user_id;
+    if (!memberSet.has(other)) candidateIds.add(other);
+  }
+  const candList = [...candidateIds].slice(0, 12);
+  const { data: candProfiles } = candList.length
+    ? await supabase.from("profiles").select("id, first_name, last_initial").in("id", candList)
+    : { data: [] };
+  const inviteCandidates = (candProfiles ?? []).map((p) => ({
+    id: p.id,
+    label: `${p.first_name} ${p.last_initial}.`,
+  }));
+
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -69,7 +94,9 @@ export default async function GroupDetailPage({ params }: { params: { id: string
             );
           })}
         </ul>
-        {membership.role === "owner" ? <InviteMemberForm groupId={group.id} /> : null}
+        {membership.role === "owner" ? (
+          <InviteMemberForm groupId={group.id} candidates={inviteCandidates} />
+        ) : null}
       </section>
 
       <section className="space-y-3 rounded-lg border border-border bg-bg-elevated p-5 shadow-elevation1">

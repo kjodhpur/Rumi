@@ -32,6 +32,8 @@ import {
   saveLifestyle,
   saveWeights,
 } from "@/app/actions/onboarding";
+import { saveProfilePhotos } from "@/app/actions/photos";
+import { PhotoUploader } from "@/components/onboarding/photo-uploader";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
@@ -109,6 +111,8 @@ export function OnboardingWizard({
   const [weights, setWeights] = useState<Record<string, Importance>>(
     Object.fromEntries(LIFESTYLE_SCALE_KEYS.map((k) => [k, "somewhat" as Importance])),
   );
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [moveInDate, setMoveInDate] = useState("");
 
   const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step]);
 
@@ -135,12 +139,16 @@ export function OnboardingWizard({
         if (step === 0) {
           await saveBasics({
             ...basics,
-            photo_url: null,
+            photo_url: photoUrls[0] ?? null,
             pronouns: basics.pronouns || null,
             instagram: basics.instagram || null,
           });
+          await saveProfilePhotos({ urls: photoUrls });
         } else if (step === 1) {
-          await saveHousing(housing);
+          await saveHousing({
+            ...housing,
+            move_in_date: moveInDate || null,
+          });
         } else if (step === 2) {
           await saveLifestyle(lifestyle);
         } else if (step === 3) {
@@ -176,6 +184,10 @@ export function OnboardingWizard({
 
       {step === 0 ? (
         <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Photos</Label>
+            <PhotoUploader photos={photoUrls} onChange={setPhotoUrls} />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="first_name">First name</Label>
@@ -340,6 +352,15 @@ export function OnboardingWizard({
                 </Chip>
               ))}
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="move_in_date">Move-in date (optional)</Label>
+            <Input
+              id="move_in_date"
+              type="date"
+              value={moveInDate}
+              onChange={(e) => setMoveInDate(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label>Move-in term</Label>

@@ -62,6 +62,12 @@ export const housingSchema = z
     budget_max: z.number().int().min(BUDGET_MIN).max(BUDGET_MAX),
     preferred_areas: z.array(z.enum(PREFERRED_AREAS)).min(1),
     move_in_term: z.enum(MOVE_IN_TERMS),
+    move_in_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+      .nullable()
+      .optional()
+      .or(z.literal("")),
     lease_length: z.enum(LEASE_LENGTHS),
     roommates_wanted: z.enum(ROOMMATE_COUNTS),
     place_status: z.enum(PLACE_STATUS),

@@ -104,8 +104,38 @@ export async function recomputeMatchCache(userId: string) {
     if (c) candidates.push(c);
   }
 
+  // Mutual counts for soft trust bonus (D8)
+  const mutualCounts = new Map<string, number>();
+  const { data: edges } = await admin
+    .from("connection_edges")
+    .select("user_a, user_b")
+    .or(`user_a.eq.${userId},user_b.eq.${userId}`);
+  for (const e of edges ?? []) {
+    const other = e.user_a === userId ? e.user_b : e.user_b;
+    mutualCounts.set(other, (mutualCounts.get(other) ?? 0) + 1);
+  }
+  const { data: viewerOrgs } = await admin
+    .from("profile_orgs")
+    .select("org_id")
+    .eq("user_id", userId);
+  const orgSet = new Set((viewerOrgs ?? []).map((o) => o.org_id));
+  if (orgSet.size && candidates.length) {
+    const { data: theirOrgs } = await admin
+      .from("profile_orgs")
+      .select("user_id, org_id")
+      .in(
+        "user_id",
+        candidates.map((c) => c.profile.id),
+      );
+    for (const row of theirOrgs ?? []) {
+      if (orgSet.has(row.org_id)) {
+        mutualCounts.set(row.user_id, (mutualCounts.get(row.user_id) ?? 0) + 1);
+      }
+    }
+  }
+
   const ctx: HardFilterContext = { blockedIds: blocked, viewerId: userId };
-  const ranked = rankMatches(viewer, candidates, ctx);
+  const ranked = rankMatches(viewer, candidates, ctx, mutualCounts);
 
   await admin.from("match_cache").delete().eq("user_id", userId);
   if (ranked.length) {
@@ -115,6 +145,8 @@ export async function recomputeMatchCache(userId: string) {
         other_id: r.otherId,
         score: r.score,
         breakdown: r.breakdown,
+        top_reasons: r.breakdown.topReasons ?? r.breakdown.inCommon ?? [],
+        mutual_count: r.breakdown.mutualCount ?? 0,
         computed_at: new Date().toISOString(),
       })),
     );

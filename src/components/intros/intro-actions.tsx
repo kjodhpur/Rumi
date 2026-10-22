@@ -42,9 +42,10 @@ export function IntroActions({
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            await respondToIntro(introId, "accepted");
+            const res = await respondToIntro(introId, "accepted");
             router.refresh();
-            router.push("/messages");
+            if (res.conversationId) router.push(`/messages/${res.conversationId}`);
+            else router.push("/messages");
           })
         }
       >
