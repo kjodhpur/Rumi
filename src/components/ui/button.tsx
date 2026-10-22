@@ -12,21 +12,21 @@ const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap font-medium",
     "transition-[background-color,color,box-shadow,opacity] duration-150 ease-out-quint",
-    "disabled:pointer-events-none disabled:opacity-45 aria-disabled:pointer-events-none aria-disabled:opacity-45",
+    "disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0",
   ],
   {
     variants: {
       variant: {
         primary:
-          "bg-ink text-ink-inverse shadow-sm shadow-highlight hover:bg-ink/90 dark:hover:bg-ink/85",
+          "bg-ink text-ink-inverse shadow-sm inset-shadow-highlight hover:bg-ink/90 dark:hover:bg-ink/85",
         accent:
-          "bg-accent-strong text-on-accent shadow-sm shadow-highlight hover:bg-accent-strong/90",
+          "bg-accent-strong text-on-accent shadow-sm inset-shadow-highlight hover:bg-accent-strong/90",
         secondary:
           "bg-surface text-ink shadow-xs ring-1 ring-line-strong ring-inset hover:bg-surface-hover",
         ghost: "text-ink hover:bg-surface-hover",
         subtle: "bg-surface-sunken text-ink hover:bg-surface-hover",
-        danger: "bg-danger text-white shadow-sm shadow-highlight hover:bg-danger/90",
+        danger: "bg-danger text-white shadow-sm inset-shadow-highlight hover:bg-danger/90",
         "danger-ghost": "text-danger hover:bg-danger-soft",
         link: "h-auto px-0 text-accent-ink underline-offset-4 hover:underline",
       },

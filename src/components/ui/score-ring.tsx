@@ -32,9 +32,10 @@ export function ScoreRing({
   const value = Math.max(0, Math.min(100, Math.round(score)));
   const stroke = strokeWidth ?? (variant === "hero" ? 6 : 3);
   const radius = (size - stroke) / 2;
+  // Initial value must not depend on the reduced-motion preference, which is
+  // unknown during SSR — otherwise hydration would mismatch.
+  const progress = useMotionValue(animateOnMount ? 0 : value);
   const shouldAnimate = animateOnMount && !reduce;
-
-  const progress = useMotionValue(shouldAnimate ? 0 : value);
   const rounded = useTransform(progress, (v) => Math.round(v));
   const pathLength = useTransform(progress, (v) => Math.max(0.001, v / 100));
 

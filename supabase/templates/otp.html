@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>Your Rumi code</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f7f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Helvetica,Arial,sans-serif;color:#171614;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f0;padding:40px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#ffffff;border:1px solid #e7e3db;border-radius:16px;">
+            <tr>
+              <td style="padding:32px 32px 8px;">
+                <div style="font-size:26px;font-weight:700;letter-spacing:-0.06em;color:#171614;">rumi</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px 0;">
+                <h1 style="margin:0;font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.01em;">Here's your sign-in code</h1>
+                <p style="margin:12px 0 0;font-size:15px;line-height:22px;color:#5e5a53;">Enter it in the Rumi tab you just opened. It expires in 15 minutes.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px;">
+                <div style="background:#f0ede6;border-radius:12px;padding:18px 0;text-align:center;font-size:32px;line-height:36px;font-weight:600;letter-spacing:0.32em;font-variant-numeric:tabular-nums;color:#171614;">{{ .Token }}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 32px;">
+                <p style="margin:0;font-size:13px;line-height:20px;color:#6f6a62;">Or <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=email&amp;next=/matches" style="color:#c2441e;">sign in with one tap</a>. If you didn't request this, you can ignore this email — no one can sign in without the code.</p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:20px 0 0;font-size:12px;line-height:18px;color:#6f6a62;">Rumi · Roommate matching for students · Not affiliated with ASU</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

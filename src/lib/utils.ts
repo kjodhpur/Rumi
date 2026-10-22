@@ -1,5 +1,16 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/** tailwind-merge taught about Rumi's custom scales so it never drops a color for a size. */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["display-2xl", "display-xl", "display-lg", "display-md", "display-sm", "title", "body", "body-sm", "caption", "micro"],
+      font: ["display", "sans"],
+      "inset-shadow": ["highlight"],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

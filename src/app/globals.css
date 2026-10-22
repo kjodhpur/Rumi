@@ -129,7 +129,7 @@
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
-  --shadow-highlight: var(--shadow-highlight);
+  --inset-shadow-highlight: var(--shadow-highlight);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: var(--font-instrument), ui-serif, Georgia, "Times New Roman", serif;
