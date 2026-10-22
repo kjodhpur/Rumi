@@ -135,7 +135,7 @@ function SaveButton({ saved, name, onToggle }: { saved: boolean; name: string; o
       transition={springSnappy}
       aria-pressed={saved}
       aria-label={saved ? `Remove ${name} from saved` : `Save ${name}`}
-      className="absolute top-3 right-3 z-20 flex size-10 items-center justify-center rounded-full bg-black/30 text-white outline-none transition-colors hover:bg-black/50 focus-visible:ring-2 focus-visible:ring-white"
+      className="absolute top-3 right-3 z-20 flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md outline-none transition-transform focus-visible:ring-2 focus-visible:ring-focus"
     >
       <motion.span
         key={saved ? "saved" : "unsaved"}
@@ -143,7 +143,7 @@ function SaveButton({ saved, name, onToggle }: { saved: boolean; name: string; o
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 500, damping: 15 }}
       >
-        <Bookmark className={cn("size-[18px]", saved && "fill-white")} strokeWidth={2} aria-hidden />
+        <Bookmark className={cn("size-[18px]", saved && "fill-ink")} strokeWidth={2} aria-hidden />
       </motion.span>
     </motion.button>
   );

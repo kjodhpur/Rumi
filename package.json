@@ -20,7 +20,7 @@
     "db:stop": "npx --yes supabase@2 stop",
     "db:reset": "npx --yes supabase@2 db reset",
     "db:types": "npx --yes supabase@2 gen types typescript --local --schema public > src/types/database.ts",
-    "seed": "tsx scripts/seed.ts",
+    "seed": "tsx --conditions=react-server scripts/seed.mts",
     "brand:generate": "tsx scripts/generate-brand.ts"
   },
   "dependencies": {

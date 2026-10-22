@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { motion, useReducedMotion, type TargetAndTransition } from "motion/react";
+import { motion, type TargetAndTransition } from "motion/react";
 import { spring } from "@/lib/motion";
 
 // Survives template remounts: the path we're navigating *from*.
@@ -19,7 +19,6 @@ function depth(path: string) {
  */
 export function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const reduce = useReducedMotion();
   const [initial] = React.useState<TargetAndTransition | false>(() => {
     const from = previousPath;
     previousPath = pathname;
@@ -30,7 +29,8 @@ export function RouteTransition({ children }: { children: React.ReactNode }) {
     return { opacity: 0, y: 6 };
   });
 
-  if (reduce) return <>{children}</>;
+  // Reduced motion is handled globally by <MotionConfig reducedMotion="user">;
+  // branching on it here would make server and client markup differ.
   return (
     <motion.div initial={initial} animate={{ opacity: 1, x: 0, y: 0 }} transition={spring}>
       {children}

@@ -5,7 +5,17 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { useTheme } from "next-themes";
-import { Bell, Check, ChevronsUpDown, LogOut, Monitor, Moon, Settings, Sun, UserRound } from "lucide-react";
+import {
+  Bell,
+  Check,
+  ChevronsUpDown,
+  LogOut,
+  Monitor,
+  Moon,
+  Settings,
+  Sun,
+  UserRound,
+} from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { Avatar } from "@/components/ui/avatar";
 import { CountBubble } from "@/components/ui/badge";
@@ -18,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LiveProvider, useLive } from "@/components/realtime/live-provider";
+import { ProfileOverlayProvider } from "@/components/profile/profile-overlay";
 import { signOut } from "@/app/actions/auth";
 import type { BadgeCounts } from "@/app/actions/badges";
 import { cn } from "@/lib/utils";
@@ -44,27 +55,29 @@ export function AppShell({
 }) {
   return (
     <LiveProvider userId={user.id} initialCounts={initialCounts}>
-      <PageTitleProvider>
-        <a
-          href="#main"
-          className="sr-only z-[100] rounded-md bg-ink px-4 py-2 text-ink-inverse focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
-        >
-          Skip to content
-        </a>
-        <div className="min-h-dvh bg-bg">
-          <Sidebar user={user} />
-          <div className="lg:pl-[248px]">
-            <TopBar />
-            <main
-              id="main"
-              className="mx-auto w-full max-w-[1120px] overflow-x-clip px-4 pt-2 pb-[calc(88px+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pt-10 lg:pb-16"
-            >
-              {children}
-            </main>
+      <ProfileOverlayProvider>
+        <PageTitleProvider>
+          <a
+            href="#main"
+            className="sr-only z-[100] rounded-md bg-ink px-4 py-2 text-ink-inverse focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+          >
+            Skip to content
+          </a>
+          <div className="min-h-dvh bg-bg">
+            <Sidebar user={user} />
+            <div className="lg:pl-[248px]">
+              <TopBar />
+              <main
+                id="main"
+                className="mx-auto w-full max-w-[1120px] overflow-x-clip px-4 pt-2 pb-[calc(88px+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pt-10 lg:pb-16"
+              >
+                {children}
+              </main>
+            </div>
+            <TabBar user={user} />
           </div>
-          <TabBar user={user} />
-        </div>
-      </PageTitleProvider>
+        </PageTitleProvider>
+      </ProfileOverlayProvider>
     </LiveProvider>
   );
 }
@@ -97,15 +110,27 @@ function Sidebar({ user }: { user: ShellUser }) {
         <LayoutGroup id="sidebar">
           <ul className="flex flex-col gap-0.5">
             {PRIMARY_NAV.map((item) => (
-              <SidebarLink key={item.href} item={item} active={activeHref === item.href} count={item.badge ? counts[item.badge] : 0} />
+              <SidebarLink
+                key={item.href}
+                item={item}
+                active={activeHref === item.href}
+                count={item.badge ? counts[item.badge] : 0}
+              />
             ))}
           </ul>
           <div className="mx-3 my-4 h-px bg-line" />
           <ul className="flex flex-col gap-0.5">
             {DESKTOP_EXTRA_NAV.map((item) => (
-              <SidebarLink key={item.href} item={item} active={activeHref === item.href} count={item.badge ? counts[item.badge] : 0} />
+              <SidebarLink
+                key={item.href}
+                item={item}
+                active={activeHref === item.href}
+                count={item.badge ? counts[item.badge] : 0}
+              />
             ))}
-            {user.isAdmin ? <SidebarLink item={ADMIN_NAV} active={activeHref === ADMIN_NAV.href} count={0} /> : null}
+            {user.isAdmin ? (
+              <SidebarLink item={ADMIN_NAV} active={activeHref === ADMIN_NAV.href} count={0} />
+            ) : null}
           </ul>
         </LayoutGroup>
       </nav>
@@ -158,8 +183,13 @@ function UserMenu({ user }: { user: ShellUser }) {
   ];
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-md p-2 text-left outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus data-[state=open]:bg-surface-hover">
-        <Avatar src={user.avatarUrl} firstName={user.firstName} lastInitial={user.lastInitial} size={36} />
+      <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-md p-2 text-left transition-colors outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus data-[state=open]:bg-surface-hover">
+        <Avatar
+          src={user.avatarUrl}
+          firstName={user.firstName}
+          lastInitial={user.lastInitial}
+          size={36}
+        />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-body-sm font-medium text-ink">
             {user.firstName} {user.lastInitial ? `${user.lastInitial}.` : ""}
@@ -182,7 +212,13 @@ function UserMenu({ user }: { user: ShellUser }) {
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Appearance</DropdownMenuLabel>
         {themes.map(({ value, label, icon: Icon }) => (
-          <DropdownMenuItem key={value} onSelect={(e) => { e.preventDefault(); setTheme(value); }}>
+          <DropdownMenuItem
+            key={value}
+            onSelect={(e) => {
+              e.preventDefault();
+              setTheme(value);
+            }}
+          >
             <Icon /> {label}
             {theme === value ? <Check className="ml-auto !text-ink" /> : null}
           </DropdownMenuItem>
@@ -212,7 +248,7 @@ function TopBar() {
   if (/^\/(messages|groups|settings|profile)\/.+/.test(pathname)) return null;
 
   return (
-    <header className="glass pt-safe sticky top-0 z-30 border-b border-[var(--glass-border)] lg:hidden">
+    <header className="glass sticky top-0 z-30 border-b border-[var(--glass-border)] pt-safe lg:hidden">
       <div className="flex h-14 items-center justify-between gap-3 px-4">
         <div className="relative h-7 min-w-0 flex-1">
           <AnimatePresence initial={false} mode="popLayout">
@@ -246,7 +282,11 @@ function TopBar() {
         <Link
           href="/notifications"
           className="relative -mr-2 inline-flex size-11 items-center justify-center rounded-full text-ink transition-colors active:bg-surface-hover"
-          aria-label={counts.notifications > 0 ? `Notifications, ${counts.notifications} unread` : "Notifications"}
+          aria-label={
+            counts.notifications > 0
+              ? `Notifications, ${counts.notifications} unread`
+              : "Notifications"
+          }
         >
           <Bell className="size-[22px]" strokeWidth={1.75} aria-hidden />
           <CountBubble count={counts.notifications} className="absolute top-1.5 right-1" />
@@ -267,7 +307,7 @@ function TabBar({ user }: { user: ShellUser }) {
   return (
     <nav
       aria-label="Primary"
-      className="glass pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-[var(--glass-border)] lg:hidden"
+      className="glass fixed inset-x-0 bottom-0 z-40 border-t border-[var(--glass-border)] pb-safe lg:hidden"
     >
       <LayoutGroup id="tabbar">
         <ul className="mx-auto grid h-16 max-w-md grid-cols-4">
@@ -290,7 +330,10 @@ function TabBar({ user }: { user: ShellUser }) {
                 firstName={user.firstName}
                 lastInitial={user.lastInitial}
                 size={26}
-                className={cn("rounded-full", youActive && "ring-2 ring-ink ring-offset-2 ring-offset-bg")}
+                className={cn(
+                  "rounded-full",
+                  youActive && "ring-2 ring-ink ring-offset-2 ring-offset-bg",
+                )}
               />
             </TabLink>
           </li>
