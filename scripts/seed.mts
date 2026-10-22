@@ -141,6 +141,14 @@ async function removeExistingSeed() {
     if (files?.length) await admin.storage.from("photos").remove(files.map((f) => `${row.user_id}/${f.name}`));
     await admin.auth.admin.deleteUser(row.user_id);
   }
+  // Direct chats with seed people are left without members — remove them.
+  const [{ data: conversations }, { data: memberships }] = await Promise.all([
+    admin.from("conversations").select("id"),
+    admin.from("conversation_members").select("conversation_id"),
+  ]);
+  const active = new Set((memberships ?? []).map((m) => m.conversation_id));
+  const orphans = (conversations ?? []).map((c) => c.id).filter((id) => !active.has(id));
+  if (orphans.length) await admin.from("conversations").delete().in("id", orphans);
   return data?.length ?? 0;
 }
 
@@ -272,9 +280,14 @@ async function createGroups(people: { id: string; first: string }[]) {
       .select("id")
       .single();
     if (error) throw error;
-    await admin.from("group_members").insert(members.map((m, i) => ({ group_id: g.id, user_id: m.id, role: i === 0 ? "owner" : "member" })));
-    const { data: c } = await admin.from("conversations").insert({ kind: "group", group_id: g.id }).select("id").single();
-    await admin.from("conversation_members").insert(members.map((m) => ({ conversation_id: c!.id, user_id: m.id })));
+    const { error: gmError } = await admin
+      .from("group_members")
+      .insert(members.map((m, i) => ({ group_id: g.id, user_id: m.id, role: i === 0 ? "owner" : "member" })));
+    if (gmError) throw gmError;
+    const { data: c, error: cError } = await admin.from("conversations").insert({ kind: "group", group_id: g.id }).select("id").single();
+    if (cError) throw cError;
+    const { error: cmError } = await admin.from("conversation_members").insert(members.map((m) => ({ conversation_id: c!.id, user_id: m.id })));
+    if (cmError) throw cmError;
     await admin.from("messages").insert({ conversation_id: c!.id, kind: "system", body: `${members[0].first} started ${group.name}` });
   }
 }
@@ -321,10 +334,12 @@ async function seedDemoFor(email: string) {
     .select("id")
     .single();
   const { data: convo } = await admin.from("conversations").insert({ kind: "direct" }).select("id").single();
-  await admin.from("conversation_members").insert([
+  // Bulk inserts send every column for every row, so give both rows a read marker.
+  const { error: membersError } = await admin.from("conversation_members").insert([
     { conversation_id: convo!.id, user_id: userId, last_read_at: new Date(Date.now() - 3_600_000).toISOString() },
-    { conversation_id: convo!.id, user_id: partner.candidate_id },
+    { conversation_id: convo!.id, user_id: partner.candidate_id, last_read_at: new Date().toISOString() },
   ]);
+  if (membersError) throw membersError;
   await admin.from("intros").update({ conversation_id: convo!.id }).eq("id", intro!.id);
   let t = Date.now() - DEMO_MESSAGES.length * 7 * 60_000;
   for (const [who, body] of DEMO_MESSAGES) {

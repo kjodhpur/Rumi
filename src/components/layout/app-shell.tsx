@@ -67,18 +67,32 @@ export function AppShell({
             <Sidebar user={user} />
             <div className="lg:pl-[248px]">
               <TopBar />
-              <main
-                id="main"
-                className="mx-auto w-full max-w-[1120px] overflow-x-clip px-4 pt-2 pb-[calc(88px+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pt-10 lg:pb-16"
-              >
-                {children}
-              </main>
+              <Main>{children}</Main>
             </div>
             <TabBar user={user} />
           </div>
         </PageTitleProvider>
       </ProfileOverlayProvider>
     </LiveProvider>
+  );
+}
+
+/** Chat threads are full-bleed; every other page sits in the padded content column. */
+function Main({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const fullBleed = /^\/messages\/.+/.test(pathname);
+  return (
+    <main
+      id="main"
+      className={cn(
+        "w-full",
+        fullBleed
+          ? "overflow-x-clip"
+          : "mx-auto max-w-[1120px] overflow-x-clip px-4 pt-2 pb-[calc(88px+env(safe-area-inset-bottom))] sm:px-6 lg:px-10 lg:pt-10 lg:pb-16",
+      )}
+    >
+      {children}
+    </main>
   );
 }
 

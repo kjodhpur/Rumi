@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
-import { formatDistanceToNowStrict, parseISO, format } from "date-fns";
+import { parseISO, format } from "date-fns";
 import { AlertTriangle, CalendarDays, Home, MapPin, Music2, Repeat, Sparkle, Wallet } from "lucide-react";
 import {
   DRINKING,
@@ -191,10 +191,10 @@ export function MusicFacts({ music, shared }: { music: NonNullable<ProfileDetail
   );
 }
 
-export function lastActiveLabel(iso: string) {
-  const diff = Date.now() - Date.parse(iso);
+export function lastActiveLabel(iso: string, now: number) {
+  const diff = now - Date.parse(iso);
   if (diff < 15 * 60_000) return "Active now";
   if (diff < 24 * 3_600_000) return "Active today";
-  if (diff < 7 * 86_400_000) return `Active ${formatDistanceToNowStrict(parseISO(iso))} ago`;
+  if (diff < 7 * 86_400_000) return `Active ${Math.round(diff / 86_400_000)}d ago`;
   return null;
 }

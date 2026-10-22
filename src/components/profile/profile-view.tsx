@@ -33,6 +33,7 @@ import type { MatchCardData } from "@/components/matches/types";
 import type { ProfileDetail } from "@/lib/profile";
 import { CLASS_YEARS, labelOf } from "@/lib/options";
 import { cn, displayName } from "@/lib/utils";
+import { useNow } from "@/hooks/use-hydrated";
 import { spring, springSheet } from "@/lib/motion";
 import { PhotoCarousel, type CarouselHandle } from "./photo-carousel";
 import { IntroSheet } from "./intro-sheet";
@@ -130,7 +131,8 @@ export function ProfileView({
   }
 
   const meta = [labelOf(CLASS_YEARS, classYear), major, detail?.pronouns].filter(Boolean).join(" · ");
-  const active = detail ? lastActiveLabel(detail.lastActiveAt) : null;
+  const now = useNow();
+  const active = detail && now ? lastActiveLabel(detail.lastActiveAt, now) : null;
   const isOverlay = mode === "overlay";
 
   const topActions = (
