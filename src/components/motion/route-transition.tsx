@@ -20,6 +20,9 @@ function depth(path: string) {
 export function RouteTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [initial] = React.useState<TargetAndTransition | false>(() => {
+    // Module state is shared across requests on the server — only the browser
+    // knows where this navigation came from.
+    if (typeof window === "undefined") return false;
     const from = previousPath;
     previousPath = pathname;
     if (!from || from === pathname) return false;

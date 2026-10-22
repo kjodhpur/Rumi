@@ -236,6 +236,7 @@ grant execute on function
   public.cancel_group_request(uuid),
   public.leave_group(uuid),
   public.group_candidates(uuid, integer, integer),
+  public.group_pair_scores(uuid),
   public.groups_for_me(integer)
 to authenticated;
 

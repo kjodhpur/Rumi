@@ -600,6 +600,11 @@ isOneToOne: true
               "avatar_path": string,"avatar_placeholder": string,"budget_max": number,"budget_min": number,"candidate_id": string,"class_year": string,"first_name": string,"group_score": number,"last_initial": string,"major": string,"member_scores": Json,"min_score": number,"move_in_date": string,"pending_kind": string
             }[]
                            },
+"group_pair_scores":
+{ Args: { "p_group_id": string }; Returns: {
+              "a": string,"b": string,"score": number
+            }[]
+                           },
 "groups_for_me":
 { Args: { "p_limit"?: number }; Returns: {
               "group_id": string,"group_score": number,"member_count": number,"members": Json,"min_score": number,"name": string,"pending": boolean,"target_size": number

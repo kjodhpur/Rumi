@@ -14,7 +14,7 @@ const EDGE = 28;
 export function SwipeBack({ children, fallbackHref = "/" }: { children: React.ReactNode; fallbackHref?: string }) {
   const router = useRouter();
   const x = useMotionValue(0);
-  const shade = useTransform(x, [0, 400], [0.12, 0]);
+  const shade = useTransform(x, [0, 24, 400], [0, 0.12, 0.04]);
   const [enabled, setEnabled] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 

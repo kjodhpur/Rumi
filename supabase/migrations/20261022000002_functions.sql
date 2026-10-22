@@ -970,6 +970,25 @@ begin
 end;
 $$;
 
+/** Every pair score inside a group (members can't read each other's rows directly). */
+create or replace function public.group_pair_scores(p_group_id uuid)
+returns table (a uuid, b uuid, score smallint)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_group_member(p_group_id, auth.uid()) then raise exception 'not_member'; end if;
+  return query
+  select ms.viewer_id, ms.candidate_id, ms.score
+  from public.match_scores ms
+  join public.group_members ga on ga.user_id = ms.viewer_id and ga.group_id = p_group_id
+  join public.group_members gb on gb.user_id = ms.candidate_id and gb.group_id = p_group_id
+  where ms.viewer_id < ms.candidate_id;
+end;
+$$;
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- In-app notifications for intros and groups (created atomically by triggers)
 -- ─────────────────────────────────────────────────────────────────────────────
