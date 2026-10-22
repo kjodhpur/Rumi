@@ -25,6 +25,7 @@ const primaryLinks = [
 ];
 
 const desktopExtra = [
+  { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/saved", label: "Saved", icon: Bookmark },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
