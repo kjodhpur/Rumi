@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${display.variable} ${sans.variable} font-sans antialiased`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
