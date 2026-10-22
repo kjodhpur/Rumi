@@ -1,21 +1,23 @@
-/**
- * Typography (approved amendment):
- * - Inter — headings, nav, buttons, UI chrome (geometric)
- * - DM Sans — body paragraphs and reading text (humanist)
- * Both via next/font/google — no commercial license blockers.
- */
-import { Inter, DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 
-export const displayFont = Inter({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["400", "500", "600", "700", "800"],
+/** Inter (variable, optical sizes) — all UI text. */
+export const inter = localFont({
+  src: [
+    { path: "../fonts/InterVariable-latin.woff2", weight: "100 900", style: "normal" },
+    { path: "../fonts/InterVariable-latin-italic.woff2", weight: "100 900", style: "italic" },
+  ],
+  variable: "--font-inter",
   display: "swap",
+  adjustFontFallback: "Arial",
 });
 
-export const sansFont = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  weight: ["400", "500", "600", "700"],
+/** Instrument Serif — display moments: page titles, names, headlines. */
+export const instrumentSerif = localFont({
+  src: [
+    { path: "../fonts/InstrumentSerif-latin.woff2", weight: "400", style: "normal" },
+    { path: "../fonts/InstrumentSerif-latin-italic.woff2", weight: "400", style: "italic" },
+  ],
+  variable: "--font-instrument",
   display: "swap",
+  adjustFontFallback: "Times New Roman",
 });

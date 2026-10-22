@@ -1,5 +1,9 @@
-import { LandingPage } from "@/components/landing/landing-page";
+import { Wordmark } from "@/components/brand/wordmark";
 
-export default function HomePage() {
-  return <LandingPage />;
+export default function Home() {
+  return (
+    <main className="flex min-h-dvh items-center justify-center">
+      <Wordmark height={48} />
+    </main>
+  );
 }

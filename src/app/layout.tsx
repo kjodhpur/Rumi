@@ -1,41 +1,49 @@
 import type { Metadata, Viewport } from "next";
+import { inter, instrumentSerif } from "./fonts";
+import { Providers } from "@/components/providers/providers";
+import { cn } from "@/lib/utils";
 import "./globals.css";
-import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
-import { displayFont, sansFont } from "./fonts";
-import { ThemeProvider } from "@/components/theme/theme-provider";
-import { RegisterServiceWorker } from "@/components/pwa/register-sw";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: {
-    default: `${APP_NAME} — ASU roommate matching`,
-    template: `%s · ${APP_NAME}`,
+    default: "Rumi — Find a roommate you'll actually like living with",
+    template: "%s · Rumi",
   },
-  description: APP_TAGLINE,
+  description:
+    "Free roommate matching for ASU students. Set your preferences once and get a ranked list of compatible roommates — with a clear score and the reasons you match. No swiping.",
+  applicationName: "Rumi",
+  keywords: ["ASU roommates", "Arizona State roommate finder", "Tempe roommates", "college roommate matching"],
   manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: APP_NAME,
+  appleWebApp: { capable: true, title: "Rumi", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
+  openGraph: {
+    type: "website",
+    siteName: "Rumi",
+    title: "Rumi — Roommates, ranked by how well you'd live together",
+    description: "Free for ASU students. A ranked list of compatible roommates with the reasons you match.",
+    url: appUrl,
   },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F7F3EE" },
-    { media: "(prefers-color-scheme: dark)", color: "#12100E" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f5f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#121110" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${displayFont.variable} ${sansFont.variable} font-sans antialiased`}
-      >
-        <ThemeProvider>
-          <RegisterServiceWorker />
-          {children}
-        </ThemeProvider>
+    <html lang="en" suppressHydrationWarning className={cn(inter.variable, instrumentSerif.variable)}>
+      <body>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
