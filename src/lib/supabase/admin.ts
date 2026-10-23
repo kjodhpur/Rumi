@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 import { publicEnv, serverEnv } from "@/lib/env";
+import { noStoreFetch } from "./fetch";
 
 let admin: ReturnType<typeof createClient<Database>> | undefined;
 
@@ -13,6 +14,7 @@ export function createAdminClient() {
   if (!admin) {
     admin = createClient<Database>(publicEnv.supabaseUrl, serverEnv.serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: noStoreFetch },
     });
   }
   return admin;

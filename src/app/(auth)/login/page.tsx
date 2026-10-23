@@ -21,7 +21,7 @@ const ERRORS: Record<string, string> = {
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string; next?: string };
+  searchParams: { error?: string; next?: string; email?: string };
 }) {
   const error = searchParams.error ? (ERRORS[searchParams.error] ?? ERRORS.oauth) : null;
   return (
@@ -33,6 +33,7 @@ export default function LoginPage({
         <main className="flex flex-1 items-center justify-center py-12">
           <LoginForm
             initialError={error}
+            initialEmail={searchParams.email?.slice(0, 254)}
             next={searchParams.next ?? null}
             googleEnabled={publicEnv.googleAuthEnabled}
             showDevHint={process.env.NODE_ENV === "development"}

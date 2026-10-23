@@ -3,6 +3,7 @@ import { inter, instrumentSerif } from "./fonts";
 import { Providers } from "@/components/providers/providers";
 import { cn } from "@/lib/utils";
 import { LAUNCH_SCHOOL } from "@/lib/school";
+import { LaunchSplash } from "@/components/brand/splash";
 import "./globals.css";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={cn(inter.variable, instrumentSerif.variable)}>
       <body>
+        <LaunchSplash />
         <Providers>{children}</Providers>
       </body>
     </html>

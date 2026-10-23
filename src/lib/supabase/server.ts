@@ -4,11 +4,13 @@ import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 import { publicEnv } from "@/lib/env";
+import { noStoreFetch } from "./fetch";
 
 /** Supabase client bound to the signed-in user's cookies. RLS applies. */
 export function createClient() {
   const cookieStore = cookies();
   return createServerClient<Database>(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
+    global: { fetch: noStoreFetch },
     cookies: {
       getAll() {
         return cookieStore.getAll();

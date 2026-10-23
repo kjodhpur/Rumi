@@ -19,18 +19,21 @@ const RESEND_SECONDS = 30;
 
 export function LoginForm({
   initialError,
+  initialEmail,
   next,
   googleEnabled,
   showDevHint,
 }: {
   initialError: string | null;
+  /** Prefilled when the form was submitted natively before the page finished loading. */
+  initialEmail?: string;
   next: string | null;
   googleEnabled: boolean;
   showDevHint: boolean;
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<"email" | "code">("email");
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(initialEmail ?? "");
   const [code, setCode] = React.useState("");
   const [error, setError] = React.useState<string | null>(initialError);
   const [pending, setPending] = React.useState(false);
@@ -122,6 +125,7 @@ export function LoginForm({
                     autoCapitalize="none"
                     spellCheck={false}
                     placeholder={`you@${LAUNCH_SCHOOL.domain}`}
+                    name="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     leading={<Mail strokeWidth={1.75} />}
@@ -131,6 +135,7 @@ export function LoginForm({
                   />
                 )}
               </Field>
+              {next ? <input type="hidden" name="next" value={next} /> : null}
               <Button type="submit" size="lg" block loading={pending}>
                 Continue
               </Button>
