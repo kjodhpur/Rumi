@@ -6,9 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
-export function SettingsBack({ title, description }: { title: string; description?: string }) {
+export function SettingsBack({ title, description, className }: { title: string; description?: string; className?: string }) {
   return (
-    <div className="pb-6 lg:pb-8">
+    <div className={className}>
       <Link
         href="/settings"
         className="-ml-2 mb-3 inline-flex h-9 items-center gap-1 rounded-full px-2 text-body-sm font-medium text-ink-2 transition-colors hover:bg-surface-hover hover:text-ink"
@@ -54,7 +54,7 @@ export function SettingsLinkRow({
     <>
       {icon ? <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-md [&_svg]:size-[18px]", danger ? "bg-danger-soft" : "bg-surface-sunken text-ink-2")}>{icon}</span> : null}
       <span className="min-w-0 flex-1 text-body-sm font-medium">{label}</span>
-      {detail ? <span className="truncate text-body-sm text-ink-3">{detail}</span> : null}
+      {detail ? <span className="hidden truncate text-body-sm text-ink-3 sm:block">{detail}</span> : null}
       <ChevronRight className="size-4 shrink-0 text-ink-3" strokeWidth={2} aria-hidden />
     </>
   );

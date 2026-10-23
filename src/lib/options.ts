@@ -227,3 +227,14 @@ export function labelOf<T extends { value: string; label: string }>(
 ): string {
   return list.find((item) => item.value === value)?.label ?? "";
 }
+
+export const REPORT_REASONS = [
+  { value: "fake", label: "Fake profile", hint: "Not a real student or using someone else's photos" },
+  { value: "scam", label: "Scam or payment request", hint: "Asking for deposits, gift cards, or money" },
+  { value: "harassment", label: "Harassment", hint: "Threats, bullying, or unwanted pressure" },
+  { value: "inappropriate", label: "Inappropriate content", hint: "Explicit, hateful, or offensive" },
+  { value: "spam", label: "Spam", hint: "Ads, links, or repeated messages" },
+  { value: "safety", label: "I feel unsafe", hint: "Something about this person worries me" },
+  { value: "other", label: "Something else", hint: "Tell us below" },
+] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number]["value"];

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { updatePrivacy } from "@/app/actions/settings";
 import { unblockUser } from "@/app/actions/social";
 import { SettingsBack, SettingsSection, SettingsToggleRow } from "./settings-ui";
+import { LAUNCH_SCHOOL } from "@/lib/school";
 
 interface Blocked {
   id: string;
@@ -118,7 +119,13 @@ export function PrivacySettings({
           <li>Meet in public first and tour places together before signing anything.</li>
           <li>Never send deposits, gift cards or payments to someone you haven&apos;t met.</li>
           <li>Report anything that feels off from the ⋯ menu on a profile or chat — reports are confidential.</li>
-          <li>In an emergency call 911, or ASU Police at 480-965-3456.</li>
+          <li>
+            In an emergency call 911, or {LAUNCH_SCHOOL.police.name} at{" "}
+            <a href={`tel:${LAUNCH_SCHOOL.police.phone.replace(/[^\d+]/g, "")}`} className="underline underline-offset-4">
+              {LAUNCH_SCHOOL.police.phone}
+            </a>
+            .
+          </li>
         </ul>
       </SettingsSection>
     </div>

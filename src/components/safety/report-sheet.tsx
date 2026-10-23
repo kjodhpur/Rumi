@@ -7,18 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { OptionCards } from "@/components/ui/choice";
 import { reportUser } from "@/app/actions/social";
+import { REPORT_REASONS, type ReportReason } from "@/lib/options";
+import { LAUNCH_SCHOOL } from "@/lib/school";
 
-const REASONS = [
-  { value: "fake", label: "Fake profile", hint: "Not a real student or using someone else's photos" },
-  { value: "scam", label: "Scam or payment request", hint: "Asking for deposits, gift cards, or money" },
-  { value: "harassment", label: "Harassment", hint: "Threats, bullying, or unwanted pressure" },
-  { value: "inappropriate", label: "Inappropriate content", hint: "Explicit, hateful, or offensive" },
-  { value: "spam", label: "Spam", hint: "Ads, links, or repeated messages" },
-  { value: "safety", label: "I feel unsafe", hint: "Something about this person worries me" },
-  { value: "other", label: "Something else", hint: "Tell us below" },
-] as const;
-
-type Reason = (typeof REASONS)[number]["value"];
+type Reason = ReportReason;
 
 export function ReportSheet({
   open,
@@ -65,7 +57,7 @@ export function ReportSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={`Report ${firstName}`}
-      description="Reports are confidential. If you're in danger, call 911 or ASU Police at 480-965-3456."
+      description={`Reports are confidential. If you're in danger, call 911 or ${LAUNCH_SCHOOL.police.name} at ${LAUNCH_SCHOOL.police.phone}.`}
       footer={
         <Button variant="danger" size="lg" block onClick={() => void submit()} loading={pending}>
           Send report
@@ -80,7 +72,7 @@ export function ReportSheet({
             setReason(v);
             setError(null);
           }}
-          options={REASONS}
+          options={REPORT_REASONS}
           columns={2}
           className="grid-cols-1 sm:grid-cols-2"
         />

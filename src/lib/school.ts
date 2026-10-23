@@ -9,4 +9,9 @@ export const LAUNCH_SCHOOL = {
   shortName: process.env.NEXT_PUBLIC_LAUNCH_SCHOOL_SHORT ?? "ASU",
   domain: process.env.NEXT_PUBLIC_LAUNCH_SCHOOL_DOMAIN ?? "asu.edu",
   city: process.env.NEXT_PUBLIC_LAUNCH_SCHOOL_CITY ?? "Tempe",
+  /** Campus police, shown next to 911 in safety copy. */
+  police: {
+    name: process.env.NEXT_PUBLIC_LAUNCH_SCHOOL_POLICE_NAME ?? "ASU Police",
+    phone: process.env.NEXT_PUBLIC_LAUNCH_SCHOOL_POLICE_PHONE ?? "480-965-3456",
+  },
 } as const;

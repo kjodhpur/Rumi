@@ -12,7 +12,9 @@ import { SpotifyMark } from "@/components/brand/spotify-mark";
 import { GoogleMark } from "@/components/brand/google-mark";
 import { disconnectSpotify } from "@/app/actions/settings";
 import { resyncSpotify } from "@/app/actions/spotify";
+import { cn } from "@/lib/utils";
 import { SettingsBack, SettingsSection } from "./settings-ui";
+import { showSpotifyStatus } from "./spotify-status";
 
 export interface AccountsData {
   email: string;
@@ -28,13 +30,6 @@ export interface AccountsData {
   };
 }
 
-const STATUS: Record<string, { tone: "success" | "error" | "info"; title: string; description?: string }> = {
-  connected: { tone: "success", title: "Spotify connected", description: "Your top artists are on your profile and your matches are re-ranked." },
-  cancelled: { tone: "info", title: "Spotify wasn't connected", description: "No changes were made." },
-  error: { tone: "error", title: "Couldn't connect Spotify", description: "Something went wrong on the way back. Please try again." },
-  unavailable: { tone: "info", title: "Spotify isn't available yet", description: "It hasn't been set up for Rumi on this server." },
-};
-
 export function AccountsSettings({ data, status }: { data: AccountsData; status?: string }) {
   const router = useRouter();
   const [syncing, setSyncing] = React.useState(false);
@@ -42,11 +37,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
   const [disconnecting, setDisconnecting] = React.useState(false);
 
   React.useEffect(() => {
-    const entry = status ? STATUS[status] : undefined;
-    if (!entry) return;
-    const show = entry.tone === "success" ? toast.success : entry.tone === "error" ? toast.error : toast;
-    show(entry.title, { description: entry.description });
-    router.replace("/settings/accounts", { scroll: false });
+    if (showSpotifyStatus(status)) router.replace("/settings/accounts", { scroll: false });
   }, [status, router]);
 
   async function resync() {
@@ -137,12 +128,16 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
               {spotify.artists.length > 0 ? (
                 <ul className="flex flex-wrap gap-1.5" aria-label="Your top artists">
                   {spotify.artists.slice(0, 12).map((artist) => (
-                    <li key={artist.name} className="flex h-8 items-center gap-1.5 rounded-full bg-surface-sunken pr-3 pl-1 text-body-sm text-ink-2">
+                    <li
+                      key={artist.name}
+                      className={cn(
+                        "flex h-8 items-center gap-1.5 rounded-full bg-surface-sunken pr-3 text-body-sm text-ink-2",
+                        artist.image ? "pl-1" : "pl-3",
+                      )}
+                    >
                       {artist.image ? (
                         <Image src={artist.image} alt="" width={24} height={24} className="size-6 rounded-full object-cover" />
-                      ) : (
-                        <span className="size-6 rounded-full bg-line" aria-hidden />
-                      )}
+                      ) : null}
                       {artist.name}
                     </li>
                   ))}

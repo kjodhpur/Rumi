@@ -30,6 +30,7 @@ import {
 import { LiveProvider, useLive } from "@/components/realtime/live-provider";
 import { ProfileOverlayProvider } from "@/components/profile/profile-overlay";
 import { signOut } from "@/app/actions/auth";
+import { updateTheme } from "@/app/actions/settings";
 import type { BadgeCounts } from "@/app/actions/badges";
 import { cn } from "@/lib/utils";
 import { springSnappy } from "@/lib/motion";
@@ -42,6 +43,8 @@ export interface ShellUser {
   lastInitial: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  /** Theme saved to the account — applied on a device that hasn't picked one yet. */
+  theme: "system" | "light" | "dark";
 }
 
 export function AppShell({
@@ -55,6 +58,7 @@ export function AppShell({
 }) {
   return (
     <LiveProvider userId={user.id} initialCounts={initialCounts}>
+      <AccountTheme theme={user.theme} />
       <ProfileOverlayProvider>
         <PageTitleProvider>
           <a
@@ -75,6 +79,19 @@ export function AppShell({
       </ProfileOverlayProvider>
     </LiveProvider>
   );
+}
+
+function AccountTheme({ theme }: { theme: ShellUser["theme"] }) {
+  const { setTheme } = useTheme();
+  React.useEffect(() => {
+    try {
+      // next-themes persists under "theme"; only a device without a choice adopts the account's.
+      if (window.localStorage.getItem("theme") === null && theme !== "system") setTheme(theme);
+    } catch {
+      // Storage can be unavailable (private mode); the system theme is a fine fallback.
+    }
+  }, [theme, setTheme]);
+  return null;
 }
 
 /** Chat threads are full-bleed; every other page sits in the padded content column. */
@@ -231,6 +248,7 @@ function UserMenu({ user }: { user: ShellUser }) {
             onSelect={(e) => {
               e.preventDefault();
               setTheme(value);
+              void updateTheme(value as "light" | "dark" | "system");
             }}
           >
             <Icon /> {label}

@@ -1,7 +1,9 @@
 "use client";
 
+import * as React from "react";
 import { Check, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { showSpotifyStatus } from "@/components/settings/spotify-status";
 
 export function MusicStep({
   connected,
@@ -14,6 +16,14 @@ export function MusicStep({
   artists: string[];
   returnTo: string;
 }) {
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    if (showSpotifyStatus(url.searchParams.get("spotify"))) {
+      url.searchParams.delete("spotify");
+      window.history.replaceState(window.history.state, "", url);
+    }
+  }, []);
+
   if (connected) {
     return (
       <div className="flex flex-col gap-5 rounded-xl bg-surface p-5 ring-1 ring-line">

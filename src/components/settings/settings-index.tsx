@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Bell, Download, Link2, LogOut, Monitor, Moon, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight } from "lucide-react";
+import { Bell, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -11,11 +11,12 @@ import { useHydrated } from "@/hooks/use-hydrated";
 import { signOut } from "@/app/actions/auth";
 import { updateTheme } from "@/app/actions/settings";
 import { SettingsLinkRow, SettingsSection } from "./settings-ui";
+import { LAUNCH_SCHOOL } from "@/lib/school";
 
 export function SettingsIndex({
   user,
 }: {
-  user: { id: string; firstName: string; lastInitial: string; avatarUrl: string | null; email: string; verifiedUntil: string | null };
+  user: { id: string; firstName: string; lastInitial: string; avatarUrl: string | null; email: string; verifiedUntil: string | null; isAdmin: boolean };
 }) {
   const { theme, setTheme } = useTheme();
   const hydrated = useHydrated();
@@ -35,7 +36,7 @@ export function SettingsIndex({
           </span>
           <span className="block truncate text-body-sm text-ink-3">{user.email}</span>
         </span>
-        <span className="text-body-sm text-ink-2">View profile</span>
+        <span className="hidden text-body-sm text-ink-2 sm:inline">View profile</span>
         <ChevronRight className="size-4 text-ink-3" strokeWidth={2} aria-hidden />
       </Link>
 
@@ -67,6 +68,12 @@ export function SettingsIndex({
         </div>
       </SettingsSection>
 
+      {user.isAdmin ? (
+        <SettingsSection title="Team">
+          <SettingsLinkRow href="/admin" icon={<ShieldAlert />} label="Safety admin" detail="Reports & accounts" />
+        </SettingsSection>
+      ) : null}
+
       <SettingsSection title="Your data" footer="A JSON file with everything Rumi stores about you.">
         <SettingsLinkRow href="/api/account/export" icon={<Download />} label="Download your data" download />
       </SettingsSection>
@@ -86,7 +93,7 @@ export function SettingsIndex({
       <p className="flex flex-wrap justify-center gap-x-4 gap-y-1 pb-4 text-caption text-ink-3">
         <Link href="/terms" className="hover:text-ink-2">Terms</Link>
         <Link href="/privacy" className="hover:text-ink-2">Privacy</Link>
-        <span>Rumi · Not affiliated with ASU</span>
+        <span>Rumi · Not affiliated with {LAUNCH_SCHOOL.shortName}</span>
       </p>
     </div>
   );

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { inter, instrumentSerif } from "./fonts";
 import { Providers } from "@/components/providers/providers";
 import { cn } from "@/lib/utils";
+import { LAUNCH_SCHOOL } from "@/lib/school";
 import "./globals.css";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -13,9 +14,9 @@ export const metadata: Metadata = {
     template: "%s · Rumi",
   },
   description:
-    "Free roommate matching for ASU students. Set your preferences once and get a ranked list of compatible roommates — with a clear score and the reasons you match. No swiping.",
+    `Free roommate matching for ${LAUNCH_SCHOOL.shortName} students. Set your preferences once and get a ranked list of compatible roommates — with a clear score and the reasons you match. No swiping.`,
   applicationName: "Rumi",
-  keywords: ["ASU roommates", "Arizona State roommate finder", "Tempe roommates", "college roommate matching"],
+  keywords: [`${LAUNCH_SCHOOL.shortName} roommates`, `${LAUNCH_SCHOOL.name} roommate finder`, `${LAUNCH_SCHOOL.city} roommates`, "college roommate matching"],
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Rumi", statusBarStyle: "default" },
   formatDetection: { telephone: false },
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Rumi",
     title: "Rumi — Roommates, ranked by how well you'd live together",
-    description: "Free for ASU students. A ranked list of compatible roommates with the reasons you match.",
+    description: `Free for ${LAUNCH_SCHOOL.shortName} students. A ranked list of compatible roommates with the reasons you match.`,
     url: appUrl,
   },
   twitter: { card: "summary_large_image" },

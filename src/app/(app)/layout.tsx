@@ -11,13 +11,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
 
   const supabase = createClient();
-  const [{ data: profile }, { data: admin }, counts] = await Promise.all([
+  const [{ data: profile }, { data: admin }, { data: settings }, counts] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at")
       .eq("id", user.id)
       .single(),
     supabase.from("admins").select("user_id").eq("user_id", user.id).maybeSingle(),
+    supabase.from("user_settings").select("theme").eq("user_id", user.id).maybeSingle(),
     getBadgeCounts(),
   ]);
 
@@ -33,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         lastInitial: profile.last_initial,
         avatarUrl: photoUrl(profile.avatar_path),
         isAdmin: Boolean(admin),
+        theme: (settings?.theme as "system" | "light" | "dark" | undefined) ?? "system",
       }}
       initialCounts={counts}
     >

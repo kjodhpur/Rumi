@@ -75,7 +75,7 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
   return (
     <div className="mx-auto max-w-[680px]">
       <div className="flex items-start justify-between gap-4">
-        <SettingsBack title="Profile & preferences" description="Changes save automatically and re-rank your matches." />
+        <SettingsBack title="Profile & preferences" description="Changes save automatically and re-rank your matches." className="pb-6 lg:pb-8" />
         <div className="pt-12">
           <Status status={status} />
         </div>
