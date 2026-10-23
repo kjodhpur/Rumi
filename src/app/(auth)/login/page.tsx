@@ -4,6 +4,7 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { LoginForm } from "@/components/auth/login-form";
 import { AuthShowcase } from "@/components/auth/auth-showcase";
 import { publicEnv } from "@/lib/env";
+import { LAUNCH_SCHOOL } from "@/lib/school";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -11,9 +12,10 @@ export const metadata: Metadata = {
 };
 
 const ERRORS: Record<string, string> = {
-  school_email: "That account isn't a school account. Sign in with your @asu.edu email.",
+  school_email: `That account isn't a school account. Sign in with your @${LAUNCH_SCHOOL.domain} email.`,
   oauth: "Google sign-in didn't finish. Try again, or use your email instead.",
   link_expired: "That sign-in link expired. Request a new code below.",
+  suspended: `This account is suspended. Email ${publicEnv.supportEmail} if you think that's a mistake.`,
 };
 
 export default function LoginPage({
@@ -37,7 +39,7 @@ export default function LoginPage({
           />
         </main>
         <p className="text-center text-caption text-ink-3 lg:text-left">
-          Free for students · Not affiliated with Arizona State University
+          Free for students · Not affiliated with {LAUNCH_SCHOOL.name}
         </p>
       </div>
       <AuthShowcase />

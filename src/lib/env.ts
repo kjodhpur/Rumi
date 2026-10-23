@@ -28,6 +28,9 @@ export const publicEnv = {
   get spotifyEnabled() {
     return process.env.NEXT_PUBLIC_SPOTIFY_ENABLED === "true";
   },
+  get supportEmail() {
+    return process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@rumi.app";
+  },
 };
 
 export const serverEnv = {

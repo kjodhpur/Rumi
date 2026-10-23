@@ -1,5 +1,6 @@
 import type { ServerSupabase } from "@/lib/supabase/server";
 import { photoUrl } from "@/lib/photos";
+import { isVerified } from "@/lib/verification";
 import type { FactorKey, Importance } from "@/lib/options";
 
 export interface ProfilePhoto {
@@ -113,9 +114,7 @@ export async function loadProfileDetail(
     classYear: profile.class_year,
     major: profile.major,
     bio: profile.bio,
-    verified: Boolean(
-      profile.student_verified_at && Date.parse(profile.student_verified_at) > Date.now() - 365 * 86_400_000,
-    ),
+    verified: isVerified(profile.student_verified_at),
     lastActiveAt: profile.last_active_at,
     photos: (photos.data ?? []).map((ph) => ({ id: ph.id, url: photoUrl(ph.storage_path)!, placeholder: ph.placeholder })),
     prefs: p

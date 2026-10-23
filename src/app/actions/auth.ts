@@ -10,6 +10,12 @@ import { fail, ok, type ActionResult } from "@/lib/action";
 import { publicEnv, serverEnv } from "@/lib/env";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 
+const SUSPENDED_MESSAGE = `This account is suspended. Email ${publicEnv.supportEmail} if you think that's a mistake.`;
+
+function isBanned(error: { code?: string; message: string }) {
+  return error.code === "user_banned" || /banned/i.test(error.message);
+}
+
 function safeNext(next: string | null | undefined) {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/login")) return null;
   return next;
@@ -63,6 +69,7 @@ export async function requestCode(rawEmail: string): Promise<ActionResult<{ emai
   });
   if (error) {
     if (error.status === 429) return fail("Too many codes requested. Wait a minute and try again.");
+    if (isBanned(error)) return fail(SUSPENDED_MESSAGE);
     if (error.message.includes("school_email_required")) {
       return fail(`Use your school email (like you@${LAUNCH_SCHOOL.domain}).`);
     }
@@ -92,6 +99,7 @@ export async function verifyCode(input: {
     token: token.data,
     type: "email",
   });
+  if (error && isBanned(error)) return fail(SUSPENDED_MESSAGE);
   if (error || !data.user) {
     return fail("That code didn't work. Check it, or send a new one.");
   }

@@ -17,7 +17,7 @@ const empty = (): Pending => ({ profile: {}, prefs: {} });
  * Accumulates field changes and saves them after a short pause. Failed saves
  * are re-queued, so nothing typed is lost; `flush` forces a save (on Continue).
  */
-export function useAutosave(delay = 700) {
+export function useAutosave(delay = 700, saver: typeof saveProfileAndPrefs = saveProfileAndPrefs) {
   const [status, setStatus] = React.useState<SaveStatus>("idle");
   const pending = React.useRef<Pending>(empty());
   const timer = React.useRef<ReturnType<typeof setTimeout>>();
@@ -32,7 +32,7 @@ export function useAutosave(delay = 700) {
     if (!hasWork) return true;
     pending.current = empty();
     setStatus("saving");
-    const run = saveProfileAndPrefs(batch)
+    const run = saver(batch)
       .then((result) => {
         if (!result.ok) throw new Error(result.error);
         setStatus("saved");
@@ -53,7 +53,7 @@ export function useAutosave(delay = 700) {
       });
     inflight.current = run;
     return run;
-  }, []);
+  }, [saver]);
 
   const queue = React.useCallback(
     (patch: Partial<Pending>) => {

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
 
   if (providerError) {
     // The sign-up trigger rejects non-school accounts ("Database error saving new user").
+    if (/banned/i.test(providerError)) return toLogin("suspended");
     const schoolProblem = /school_email_required|database error saving new user/i.test(providerError);
     return toLogin(schoolProblem ? "school_email" : "oauth");
   }
