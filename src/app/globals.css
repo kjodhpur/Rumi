@@ -178,6 +178,21 @@
 
   --animate-shimmer: shimmer 1.6s var(--ease-in-out-quart) infinite;
   --animate-spin-slow: spin 1.4s linear infinite;
+  /* Landing entrances run in CSS so they start on first paint, before hydration. */
+  --animate-rise: rise 0.8s var(--ease-out-quint) both;
+  --animate-lift: lift 1s var(--ease-out-quint) both;
+
+  @keyframes rise {
+    from {
+      transform: translateY(105%);
+    }
+  }
+
+  @keyframes lift {
+    from {
+      transform: translateY(48px) scale(0.98);
+    }
+  }
 
   @keyframes shimmer {
     from {

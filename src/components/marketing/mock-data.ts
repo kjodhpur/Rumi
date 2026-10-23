@@ -1,3 +1,6 @@
+import type { MatchCardData } from "@/components/matches/types";
+import type { FactorKey, Importance } from "@/lib/options";
+
 /** Illustrative people for marketing mockups (not real students). */
 export const MOCK_MATCHES = [
   {
@@ -50,4 +53,70 @@ export const MOCK_MATCHES = [
     reasons: ["Pet-free, both of you", "Same vibe on noise", "Move-in dates 2 weeks apart"],
     artists: ["Taylor Swift"],
   },
+  {
+    id: "m6",
+    name: "Noah L.",
+    meta: "Grad · Engineering",
+    score: 71,
+    budget: "$900–1,100",
+    area: "Tempe",
+    reasons: ["Both early risers", "Similar budgets", "Neither of you smokes"],
+    artists: ["Khruangbin"],
+  },
 ] as const;
+
+/** The hero phone renders the real match card with these. */
+export const MOCK_CARDS: MatchCardData[] = [
+  {
+    id: "mock-maya",
+    firstName: "Maya",
+    lastInitial: "R",
+    classYear: "junior",
+    major: "Nursing",
+    avatarUrl: null,
+    placeholder: null,
+    photoCount: 4,
+    verified: true,
+    score: 94,
+    reasons: ["You're both night owls", "Budgets overlap by $200"],
+    watchouts: [],
+    sharedArtists: ["Phoebe Bridgers", "SZA"],
+    budgetMin: 850,
+    budgetMax: 1050,
+    moveInDate: "2027-08-01",
+    areaNames: ["Tempe"],
+    isSaved: false,
+    introStatus: null,
+  },
+  {
+    id: "mock-jordan",
+    firstName: "Jordan",
+    lastInitial: "K",
+    classYear: "sophomore",
+    major: "Computer Science",
+    avatarUrl: null,
+    placeholder: null,
+    photoCount: 3,
+    verified: true,
+    score: 89,
+    reasons: ["You both keep things spotless", "Moving in the same week"],
+    watchouts: [],
+    sharedArtists: [],
+    budgetMin: 800,
+    budgetMax: 1000,
+    moveInDate: "2027-08-08",
+    areaNames: ["Tempe"],
+    isSaved: true,
+    introStatus: null,
+  },
+];
+
+/** "Why you match" demo: one student's breakdown against you. */
+export const MOCK_BREAKDOWN: { key: FactorKey; label: string; similarity: number; importance: Importance }[] = [
+  { key: "cleanliness", label: "Cleanliness", similarity: 1, importance: 3 },
+  { key: "sleep", label: "Sleep schedule", similarity: 0.94, importance: 3 },
+  { key: "budget", label: "Budget", similarity: 0.88, importance: 2 },
+  { key: "noise", label: "Noise", similarity: 0.82, importance: 2 },
+  { key: "guests", label: "Guests over", similarity: 0.7, importance: 1 },
+  { key: "move_in", label: "Move-in date", similarity: 0.66, importance: 1 },
+];

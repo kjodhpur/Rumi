@@ -4,6 +4,8 @@ import type { Database } from "@/types/database";
 
 const PUBLIC_PREFIXES = ["/login", "/auth", "/privacy", "/terms", "/offline", "/suspended", "/api/cron"];
 
+const MARKETING = new Set(["/", "/privacy", "/terms", "/offline"]);
+
 function isPublic(pathname: string) {
   return pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -13,6 +15,9 @@ export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const { pathname, search } = request.nextUrl;
+
+  // Marketing pages never need the session, so skip the auth round trip entirely.
+  if (MARKETING.has(pathname)) return NextResponse.next();
 
   // Without Supabase configured, marketing pages still render; app pages can't.
   if (!url || !key) {

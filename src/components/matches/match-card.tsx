@@ -20,9 +20,11 @@ interface MatchCardProps {
   priority?: boolean;
   /** Hide while the profile overlay owns the shared elements. */
   hidden?: boolean;
+  /** Count the score up as the card mounts (marketing mockups). */
+  animateScore?: boolean;
 }
 
-export function MatchCard({ data, onOpen, onToggleSave, priority, hidden }: MatchCardProps) {
+export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animateScore }: MatchCardProps) {
   const name = displayName(data.firstName, data.lastInitial);
   const meta = metaLine(data.classYear, data.major);
 
@@ -75,7 +77,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden }: Matc
         transition={{ type: "spring", stiffness: 320, damping: 34 }}
         className="absolute top-3 left-3 z-20 rounded-full bg-surface p-1 shadow-md"
       >
-        <ScoreRing score={data.score} size={44} />
+        <ScoreRing score={data.score} size={44} animateOnMount={animateScore} delay={0.9} />
       </motion.div>
 
       {onToggleSave ? (
