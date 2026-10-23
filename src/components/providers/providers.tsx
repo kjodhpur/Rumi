@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { MotionConfig } from "motion/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
+import { ServiceWorker } from "./service-worker";
 import { spring } from "@/lib/motion";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider delayDuration={400}>
           {children}
           <Toaster />
+          <ServiceWorker />
         </TooltipProvider>
       </MotionConfig>
     </ThemeProvider>

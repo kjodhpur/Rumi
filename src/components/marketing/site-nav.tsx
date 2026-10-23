@@ -15,7 +15,8 @@ const LINKS = [
   { href: "#faq", label: "FAQ" },
 ];
 
-export function SiteNav() {
+/** `anchorBase` is "/" on pages other than the landing page, so section links lead back to it. */
+export function SiteNav({ anchorBase = "" }: { anchorBase?: string }) {
   const [scrolled, setScrolled] = React.useState(false);
   const signedIn = useHasSession();
 
@@ -41,7 +42,7 @@ export function SiteNav() {
           {LINKS.map((link) => (
             <li key={link.href}>
               <a
-                href={link.href}
+                href={`${anchorBase}${link.href}`}
                 className="rounded-full px-3 py-2 text-body-sm font-medium text-ink-2 transition-colors hover:text-ink"
               >
                 {link.label}
