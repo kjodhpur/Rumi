@@ -5,7 +5,7 @@ import { createClient, getUser } from "@/lib/supabase/server";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { fail, ok, type ActionResult } from "@/lib/action";
 import { firstError, messageSchema } from "@/lib/validation";
-import { fileAutoReport, moderateText } from "@/lib/moderation";
+import { fileAutoReport, moderateText, needsSafetyTip, postSafetyTip } from "@/lib/moderation";
 import { runInBackground } from "@/lib/background";
 import { emailNewMessage } from "@/lib/email/notify";
 import { MESSAGE_PAGE, toChatMessage, type ChatMessage } from "@/lib/messages";
@@ -59,6 +59,7 @@ export async function sendMessage(input: {
 
   const flags = moderateText(parsed.data.body);
   runInBackground("message-followups", async () => {
+    if (needsSafetyTip(flags)) await postSafetyTip(parsed.data.conversationId);
     await emailNewMessage(parsed.data.conversationId, user.id, parsed.data.body);
     if (flags.length) {
       await fileAutoReport({

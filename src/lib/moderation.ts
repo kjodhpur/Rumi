@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { serverEnv } from "@/lib/env";
+import { PAYMENT_SAFETY_TIP } from "@/lib/safety-copy";
 
 export type ModerationFlag = "payment" | "contact" | "abuse" | "links";
 
@@ -25,6 +26,21 @@ export function moderateText(text: string): ModerationFlag[] {
 /** Payment or off-platform asks early in a chat deserve a gentle in-thread tip. */
 export function needsSafetyTip(flags: ModerationFlag[]) {
   return flags.includes("payment");
+}
+
+/** Drops the payment safety tip into the thread, unless it already appeared there today. */
+export async function postSafetyTip(conversationId: string) {
+  const admin = createAdminClient();
+  const since = new Date(Date.now() - 86_400_000).toISOString();
+  const { count } = await admin
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("conversation_id", conversationId)
+    .eq("kind", "system")
+    .eq("body", PAYMENT_SAFETY_TIP)
+    .gte("created_at", since);
+  if (count) return;
+  await admin.from("messages").insert({ conversation_id: conversationId, kind: "system", body: PAYMENT_SAFETY_TIP });
 }
 
 export async function fileAutoReport(input: {

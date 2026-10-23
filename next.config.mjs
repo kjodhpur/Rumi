@@ -34,7 +34,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   images: {
-    formats: ["image/avif", "image/webp"],
+    // WebP only: Next 14 has no patch for an AVIF-path advisory in the image optimizer (see README → Security).
+    formats: ["image/webp"],
     deviceSizes: [384, 640, 750, 828, 1080, 1200, 1920],
     remotePatterns: [
       {

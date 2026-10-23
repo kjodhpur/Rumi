@@ -28,6 +28,7 @@ import { loadOlderMessages, markRead, sendMessage } from "@/app/actions/messages
 import { leaveGroup } from "@/app/actions/groups";
 import type { ChatMember, ChatMessage } from "@/lib/messages";
 import { cn } from "@/lib/utils";
+import { PAYMENT_SAFETY_TIP } from "@/lib/safety-copy";
 import { springSnappy } from "@/lib/motion";
 import { GroupAvatar } from "./inbox";
 
@@ -42,7 +43,6 @@ interface Thread {
   blocked: boolean;
 }
 
-const PAYMENT_HINT = /\b(zelle|venmo|cash\s?app|wire|western\s+union|gift\s?cards?|deposit|crypto|bitcoin)\b/i;
 const GROUP_GAP_MS = 5 * 60 * 1000;
 
 export function ChatThread({ userId, thread }: { userId: string; thread: Thread }) {
@@ -276,7 +276,6 @@ export function ChatThread({ userId, thread }: { userId: string; thread: Thread 
     ? others.filter((m) => Date.parse(m.lastReadAt) >= Date.parse(lastMine.createdAt))
     : [];
   const typingNames = Object.keys(typing).map((id) => memberById.get(id)?.firstName).filter(Boolean) as string[];
-  const showSafetyTip = messages.some((m) => m.senderId !== userId && m.kind === "text" && PAYMENT_HINT.test(m.body));
   const subtitle =
     thread.kind === "group"
       ? `${members.length} members${online.size ? ` · ${online.size} online` : ""}`
@@ -387,15 +386,6 @@ export function ChatThread({ userId, thread }: { userId: string; thread: Thread 
             <AnimatePresence>
               {typingNames.length > 0 ? <TypingBubble key="typing" names={typingNames} group={thread.kind === "group"} /> : null}
             </AnimatePresence>
-            {showSafetyTip ? (
-              <div className="mx-auto mt-4 flex max-w-md gap-3 rounded-lg bg-warning-soft p-3.5 text-body-sm text-ink">
-                <ShieldAlert className="mt-0.5 size-5 shrink-0 text-warning" strokeWidth={1.75} aria-hidden />
-                <p>
-                  Heads up: never send deposits, gift cards or payments before you&apos;ve met and toured a place in
-                  person. Rumi will never ask you for money.
-                </p>
-              </div>
-            ) : null}
           </div>
           <AnimatePresence>
             {showJump ? (
@@ -550,7 +540,15 @@ function MessageList({
                 {newDay ? `${dayLabel(message.createdAt, local)} · ${formatTime(message.createdAt, local)}` : formatTime(message.createdAt, local)}
               </p>
             ) : null}
-            {message.kind === "system" ? (
+            {message.kind === "system" && message.body === PAYMENT_SAFETY_TIP ? (
+              <div role="note" className="mx-auto my-4 flex max-w-[440px] items-start gap-2.5 rounded-lg bg-warning-soft px-3.5 py-3">
+                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-warning" strokeWidth={2} aria-hidden />
+                <p className="text-body-sm text-ink">
+                  <span className="font-semibold">Safety tip · </span>
+                  {message.body.replace(/^Safety tip:\s*/, "").replace(/^./, (c) => c.toUpperCase())}
+                </p>
+              </div>
+            ) : message.kind === "system" ? (
               <p className="my-3 text-center text-caption text-ink-3">{message.body}</p>
             ) : (
               <motion.div
