@@ -17,6 +17,7 @@ The school is configurable: allowed email domains and neighborhoods live in the 
 - [Environment variables](#environment-variables)
 - [Seeding](#seeding)
 - [Testing](#testing)
+- [Performance](#performance)
 - [Deploy to Vercel](#deploy-to-vercel)
 - [Adding a school](#adding-a-school)
 - [Security and privacy](#security-and-privacy)
@@ -203,6 +204,26 @@ npm run db:start && npm run seed      # once
 npx playwright install chromium       # once, or set PLAYWRIGHT_CHROMIUM_PATH
 npm run test:e2e
 ```
+
+## Performance
+
+Measured with Lighthouse 12 on a local production build, served through a proxy that adds CDN-like latency, with Lighthouse's default throttling. Scores move from run to run on a shared machine, so ranges are shown.
+
+| Page | Mobile | Desktop |
+| --- | --- | --- |
+| Landing | 92–98 | 99 |
+| Sign-in | 97 | 100 |
+| Matches (signed in) | 75–96, median 85 | 99 |
+
+Accessibility, Best Practices and SEO score 100 on all three pages.
+
+What keeps it fast:
+- The landing page is static. Sections below the fold hydrate as they near the viewport, and Lenis loads once the browser is idle.
+- List entrances are CSS, so they start before JavaScript runs. Items that arrive with the server HTML skip the opacity fade, so they don't delay Largest Contentful Paint.
+- On Matches, the first screen of cards hydrates with the page and the rest as they approach. The profile view, filters sheet and realtime client load when the page is idle.
+- Inter ships as a 400–700 text instance, and photo placeholders are tiny inline images rather than an SVG blur filter.
+
+**Known limit.** On mobile, Matches is held back by Total Blocking Time (150–720 ms under Lighthouse's 4× CPU slowdown). Most of it is the Next.js and React runtime hydrating the signed-in page, then the animation library and the Supabase client. The realtime client already waits for idle time, but on a slow device it still runs inside the measured window.
 
 ## Deploy to Vercel
 
