@@ -38,6 +38,9 @@ test("intro → accept → realtime chat with typing and read receipts", async (
   await a.goto(thread);
   await ready(a);
   await expect(a.getByRole("textbox", { name: /Message/ })).toBeVisible();
+  // Both sides joined the realtime channel once each sees the other's presence.
+  await expect(a.getByText("Active now")).toBeVisible({ timeout: 20_000 });
+  await expect(b.getByText("Active now")).toBeVisible({ timeout: 20_000 });
 
   // Typing shows up live on the other side.
   await b.getByRole("textbox", { name: /Message/ }).pressSequentially("Yes! Saturday works", { delay: 40 });

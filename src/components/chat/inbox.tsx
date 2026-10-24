@@ -17,14 +17,15 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { listStamp } from "@/lib/time";
 import { useProfileOverlay } from "@/components/profile/profile-overlay";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { whenIdle } from "@/lib/idle";
+import { useEntrance } from "@/hooks/use-entrance";
 import { respondToIntro, withdrawIntro } from "@/app/actions/social";
 import { respondToGroupRequest } from "@/app/actions/groups";
 import type { ConversationSummary } from "@/lib/messages";
 import type { GroupInvite, IntroRequest } from "@/lib/requests";
 import { CLASS_YEARS, labelOf } from "@/lib/options";
 import { cn, displayName } from "@/lib/utils";
-import { itemVariants, listVariants, spring } from "@/lib/motion";
+import { revealDelay, spring } from "@/lib/motion";
 
 export function Inbox({
   userId,
@@ -43,21 +44,31 @@ export function Inbox({
 
   // Live list: refresh on any message, intro or invite change.
   React.useEffect(() => {
-    const supabase = getSupabaseBrowser();
     let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+    let disconnect: (() => void) | undefined;
     const refresh = () => {
       clearTimeout(timer);
       timer = setTimeout(() => router.refresh(), 350);
     };
-    const channel = supabase
-      .channel(`inbox:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "intros" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "group_requests" }, refresh)
-      .subscribe();
+    const cancelIdle = whenIdle(() => {
+      void import("@/lib/supabase/client").then(({ getSupabaseBrowser }) => {
+        if (cancelled) return;
+        const supabase = getSupabaseBrowser();
+        const channel = supabase
+          .channel(`inbox:${userId}`)
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "intros" }, refresh)
+          .on("postgres_changes", { event: "*", schema: "public", table: "group_requests" }, refresh)
+          .subscribe();
+        disconnect = () => void supabase.removeChannel(channel);
+      });
+    });
     return () => {
+      cancelled = true;
+      cancelIdle();
       clearTimeout(timer);
-      void supabase.removeChannel(channel);
+      disconnect?.();
     };
   }, [router, userId]);
 
@@ -87,6 +98,7 @@ export function Inbox({
 }
 
 function ChatList({ conversations, hasRequests }: { userId: string; conversations: ConversationSummary[]; hasRequests: boolean }) {
+  const entrance = useEntrance(conversations.map((c) => c.id));
   const hydrated = useHydrated();
   if (conversations.length === 0) {
     return (
@@ -109,9 +121,9 @@ function ChatList({ conversations, hasRequests }: { userId: string; conversation
     );
   }
   return (
-    <motion.ul className="-mx-2 flex flex-col" variants={listVariants} initial="hidden" animate="show">
-      {conversations.map((c) => (
-        <motion.li key={c.id} variants={itemVariants}>
+    <ul className="-mx-2 flex flex-col">
+      {conversations.map((c, i) => (
+        <li key={c.id} className={entrance(c.id)} style={revealDelay(i)}>
           <Link
             href={`/messages/${c.id}`}
             className="flex items-center gap-3.5 rounded-lg px-2 py-3 outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus active:bg-surface-hover"
@@ -151,9 +163,9 @@ function ChatList({ conversations, hasRequests }: { userId: string; conversation
               </div>
             </div>
           </Link>
-        </motion.li>
+        </li>
       ))}
-    </motion.ul>
+    </ul>
   );
 }
 

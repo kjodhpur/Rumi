@@ -3,10 +3,11 @@
 import * as React from "react";
 import { Dialog, VisuallyHidden } from "radix-ui";
 import { AnimatePresence, motion } from "motion/react";
+import dynamic from "next/dynamic";
 import type { MatchCardData } from "@/components/matches/types";
 import type { ProfileDetail } from "@/lib/profile";
 import { displayName } from "@/lib/utils";
-import { ProfileView } from "./profile-view";
+import { whenIdle } from "@/lib/idle";
 import type { CarouselHandle } from "./photo-carousel";
 
 interface OverlayContextValue {
@@ -24,12 +25,19 @@ export function useProfileOverlay() {
   return React.useContext(OverlayContext);
 }
 
+// The full profile UI (carousel, sheets, menus) loads in its own chunk — prefetched
+// once the page is idle so the card → profile morph is still instant.
+const loadProfileView = () => import("./profile-view").then((m) => m.ProfileView);
+const ProfileView = dynamic(loadProfileView, { ssr: false });
+
 /**
  * Opens a profile on top of whatever list you're browsing, without a route
  * change: the URL becomes /profile/[id] (shareable, refresh-safe), the card's
  * photo and name morph into place via shared layoutIds, and Back closes it.
  */
 export function ProfileOverlayProvider({ children }: { children: React.ReactNode }) {
+  React.useEffect(() => whenIdle(() => void loadProfileView(), 3000), []);
+
   const [card, setCard] = React.useState<MatchCardData | null>(null);
   const [detail, setDetail] = React.useState<ProfileDetail | null | undefined>(undefined);
   const listeners = React.useRef(new Set<OverlayListener>());

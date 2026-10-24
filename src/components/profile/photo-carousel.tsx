@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Monogram } from "@/components/ui/monogram";
 import { cn } from "@/lib/utils";
 import { springSheet } from "@/lib/motion";
+import { imagePlaceholder } from "@/lib/photos";
 
 export interface CarouselPhoto {
   id: string;
@@ -85,8 +86,7 @@ export const PhotoCarousel = React.forwardRef<
                 priority={priority && i === 0}
                 sizes={sizes}
                 className="object-cover"
-                placeholder={photo.placeholder ? "blur" : "empty"}
-                blurDataURL={photo.placeholder ?? undefined}
+                placeholder={imagePlaceholder(photo.placeholder)}
                 draggable={false}
               />
             </div>

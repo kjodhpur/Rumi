@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { springSnappy } from "@/lib/motion";
 import { ADMIN_NAV, DESKTOP_EXTRA_NAV, PRIMARY_NAV, isActive, type NavItem } from "./nav-items";
 import { PageTitleProvider, usePageTitleState } from "./page-title";
+import { HydrateForMedia } from "@/components/ui/hydrate-on-view";
 
 export interface ShellUser {
   id: string;
@@ -68,12 +69,17 @@ export function AppShell({
             Skip to content
           </a>
           <div className="min-h-dvh bg-bg">
-            <Sidebar user={user} />
+            {/* Each breakpoint hydrates only the navigation it shows. */}
+            <HydrateForMedia query="(min-width: 1024px)" className="contents">
+              <Sidebar user={user} />
+            </HydrateForMedia>
             <div className="lg:pl-[248px]">
               <TopBar />
               <Main>{children}</Main>
             </div>
-            <TabBar user={user} />
+            <HydrateForMedia query="(max-width: 1023.98px)" className="contents">
+              <TabBar user={user} />
+            </HydrateForMedia>
           </div>
         </PageTitleProvider>
       </ProfileOverlayProvider>

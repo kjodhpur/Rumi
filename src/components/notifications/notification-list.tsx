@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
 import { toast } from "sonner";
 import { Bell, CheckCheck, Heart, MessageCircle, Send, Sparkles, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,7 +12,8 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { useLive } from "@/components/realtime/live-provider";
 import { markAllNotificationsRead, markNotificationRead } from "@/app/actions/notifications";
 import { cn } from "@/lib/utils";
-import { itemVariants, listVariants } from "@/lib/motion";
+import { revealDelay } from "@/lib/motion";
+import { useEntrance } from "@/hooks/use-entrance";
 
 export interface NotificationItem {
   id: string;
@@ -37,6 +37,7 @@ const TYPE_ICON = {
 } as const;
 
 export function NotificationList({ items: initial }: { items: NotificationItem[] }) {
+  const entrance = useEntrance(initial.map((item) => item.id));
   const router = useRouter();
   const { refresh, counts } = useLive();
   const [items, setItems] = React.useState(initial);
@@ -105,11 +106,11 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
             (list as NotificationItem[]).length ? (
               <section key={label as string}>
                 <h2 className="mb-2 text-caption font-semibold tracking-wide text-ink-3 uppercase">{label as string}</h2>
-                <motion.ul className="-mx-2 flex flex-col" variants={listVariants} initial="hidden" animate="show">
-                  {(list as NotificationItem[]).map((item) => {
+                <ul className="-mx-2 flex flex-col">
+                  {(list as NotificationItem[]).map((item, i) => {
                     const Icon = TYPE_ICON[item.type] ?? Bell;
                     return (
-                      <motion.li key={item.id} variants={itemVariants}>
+                      <li key={item.id} className={entrance(item.id)} style={revealDelay(i)}>
                         <button
                           type="button"
                           onClick={() => void open(item)}
@@ -140,10 +141,10 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
                             </span>
                           ) : null}
                         </button>
-                      </motion.li>
+                      </li>
                     );
                   })}
-                </motion.ul>
+                </ul>
               </section>
             ) : null,
           )}

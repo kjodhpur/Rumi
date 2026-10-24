@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 import { spring } from "@/lib/motion";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { PhoneMockup } from "./phone-mockup";
 import { useHasSession } from "./session-aware";
 
@@ -23,6 +24,7 @@ const HEADLINE = [
 
 export function Hero() {
   const signedIn = useHasSession();
+  const wide = useMediaQuery("(min-width: 1280px)");
   return (
     <section className="relative overflow-x-clip pt-28 pb-16 sm:pt-32 lg:pt-36 lg:pb-24">
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-12 px-4 sm:px-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
@@ -83,12 +85,14 @@ export function Hero() {
 
         <div className="relative mx-auto lg:mr-8">
           {/* Mobile shows the top of the phone, fading out; desktop shows all of it. */}
-          <div className="relative max-h-[460px] overflow-hidden [mask-image:linear-gradient(to_bottom,#000_70%,transparent)] sm:max-h-[540px] lg:max-h-none lg:overflow-visible lg:[mask-image:none]">
+          <div className="relative max-h-[460px] overflow-hidden sm:max-h-[540px] lg:max-h-none lg:overflow-visible">
             <div className="animate-lift" style={{ animationDelay: "160ms" }}>
               <PhoneMockup />
             </div>
+            {/* Fade the cropped phone into the page (cheaper to paint than a CSS mask). */}
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-bg lg:hidden" />
           </div>
-          <WhyCallout />
+          {wide ? <WhyCallout /> : null}
         </div>
       </div>
     </section>
@@ -102,8 +106,8 @@ function WhyCallout() {
       aria-hidden
       initial={{ opacity: 0, x: 24, scale: 0.96 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
-      transition={{ ...spring, delay: 1.1 }}
-      className="absolute top-[46%] -left-[220px] hidden w-[264px] rounded-xl bg-surface p-4 shadow-lg ring-1 ring-line xl:block"
+      transition={{ ...spring, delay: 0.9 }}
+      className="absolute top-[46%] -left-[220px] w-[264px] rounded-xl bg-surface p-4 shadow-lg ring-1 ring-line"
     >
       <div className="flex items-center gap-3">
         <ScoreRing score={94} size={40} animateOnMount delay={1.25} />

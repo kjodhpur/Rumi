@@ -27,7 +27,7 @@
   --line-strong: #d7d2c8;
 
   --accent: #e8542a;
-  --accent-ink: #c2441e;
+  --accent-ink: #b83f1b;
   --accent-strong: #c2441e;
   --accent-soft: rgb(232 84 42 / 0.1);
   --on-accent: #ffffff;
@@ -39,7 +39,7 @@
   --danger: #c2362b;
   --danger-soft: rgb(194 54 43 / 0.1);
 
-  --focus: #c2441e;
+  --focus: #b83f1b;
   --scrim: rgb(23 22 20 / 0.4);
   --glass: rgb(247 245 240 / 0.72);
   --glass-border: rgb(23 22 20 / 0.06);
@@ -181,6 +181,23 @@
   /* Landing entrances run in CSS so they start on first paint, before hydration. */
   --animate-rise: rise 0.8s var(--ease-out-quint) both;
   --animate-lift: lift 1s var(--ease-out-quint) both;
+  /* List entrances run in CSS. Server-rendered items "settle" (transform only, so they count as
+     painted on the first frame); items added later fade up with "reveal". */
+  --animate-reveal: reveal 0.45s var(--ease-out-quint) both;
+  --animate-settle: settle 0.5s var(--ease-out-quint) both;
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  @keyframes settle {
+    from {
+      transform: translateY(10px);
+    }
+  }
 
   @keyframes rise {
     from {
@@ -324,6 +341,12 @@
   &::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Off-screen sections skip style, layout and paint until they approach the viewport. */
+@utility render-on-view {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 960px;
 }
 
 @utility mask-fade-x {

@@ -1,11 +1,11 @@
 import localFont from "next/font/local";
 
-/** Inter (variable, optical sizes) — all UI text. */
+/**
+ * Inter — all UI text. Instanced from Inter Variable (text optical size,
+ * weights 400–700, Latin) to halve the download; the app uses 400/500/600.
+ */
 export const inter = localFont({
-  src: [
-    { path: "../fonts/InterVariable-latin.woff2", weight: "100 900", style: "normal" },
-    { path: "../fonts/InterVariable-latin-italic.woff2", weight: "100 900", style: "italic" },
-  ],
+  src: [{ path: "../fonts/Inter-latin-text-400-700.woff2", weight: "400 700", style: "normal" }],
   variable: "--font-inter",
   display: "swap",
   adjustFontFallback: "Arial",

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { registerPhoto, removePhoto, reorderPhotos, type PhotoRecord } from "@/app/actions/photos";
-import { photoUrl } from "@/lib/photos";
+import { imagePlaceholder, photoUrl } from "@/lib/photos";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/motion";
 
@@ -168,8 +168,7 @@ export function PhotoManager({
                   fill
                   sizes="(min-width: 640px) 180px, 33vw"
                   className="object-cover"
-                  placeholder={photo.placeholder ? "blur" : "empty"}
-                  blurDataURL={photo.placeholder ?? undefined}
+                  placeholder={imagePlaceholder(photo.placeholder)}
                 />
                 {index === 0 ? (
                   <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-micro font-semibold text-white">

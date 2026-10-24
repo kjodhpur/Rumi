@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { OtpInput } from "@/components/ui/otp-input";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 import { spring } from "@/lib/motion";
 import { GoogleMark } from "@/components/brand/google-mark";
@@ -81,6 +80,7 @@ export function LoginForm({
 
   async function signInWithGoogle() {
     setGooglePending(true);
+    const { getSupabaseBrowser } = await import("@/lib/supabase/client");
     const supabase = getSupabaseBrowser();
     const redirectTo = new URL("/auth/callback", window.location.origin);
     if (next) redirectTo.searchParams.set("next", next);

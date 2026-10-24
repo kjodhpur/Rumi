@@ -103,25 +103,32 @@ export function RankStory() {
                 still ? "flex flex-col gap-6" : "grid",
               )}
             >
-              {STEPS.map((item, i) => (
-                <motion.li
-                  key={item.title}
-                  className={cn(
-                    !still && "col-start-1 row-start-1",
-                    !still && step !== i && "pointer-events-none md:pointer-events-auto",
-                  )}
-                  animate={{ opacity: still || step === i ? 1 : compact ? 0 : 0.28 }}
-                  transition={{ duration: 0.25 }}
-                  aria-current={!still && step === i ? "step" : undefined}
-                >
-                  <h2 className="font-display text-[28px] !leading-[1.1] text-ink sm:text-display-md lg:text-display-lg">
-                    {item.title}
-                  </h2>
-                  <p className="mt-2 max-w-[440px] text-body-sm text-ink-2 sm:text-body">
-                    {item.body}
-                  </p>
-                </motion.li>
-              ))}
+              {STEPS.map((item, i) => {
+                const current = still || step === i;
+                return (
+                  <li
+                    key={item.title}
+                    className={cn(!still && "col-start-1 row-start-1 md:col-auto md:row-auto")}
+                    aria-current={!still && step === i ? "step" : undefined}
+                  >
+                    {/* Inactive titles stay legible (large text, 3:1); descriptions show only for the current step. */}
+                    <motion.h2
+                      className="font-display text-[28px] !leading-[1.1] text-ink sm:text-display-md lg:text-display-lg"
+                      animate={{ opacity: current ? 1 : compact ? 0 : 0.5 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      {item.title}
+                    </motion.h2>
+                    <motion.p
+                      className="mt-2 max-w-[440px] text-body-sm text-ink-2 sm:text-body"
+                      animate={{ opacity: current ? 1 : 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      {item.body}
+                    </motion.p>
+                  </li>
+                );
+              })}
             </ol>
           </div>
 
@@ -241,7 +248,7 @@ function StoryCard({
     >
       <motion.div
         style={{ x, y, rotate, scale }}
-        className="-mt-9 will-change-transform max-sm:-mt-8"
+        className="-mt-9 max-sm:-mt-8"
       >
         <div className="relative flex h-[72px] items-center gap-3 rounded-lg bg-surface pr-3 pl-3.5 shadow-md ring-1 ring-line max-sm:h-16 max-sm:gap-2.5">
           <motion.span
@@ -266,7 +273,7 @@ function StoryCard({
             </p>
             <div className="relative mt-0.5 h-4">
               <motion.p
-                className="absolute inset-0 truncate text-caption text-ink-3 italic"
+                className="absolute inset-0 truncate text-caption text-ink-3"
                 style={{ opacity: postOpacity }}
               >
                 {post}

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
-import { parseISO, format } from "date-fns";
 import { AlertTriangle, CalendarDays, Home, MapPin, Music2, Repeat, Sparkle, Wallet } from "lucide-react";
 import {
   DRINKING,
@@ -16,6 +15,7 @@ import {
   labelOf,
 } from "@/lib/options";
 import { formatBudget } from "@/lib/utils";
+import { formatCalendarDate } from "@/lib/time";
 import { spring } from "@/lib/motion";
 import type { ProfileDetail } from "@/lib/profile";
 
@@ -105,7 +105,7 @@ export function HousingFacts({ prefs }: { prefs: NonNullable<ProfileDetail["pref
     {
       icon: CalendarDays,
       label: "Move-in",
-      value: prefs.moveInDate ? format(parseISO(prefs.moveInDate), "MMM d, yyyy") : "Flexible",
+      value: (prefs.moveInDate && formatCalendarDate(prefs.moveInDate, { month: "short", day: "numeric", year: "numeric" })) || "Flexible",
     },
     { icon: Repeat, label: "Lease", value: labelOf(LEASE_LENGTHS, prefs.leaseLength) },
     { icon: Home, label: "Housing", value: labelOf(HOUSING_TYPES, prefs.housingType) },

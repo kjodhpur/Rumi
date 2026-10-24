@@ -69,8 +69,8 @@ function MatchesScreen() {
         </span>
       </div>
       <div className="flex flex-col gap-7 px-4 pt-5">
-        <MatchCard data={MOCK_CARDS[0]} animateScore />
-        <MatchCard data={MOCK_CARDS[1]} />
+        <MatchCard data={MOCK_CARDS[0]} animateScore morph={false} />
+        <MatchCard data={MOCK_CARDS[1]} morph={false} />
       </div>
 
       <div className="glass absolute inset-x-0 bottom-0 border-t border-line pb-6">
@@ -84,7 +84,7 @@ function MatchesScreen() {
               <span className="relative">
                 <Icon className="size-6" strokeWidth={1.75} />
                 {badge ? (
-                  <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-on-accent">
+                  <span className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-strong px-1 text-[10px] font-semibold text-on-accent">
                     {badge}
                   </span>
                 ) : null}

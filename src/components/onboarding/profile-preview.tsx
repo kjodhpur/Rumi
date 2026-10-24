@@ -5,7 +5,7 @@ import { Sparkle } from "lucide-react";
 import { Monogram } from "@/components/ui/monogram";
 import { CLASS_YEARS, labelOf } from "@/lib/options";
 import { formatBudget } from "@/lib/utils";
-import { photoUrl } from "@/lib/photos";
+import { imagePlaceholder, photoUrl } from "@/lib/photos";
 import { moveInLabel } from "@/components/matches/card-meta";
 import type { PhotoRecord } from "@/app/actions/photos";
 import type { AreaOption, PrefsDraft, ProfileDraft } from "./types";
@@ -39,8 +39,7 @@ export function ProfilePreview({
             fill
             sizes="340px"
             className="object-cover"
-            placeholder={cover.placeholder ? "blur" : "empty"}
-            blurDataURL={cover.placeholder ?? undefined}
+            placeholder={imagePlaceholder(cover.placeholder)}
           />
         ) : (
           <Monogram

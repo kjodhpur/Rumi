@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { cn, initials } from "@/lib/utils";
+import { imagePlaceholder } from "@/lib/photos";
 
 interface AvatarProps {
   src?: string | null;
@@ -34,8 +35,7 @@ export function Avatar({
             fill
             sizes={`${size * 2}px`}
             className="object-cover"
-            placeholder={placeholder ? "blur" : "empty"}
-            blurDataURL={placeholder ?? undefined}
+            placeholder={imagePlaceholder(placeholder)}
           />
         ) : (
           <span

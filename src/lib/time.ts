@@ -59,3 +59,10 @@ export function relative(iso: string, now: number) {
   if (d < 7) return `${d}d ago`;
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(iso));
 }
+
+/** Formats a calendar date ("2027-08-01") without time-zone drift. Returns null when unparseable. */
+export function formatCalendarDate(date: string, options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) {
+  const parsed = new Date(`${date.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(parsed);
+}

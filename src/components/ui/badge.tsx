@@ -40,7 +40,7 @@ export function CountBubble({ count, className }: { count: number; className?: s
     <span
       aria-hidden
       className={cn(
-        "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[11px] leading-none font-semibold text-white tabular dark:text-ink-inverse",
+        "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent-strong px-1 text-[11px] leading-none font-semibold text-white tabular dark:text-ink-inverse",
         className,
       )}
     >

@@ -7,7 +7,7 @@ type FeedRow = Database["public"]["Functions"]["get_match_feed"]["Returns"][numb
 
 export const SORTS = ["best", "newest", "move_in", "budget"] as const;
 export type SortKey = (typeof SORTS)[number];
-export const PAGE_SIZE = 18;
+export const PAGE_SIZE = 12;
 
 export interface FeedFilters {
   sort: SortKey;

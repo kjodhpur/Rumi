@@ -16,12 +16,7 @@ export const duration = { fast: 0.15, base: 0.2, slow: 0.3 } as const;
 export const fade: Transition = { duration: duration.base, ease };
 
 /** List reveal: opacity + 8px rise, 30ms stagger. Used for first paint only. */
-export const listVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.03, delayChildren: 0.02 } },
-};
-
-export const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: spring },
-};
+/** 30ms stagger for list entrances (pairs with the `animate-reveal` class); later batches restart the count. */
+export function revealDelay(index: number, batch = 12) {
+  return { animationDelay: `${20 + (index % batch) * 30}ms` };
+}

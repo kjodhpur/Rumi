@@ -9,6 +9,7 @@ import { ScoreRing } from "@/components/ui/score-ring";
 import { Monogram } from "@/components/ui/monogram";
 import { cn, displayName } from "@/lib/utils";
 import { springSnappy } from "@/lib/motion";
+import { imagePlaceholder } from "@/lib/photos";
 import { housingLine, metaLine } from "./card-meta";
 import type { MatchCardData } from "./types";
 
@@ -22,9 +23,11 @@ interface MatchCardProps {
   hidden?: boolean;
   /** Count the score up as the card mounts (marketing mockups). */
   animateScore?: boolean;
+  /** Register shared-layout ids for the card → profile morph (off for static mockups). */
+  morph?: boolean;
 }
 
-export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animateScore }: MatchCardProps) {
+export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animateScore, morph = true }: MatchCardProps) {
   const name = displayName(data.firstName, data.lastInitial);
   const meta = metaLine(data.classYear, data.major);
 
@@ -50,7 +53,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
       </Link>
 
       <motion.div
-        layoutId={`photo-${data.id}`}
+        layoutId={morph ? `photo-${data.id}` : undefined}
         transition={{ type: "spring", stiffness: 320, damping: 34 }}
         className="relative aspect-[4/5] overflow-hidden rounded-xl bg-surface-sunken shadow-sm"
         style={{ borderRadius: 24 }}
@@ -63,8 +66,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
             priority={priority}
             sizes="(min-width: 1280px) 330px, (min-width: 640px) 45vw, 100vw"
             className="object-cover transition-transform duration-500 ease-out-quint group-hover:scale-[1.03]"
-            placeholder={data.placeholder ? "blur" : "empty"}
-            blurDataURL={data.placeholder ?? undefined}
+            placeholder={imagePlaceholder(data.placeholder)}
           />
         ) : (
           <Monogram name={data.firstName} seed={data.id} rounded="rounded-none" className="absolute inset-0 [container-type:size]" />
@@ -73,7 +75,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
       </motion.div>
 
       <motion.div
-        layoutId={`score-${data.id}`}
+        layoutId={morph ? `score-${data.id}` : undefined}
         transition={{ type: "spring", stiffness: 320, damping: 34 }}
         className="absolute top-3 left-3 z-20 rounded-full bg-surface p-1 shadow-md"
       >
@@ -87,7 +89,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
       <div className="flex flex-col gap-1 px-1 pt-3.5">
         <div className="flex items-center gap-1.5">
           <motion.h3
-            layoutId={`name-${data.id}`}
+            layoutId={morph ? `name-${data.id}` : undefined}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
             className="truncate text-title font-semibold text-ink"
           >

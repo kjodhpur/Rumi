@@ -3,7 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { whenIdle } from "@/lib/idle";
 import { getBadgeCounts, type BadgeCounts } from "@/app/actions/badges";
 
 interface LiveContextValue {
@@ -53,9 +53,15 @@ export function LiveProvider({
 
   React.useEffect(() => setCounts(initialCounts), [initialCounts]);
 
+  // Connect once the page is idle; supabase-js loads in its own chunk so it never delays first paint.
   React.useEffect(() => {
-    const supabase = getSupabaseBrowser();
-    const channel = supabase
+    let cancelled = false;
+    let disconnect: (() => void) | undefined;
+    const cancelIdle = whenIdle(() => {
+      void import("@/lib/supabase/client").then(({ getSupabaseBrowser }) => {
+        if (cancelled) return;
+        const supabase = getSupabaseBrowser();
+        const channel = supabase
       .channel(`live:${userId}`)
       .on(
         "postgres_changes",
@@ -98,9 +104,14 @@ export function LiveProvider({
         refresh,
       )
       .subscribe();
+        disconnect = () => void supabase.removeChannel(channel);
+      });
+    });
 
     return () => {
-      void supabase.removeChannel(channel);
+      cancelled = true;
+      cancelIdle();
+      disconnect?.();
     };
   }, [userId, refresh, router]);
 

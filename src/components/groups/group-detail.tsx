@@ -25,11 +25,13 @@ import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { cancelGroupRequest, inviteToGroup, leaveGroup, respondToGroupRequest } from "@/app/actions/groups";
 import type { GroupCandidate, GroupDetail } from "@/lib/groups";
 import { CLASS_YEARS, labelOf } from "@/lib/options";
-import { displayName, formatBudget } from "@/lib/utils";
-import { itemVariants, listVariants, spring } from "@/lib/motion";
+import { cn, displayName, formatBudget } from "@/lib/utils";
+import { revealDelay, spring } from "@/lib/motion";
+import { useEntrance } from "@/hooks/use-entrance";
 import { moveInLabel } from "@/components/matches/card-meta";
 
 export function GroupDetailView({ userId, group }: { userId: string; group: GroupDetail }) {
+  const entrance = useEntrance(group.candidates.map((c) => c.id));
   const router = useRouter();
   const overlay = useProfileOverlay();
   const [inviting, setInviting] = React.useState<GroupCandidate | null>(null);
@@ -214,9 +216,9 @@ export function GroupDetailView({ userId, group }: { userId: string; group: Grou
               className="py-10"
             />
           ) : (
-            <motion.ul className="grid gap-3 sm:grid-cols-2" variants={listVariants} initial="hidden" animate="show">
-              {group.candidates.map((c) => (
-                <motion.li key={c.id} variants={itemVariants} className="flex flex-col rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line">
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {group.candidates.map((c, i) => (
+                <li key={c.id} style={revealDelay(i)} className={cn("flex flex-col rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line", entrance(c.id))}>
                   <div className="flex items-start gap-3">
                     <button
                       type="button"
@@ -274,9 +276,9 @@ export function GroupDetailView({ userId, group }: { userId: string; group: Grou
                   >
                     {c.pendingKind === "invite" ? "Invited" : c.pendingKind === "request" ? "Asked to join — see above" : (<><UserPlus /> Invite</>)}
                   </Button>
-                </motion.li>
+                </li>
               ))}
-            </motion.ul>
+            </ul>
           )}
         </section>
       ) : null}
