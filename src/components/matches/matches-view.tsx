@@ -63,6 +63,9 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
   const overlay = useProfileOverlay();
   const [items, setItems] = React.useState(initial.items);
   const entrance = useEntrance(initial.items.map((item) => item.id));
+  // The first screen of cards hydrates with the page, the rest as they near the viewport.
+  // Fixed per card rather than by position, so no card remounts when the list closes a gap.
+  const [eagerIds] = React.useState(() => new Set(initial.items.slice(0, 3).map((item) => item.id)));
   const [nextOffset, setNextOffset] = React.useState(initial.nextOffset);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [loadError, setLoadError] = React.useState(false);
@@ -326,7 +329,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
             <ul className="grid gap-x-5 gap-y-9 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((card, index) => (
                 <li key={card.id} className={entrance(card.id)} style={revealDelay(index, PAGE_SIZE)}>
-                  {index < 3 ? (
+                  {eagerIds.has(card.id) ? (
                     renderCard(card, index)
                   ) : (
                     // Below the first screen: the HTML is already there; it hydrates as it approaches.

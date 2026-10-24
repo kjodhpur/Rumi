@@ -35,7 +35,10 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
   const meta = metaLine(data.classYear, data.major);
 
   return (
-    <article
+    <motion.article
+      // Glide as one piece when the list closes a gap; the shared photo, score and name ride along.
+      layout={morph ? "position" : undefined}
+      transition={{ type: "spring", stiffness: 320, damping: 34 }}
       className={cn(
         "group relative flex flex-col transition-opacity duration-150",
         hidden && "opacity-0",
@@ -130,7 +133,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
           <span className="truncate">{housingLine(data.budgetMin, data.budgetMax, data.moveInDate, data.areaNames[0])}</span>
         </p>
       </div>
-    </article>
+    </motion.article>
   );
 }
 
