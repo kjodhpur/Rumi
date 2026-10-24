@@ -13,7 +13,7 @@ function isPublic(pathname: string) {
 /** Refreshes the Supabase session cookie and guards private routes. */
 export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const { pathname, search } = request.nextUrl;
 
   // Marketing pages never need the session, so skip the auth round trip entirely.
