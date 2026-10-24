@@ -32,9 +32,14 @@ export const PhotoCarousel = React.forwardRef<
     className?: string;
     rounded?: number;
     sizes?: string;
+    /**
+     * `sizes` the first photo is already loaded at (the match card's). That cached copy is
+     * drawn underneath while the larger one loads, so the morph never drops to a placeholder.
+     */
+    coverSizes?: string;
     priority?: boolean;
   }
->(function PhotoCarousel({ id, name, photos, className, rounded = 0, sizes = "100vw", priority }, ref) {
+>(function PhotoCarousel({ id, name, photos, className, rounded = 0, sizes = "100vw", coverSizes, priority }, ref) {
   const scroller = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = React.useState(0);
 
@@ -79,6 +84,9 @@ export const PhotoCarousel = React.forwardRef<
               aria-roledescription="slide"
               aria-label={`Photo ${i + 1} of ${photos.length}`}
             >
+              {i === 0 && coverSizes ? (
+                <Image src={photo.url} alt="" aria-hidden fill loading="eager" sizes={coverSizes} className="object-cover" draggable={false} />
+              ) : null}
               <Image
                 src={photo.url}
                 alt={i === 0 ? `${name}'s main photo` : `${name}, photo ${i + 1}`}
@@ -86,7 +94,7 @@ export const PhotoCarousel = React.forwardRef<
                 priority={priority && i === 0}
                 sizes={sizes}
                 className="object-cover"
-                placeholder={imagePlaceholder(photo.placeholder)}
+                placeholder={i === 0 && coverSizes ? "empty" : imagePlaceholder(photo.placeholder)}
                 draggable={false}
               />
             </div>

@@ -34,6 +34,7 @@ import type { ProfileDetail } from "@/lib/profile";
 import { CLASS_YEARS, labelOf } from "@/lib/options";
 import { cn, displayName } from "@/lib/utils";
 import { useNow } from "@/hooks/use-hydrated";
+import { useIsDesktop } from "@/hooks/use-media-query";
 import { spring, springSheet } from "@/lib/motion";
 import { PhotoCarousel, type CarouselHandle } from "./photo-carousel";
 import { IntroSheet } from "./intro-sheet";
@@ -58,6 +59,8 @@ interface ProfileViewProps {
   /** Called when saved state changes, so lists stay in sync. */
   onSavedChange?: (id: string, saved: boolean) => void;
   carouselRef?: React.Ref<CarouselHandle>;
+  /** `sizes` the first photo is already loaded at in the list it was opened from. */
+  coverSizes?: string;
 }
 
 export function ProfileView({
@@ -69,6 +72,7 @@ export function ProfileView({
   onRemoved,
   onSavedChange,
   carouselRef,
+  coverSizes,
 }: ProfileViewProps) {
   const router = useRouter();
   const loading = detail === undefined;
@@ -134,6 +138,19 @@ export function ProfileView({
   const now = useNow();
   const active = detail && now ? lastActiveLabel(detail.lastActiveAt, now) : null;
   const isOverlay = mode === "overlay";
+  // On phones the name flies in from the card. In the desktop overlay its path would be
+  // clipped by the scrolling details column, so there it fades in with the column instead.
+  const wide = useIsDesktop();
+  const nameMorphs = !isOverlay || !wide;
+  // Overlay entrance. When the name morphs, its column can't fade, so the other parts do.
+  const enter = {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { ...spring, delay: 0.08 },
+  };
+  const partEnter = isOverlay && nameMorphs ? enter : undefined;
+  // The name rises through the meta line's spot, so that line waits for it to pass.
+  const metaEnter = partEnter ? { ...partEnter, transition: { ...spring, delay: 0.2 } } : undefined;
 
   const topActions = (
     <motion.div
@@ -223,26 +240,33 @@ export function ProfileView({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <motion.h1
-            layoutId={`name-${id}`}
+            layoutId={nameMorphs ? `name-${id}` : undefined}
+            layout={nameMorphs ? "position" : undefined}
             transition={springSheet}
             className="font-display text-display-md text-ink md:text-display-lg"
           >
             {name || "\u00a0"}
           </motion.h1>
           {verified ? (
-            <BadgeCheck className="size-6 shrink-0 text-accent" strokeWidth={2} aria-label="Verified student" />
+            <motion.span {...partEnter} className="shrink-0">
+              <BadgeCheck className="size-6 text-accent" strokeWidth={2} aria-label="Verified student" />
+            </motion.span>
           ) : null}
         </div>
-        {meta ? <p className="mt-1 text-body text-ink-2">{meta}</p> : null}
-        {active ? (
-          <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-3">
-            {active === "Active now" ? <span className="size-1.5 rounded-full bg-success" /> : null}
-            {active}
-          </p>
-        ) : null}
+        <motion.div {...metaEnter}>
+          {meta ? <p className="mt-1 text-body text-ink-2">{meta}</p> : null}
+          {active ? (
+            <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-3">
+              {active === "Active now" ? <span className="size-1.5 rounded-full bg-success" /> : null}
+              {active}
+            </p>
+          ) : null}
+        </motion.div>
       </div>
       {score !== null && !isSelf ? (
-        <ScoreRing score={score} size={104} variant="hero" animateOnMount delay={0.25} className="shrink-0" />
+        <motion.div {...partEnter} className="shrink-0">
+          <ScoreRing score={score} size={104} variant="hero" animateOnMount delay={0.25} />
+        </motion.div>
       ) : null}
     </div>
   );
@@ -360,19 +384,20 @@ export function ProfileView({
             rounded={0}
             className="md:rounded-[20px]"
             sizes="(min-width: 768px) 460px, 100vw"
+            coverSizes={coverSizes}
             priority
           />
         </div>
         <div className="relative min-w-0">
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={nameMorphs ? false : enter.initial}
+            animate={enter.animate}
             exit={{ opacity: 0, transition: { duration: 0.12 } }}
-            transition={{ ...spring, delay: 0.08 }}
+            transition={enter.transition}
             className="flex min-h-0 flex-col px-5 pt-6 pb-28 md:absolute md:inset-0 md:overflow-y-auto md:overscroll-contain md:px-8 md:pt-8 md:pb-0"
           >
             {header}
-            {body}
+            <motion.div {...partEnter}>{body}</motion.div>
             <div className="hidden flex-1 md:block" />
             {actionBar}
           </motion.div>

@@ -13,6 +13,9 @@ import { imagePlaceholder } from "@/lib/photos";
 import { housingLine, metaLine } from "./card-meta";
 import type { MatchCardData } from "./types";
 
+/** Photo `sizes` for the card. The profile overlay reuses it to show the already-loaded copy. */
+export const CARD_PHOTO_SIZES = "(min-width: 1280px) 330px, (min-width: 640px) 45vw, 100vw";
+
 interface MatchCardProps {
   data: MatchCardData;
   /** Open the profile overlay instead of navigating (when JS is available). */
@@ -64,7 +67,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
             alt=""
             fill
             priority={priority}
-            sizes="(min-width: 1280px) 330px, (min-width: 640px) 45vw, 100vw"
+            sizes={CARD_PHOTO_SIZES}
             className="object-cover transition-transform duration-500 ease-out-quint group-hover:scale-[1.03]"
             placeholder={imagePlaceholder(data.placeholder)}
           />
@@ -90,6 +93,7 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
         <div className="flex items-center gap-1.5">
           <motion.h3
             layoutId={morph ? `name-${data.id}` : undefined}
+            layout={morph ? "position" : undefined}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
             className="truncate text-title font-semibold text-ink"
           >

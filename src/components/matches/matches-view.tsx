@@ -37,7 +37,7 @@ import { revealDelay } from "@/lib/motion";
 import { HydrateOnView } from "@/components/ui/hydrate-on-view";
 import { useEntrance } from "@/hooks/use-entrance";
 import { whenIdle } from "@/lib/idle";
-import { MatchCard } from "./match-card";
+import { CARD_PHOTO_SIZES, MatchCard } from "./match-card";
 import type { MatchCardData } from "./types";
 
 const SORT_LABELS: Record<SortKey, string> = {
@@ -170,7 +170,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
     <MatchCard
       data={card}
       priority={index < 2}
-      onOpen={overlay ? (data) => overlay.open(data) : undefined}
+      onOpen={overlay ? (data) => overlay.open(data, { coverSizes: CARD_PHOTO_SIZES }) : undefined}
       onToggleSave={(data) => void onToggleSave(data)}
     />
   );

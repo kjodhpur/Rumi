@@ -10,8 +10,13 @@ import { displayName } from "@/lib/utils";
 import { whenIdle } from "@/lib/idle";
 import type { CarouselHandle } from "./photo-carousel";
 
+interface OpenOptions {
+  /** `sizes` the card's photo was loaded with, so the overlay can show that cached copy at once. */
+  coverSizes?: string;
+}
+
 interface OverlayContextValue {
-  open: (card: MatchCardData) => void;
+  open: (card: MatchCardData, options?: OpenOptions) => void;
   /** Lists subscribe to keep cards in sync with changes made inside the overlay. */
   subscribe: (listener: OverlayListener) => () => void;
 }
@@ -39,6 +44,7 @@ export function ProfileOverlayProvider({ children }: { children: React.ReactNode
   React.useEffect(() => whenIdle(() => void loadProfileView(), 3000), []);
 
   const [card, setCard] = React.useState<MatchCardData | null>(null);
+  const [coverSizes, setCoverSizes] = React.useState<string | undefined>(undefined);
   const [detail, setDetail] = React.useState<ProfileDetail | null | undefined>(undefined);
   const listeners = React.useRef(new Set<OverlayListener>());
   const pushedRef = React.useRef(false);
@@ -56,8 +62,9 @@ export function ProfileOverlayProvider({ children }: { children: React.ReactNode
     };
   }, []);
 
-  const open = React.useCallback((next: MatchCardData) => {
+  const open = React.useCallback((next: MatchCardData, options?: OpenOptions) => {
     setDetail(undefined);
+    setCoverSizes(options?.coverSizes);
     setCard(next);
     returnUrl.current = window.location.pathname + window.location.search;
     window.history.pushState({ ...window.history.state, rumiProfile: next.id }, "", `/profile/${next.id}`);
@@ -146,6 +153,7 @@ export function ProfileOverlayProvider({ children }: { children: React.ReactNode
                       mode="overlay"
                       onClose={close}
                       carouselRef={carousel}
+                      coverSizes={coverSizes}
                       onRemoved={(id) => emit({ type: "removed", id })}
                       onSavedChange={(id, saved) => emit({ type: "saved", id, saved })}
                     />
