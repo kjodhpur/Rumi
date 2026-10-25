@@ -22,18 +22,28 @@ export function uniqueEmail(tag: string) {
   return `e2e-${tag}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}@${SCHOOL_DOMAIN}`;
 }
 
-/** Waits for the sign-in email in Mailpit and returns its 6-digit code. */
-export async function otpFor(email: string, since: number) {
+/** Waits for the sign-in email in Mailpit and returns its 6-digit code and one-tap link. */
+export async function signInEmailFor(email: string, since: number) {
   for (let attempt = 0; attempt < 60; attempt++) {
     const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=1`);
     const message = (await res.json()).messages?.[0];
     if (message && Date.parse(message.Created) >= since) {
       const code = String(message.Subject ?? "").match(/\b(\d{6})\b/)?.[1];
-      if (code) return code;
+      if (code) {
+        const detail = await fetch(`${MAILPIT}/api/v1/message/${message.ID}`);
+        const html = String((await detail.json()).HTML ?? "");
+        const link = html.match(/href="([^"]*\/auth\/confirm\?[^"]*)"/)?.[1]?.replace(/&amp;/g, "&");
+        return { code, link: link ?? null };
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
   throw new Error(`No sign-in code arrived for ${email}`);
+}
+
+/** Waits for the sign-in email in Mailpit and returns its 6-digit code. */
+export async function otpFor(email: string, since: number) {
+  return (await signInEmailFor(email, since)).code;
 }
 
 /** Resolves once React has hydrated the page, so typing and clicks reach real handlers. */
