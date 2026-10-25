@@ -33,7 +33,7 @@ export const publicEnv = {
     return process.env.NEXT_PUBLIC_SPOTIFY_ENABLED === "true";
   },
   get supportEmail() {
-    return process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@rumi.app";
+    return process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@rumimatch.app";
   },
 };
 
@@ -63,7 +63,7 @@ export const serverEnv = {
     return {
       resendApiKey: process.env.RESEND_API_KEY ?? "",
       smtpUrl: process.env.SMTP_URL ?? "",
-      from: process.env.EMAIL_FROM ?? "Rumi <hello@rumi.app>",
+      from: process.env.EMAIL_FROM ?? "Rumi <hello@rumimatch.app>",
     };
   },
   get moderationWebhookUrl() {
