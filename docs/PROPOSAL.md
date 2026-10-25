@@ -215,7 +215,7 @@ Public
   /                       Landing: hero, scroll story, why-you-match, trust & safety, FAQ, CTA
   /login                  Email → 6-digit code (OTP); Google (school accounts only)
   /auth/callback          OAuth / PKCE code exchange (route handler)
-  /auth/confirm           Magic-link token_hash verification (route handler)
+  /auth/confirm           Magic-link token_hash check behind a button press (scanner-safe)
   /privacy, /terms        Legal
   /offline                PWA offline fallback
 
