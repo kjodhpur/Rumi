@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
+import type { EmailOtpType, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
@@ -106,6 +106,22 @@ export async function verifyCode(input: {
 
   await afterSignIn(data.user);
   return ok({ redirectTo: await destinationFor(data.user.id, input.next) });
+}
+
+/** Finishes the one-tap email link once the person presses the button on /auth/confirm. */
+export async function confirmLink(formData: FormData) {
+  const tokenHash = formData.get("token_hash");
+  const type = String(formData.get("type") || "email") as EmailOtpType;
+  const next = formData.get("next");
+  if (typeof tokenHash !== "string" || !tokenHash) redirect("/login?error=link_expired");
+
+  const supabase = createClient();
+  const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+  if (error && isBanned(error)) redirect("/login?error=suspended");
+  if (error || !data.user) redirect("/login?error=link_expired");
+
+  await afterSignIn(data.user);
+  redirect(await destinationFor(data.user.id, typeof next === "string" ? next : null));
 }
 
 export async function signOut() {
