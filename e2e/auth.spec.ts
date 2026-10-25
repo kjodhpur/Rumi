@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { deleteUsers, ready, signIn, uniqueEmail } from "./support";
+import { admin, deleteUsers, ready, signIn, signInEmailFor, uniqueEmail } from "./support";
 
 const created: string[] = [];
 test.afterAll(async () => deleteUsers(created));
@@ -47,4 +47,44 @@ test("a wrong code is rejected", async ({ page }) => {
   await page.getByLabel("6-digit code").fill("000000");
   await expect(page.getByText(/didn't work/)).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
+});
+
+test("a mail scanner opening the email link doesn't use up the code", async ({ page, request }) => {
+  const email = uniqueEmail("scanner");
+  created.push(email);
+  await admin.from("rate_limits").delete().like("key", "otp:%");
+  await page.goto("/login");
+  await ready(page);
+  const since = Date.now() - 2000;
+  await page.getByLabel("School email").fill(email);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Check your inbox.")).toBeVisible();
+  const { code, link } = await signInEmailFor(email, since);
+  expect(link).toBeTruthy();
+
+  // Scanners fetch every link in the email without pressing anything on the page.
+  expect((await request.get(link!)).ok()).toBe(true);
+
+  await page.getByLabel("6-digit code").fill(code);
+  await page.waitForURL(/\/onboarding/, { timeout: 30_000 });
+});
+
+test("the email link signs in after one tap", async ({ page }) => {
+  const email = uniqueEmail("onetap");
+  created.push(email);
+  await admin.from("rate_limits").delete().like("key", "otp:%");
+  await page.goto("/login");
+  await ready(page);
+  const since = Date.now() - 2000;
+  await page.getByLabel("School email").fill(email);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Check your inbox.")).toBeVisible();
+  const { link } = await signInEmailFor(email, since);
+  expect(link).toBeTruthy();
+
+  await page.goto(link!);
+  await ready(page);
+  await expect(page.getByRole("heading", { name: "One more tap." })).toBeVisible();
+  await page.getByRole("button", { name: "Sign in to Rumi" }).click();
+  await page.waitForURL(/\/onboarding/, { timeout: 30_000 });
 });
