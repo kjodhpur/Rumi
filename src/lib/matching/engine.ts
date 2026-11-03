@@ -112,6 +112,20 @@ export function hardFilterFailure(a: MatchProfile, b: MatchProfile): HardFilterF
   if (a.track && b.track && a.track !== b.track) {
     return { kind: "track_pool", who: "a" };
   }
+  // 3. Accessibility & accommodation constraints (pure hard filters; zero medical disclosure)
+  if (a.accommodations?.includes("esa_approved") && b.prefs.dealbreakers.includes("pets")) {
+    return { kind: "accommodation", who: "a", constraintKey: "esa_approved" };
+  }
+  if (b.accommodations?.includes("esa_approved") && a.prefs.dealbreakers.includes("pets")) {
+    return { kind: "accommodation", who: "b", constraintKey: "esa_approved" };
+  }
+  if (a.accommodations?.includes("allergen_free") && b.prefs.smoking !== "never") {
+    return { kind: "accommodation", who: "a", constraintKey: "allergen_free" };
+  }
+  if (b.accommodations?.includes("allergen_free") && a.prefs.smoking !== "never") {
+    return { kind: "accommodation", who: "b", constraintKey: "allergen_free" };
+  }
+
   if (!acceptsGender(a, b)) return { kind: "gender", who: "a" };
   if (!acceptsGender(b, a)) return { kind: "gender", who: "b" };
   const aRule = brokenDealbreaker(a.prefs, b.prefs);

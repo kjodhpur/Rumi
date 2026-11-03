@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database";
 import type { FactorKey, Importance } from "@/lib/options";
 import { evaluateMatch, STRONG_MATCH_THRESHOLD } from "./engine";
-import type { MatchEvaluation, MatchProfile } from "./types";
+import type { AccommodationConstraintKey, MatchEvaluation, MatchProfile } from "./types";
 
 type PrefsRow = Database["public"]["Tables"]["preferences"]["Row"];
 type MusicRow = Database["public"]["Tables"]["music_profiles"]["Row"];
@@ -31,6 +31,7 @@ export function toMatchProfile(
   },
   prefs: PrefsRow,
   music?: MusicRow | null,
+  accommodations?: AccommodationConstraintKey[],
 ): MatchProfile {
   const artists = Array.isArray(music?.top_artists)
     ? (music!.top_artists as { id: string; name: string }[]).map((a) => ({ id: a.id, name: a.name }))
@@ -41,6 +42,7 @@ export function toMatchProfile(
     gender: (profile.gender as MatchProfile["gender"]) ?? null,
     track: (profile.track as MatchProfile["track"]) ?? null,
     preArrival: Boolean(profile.pre_arrival),
+    accommodations: accommodations ?? [],
     music: music && artists.length > 0 ? { artists, genres: music.top_genres ?? [] } : null,
     prefs: {
       budgetMin: prefs.budget_min,
@@ -77,15 +79,37 @@ export async function loadSchoolPool(schoolId: string) {
     // Staff are never matched, and a school can take its demo profiles out of the pool.
     .eq("is_staff", false);
   if (school?.hide_seed_profiles) poolQuery = poolQuery.eq("is_seed", false);
-  const [people, areas] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10);
+  const [people, areas, constraints] = await Promise.all([
     poolQuery.returns<PoolRow[]>(),
     admin.from("areas").select("slug, name").eq("school_id", schoolId),
+    admin
+      .from("accommodation_constraints")
+      .select("user_id, constraint_key, expires_on")
+      .eq("school_id", schoolId),
   ]);
   if (people.error) throw people.error;
 
+  const userAccommodations = new Map<string, AccommodationConstraintKey[]>();
+  for (const c of constraints.data ?? []) {
+    if (c.expires_on && c.expires_on < today) continue;
+    const existing = userAccommodations.get(c.user_id) ?? [];
+    existing.push(c.constraint_key as AccommodationConstraintKey);
+    userAccommodations.set(c.user_id, existing);
+  }
+
   const pool: MatchProfile[] = [];
   for (const person of people.data ?? []) {
-    if (person.preferences) pool.push(toMatchProfile(person, person.preferences, person.music_profiles));
+    if (person.preferences) {
+      pool.push(
+        toMatchProfile(
+          person,
+          person.preferences,
+          person.music_profiles,
+          userAccommodations.get(person.id),
+        ),
+      );
+    }
   }
   // "Tempe — near campus" reads better as "Tempe" inside a sentence.
   const areaNames = Object.fromEntries((areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]));

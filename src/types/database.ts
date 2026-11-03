@@ -1484,6 +1484,33 @@ isOneToOne: false
                       referencedColumns: ["id"]
                     }
                   ]
+                },"accommodation_constraints": {
+                  Row: {
+                    "id": string,"school_id": string,"user_id": string,"constraint_key": "esa_approved" | "single_bathroom" | "ground_floor" | "allergen_free" | "mobility_accessible","set_by": string,"expires_on": string | null,"note_enc": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"school_id": string,"user_id": string,"constraint_key": "esa_approved" | "single_bathroom" | "ground_floor" | "allergen_free" | "mobility_accessible","set_by": string,"expires_on"?: string | null,"note_enc"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"school_id"?: string,"user_id"?: string,"constraint_key"?: "esa_approved" | "single_bathroom" | "ground_floor" | "allergen_free" | "mobility_accessible","set_by"?: string,"expires_on"?: string | null,"note_enc"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "accommodation_constraints_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "accommodation_constraints_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"school_questions": {
                   Row: {
                     "id": string,"school_id": string | null,"version": number,"kind": "scenario" | "general","factor": string,"stem": string,"choices": Json,"factor_map": Json,"is_active": boolean,"position": number,"created_at": string

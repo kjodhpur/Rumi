@@ -40,6 +40,13 @@ export interface MatchMusic {
   genres: string[];
 }
 
+export type AccommodationConstraintKey =
+  | "esa_approved"
+  | "single_bathroom"
+  | "ground_floor"
+  | "allergen_free"
+  | "mobility_accessible";
+
 export interface MatchProfile {
   id: string;
   firstName: string;
@@ -51,6 +58,8 @@ export interface MatchProfile {
   track?: "freshman" | "returning" | "transfer" | "grad" | null;
   /** Admitted pre-arrival pool status. */
   preArrival?: boolean;
+  /** Approved accessibility and housing accommodations. */
+  accommodations?: AccommodationConstraintKey[];
 }
 
 export interface Reason {
@@ -89,4 +98,5 @@ export type HardFilterFailure =
   | { kind: "gender"; who: "a" | "b" }
   | { kind: "dealbreaker"; who: "a" | "b"; dealbreaker: Dealbreaker }
   | { kind: "pre_arrival_pool"; who: "a" | "b" }
-  | { kind: "track_pool"; who: "a" | "b" };
+  | { kind: "track_pool"; who: "a" | "b" }
+  | { kind: "accommodation"; who: "a" | "b"; constraintKey: AccommodationConstraintKey };
