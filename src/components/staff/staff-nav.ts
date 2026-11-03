@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardCheck, FileSpreadsheet, HeartHandshake, LayoutDashboard, ScrollText, ShieldCheck, UserRoundSearch, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, FileSpreadsheet, HeartHandshake, LayoutDashboard, ScrollText, ShieldCheck, UserRoundSearch, Users, type LucideIcon } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
 
 export interface StaffNavItem {
@@ -19,6 +19,7 @@ export const STAFF_NAV: StaffNavSection[] = [
   {
     items: [
       { href: "/staff", label: "Overview", icon: LayoutDashboard, capability: "home" },
+      { href: "/staff/outcomes", label: "Outcomes", icon: BarChart3, capability: "viewDashboard" },
       { href: "/staff/students", label: "Students", icon: UserRoundSearch, capability: "viewStudents" },
       { href: "/staff/pairings", label: "Pairings", icon: HeartHandshake, capability: "managePairings" },
       { href: "/staff/ra", label: "Check-ins", icon: ClipboardCheck, capability: "raWorkspace" },

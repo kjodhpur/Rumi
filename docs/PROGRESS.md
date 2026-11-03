@@ -12,8 +12,8 @@ The plan is [`MASTER-PROMPT.md`](MASTER-PROMPT.md) (its first-pass build order i
 | Phase 2a — StarRez CSV export | Done | `docs/phase-2a.md`. Approved, fully-sharing groups to CSV with configurable columns, optional encrypted student ID, formula-safe CSV, audited downloads. Import comes later. |
 | Phase 4 + 4.1 — roommate agreements, conversation starters | Done | `docs/phase-4.md`. Prefilled agreement per group, section-by-section edit/accept with history, typed-name signing, print-to-PDF page, reopen/void; staff see status only. Template-based conversation starters in one-to-one chats. Staff-editable templates, room calendar and chores/expenses are later work. |
 | Phase 5 core — check-ins, risk, RA workspace | Done | `docs/phase-5.md`. Self-reported move-in, pulses at week 2/4/8, rule-based risk, RA list only when the student shared or asked for help. Monthly pulses, StarRez assignment import and room swaps are later. |
-| Phase 6 core — outcomes report | Next | |
-| Phase 7.2 — mutual connections | Pending | |
+| Phase 6 core — outcomes report | Done | `docs/phase-6.md`. Agreement completion and check-in average for consented students, Wilson 95% intervals, "<5" suppression. Cohort comparison, the end-of-term survey and next-year re-match are later. |
+| Phase 7.2 — mutual connections | Next | |
 | Demo University seed | Pending | |
 
 ## How each phase ships

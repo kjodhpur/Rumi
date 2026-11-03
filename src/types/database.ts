@@ -1232,6 +1232,11 @@ isOneToOne: true
 "staff_overview":
 { Args: { "p_school": string,"p_weeks"?: number }; Returns: Json
                            },
+"staff_outcomes":
+{ Args: { "p_school": string }; Returns: {
+              "agreements_signed": number,"checkin_score_sum": number,"checkins_submitted": number,"groups_confirmed": number
+            }[]
+                           },
 "ra_risk_list":
 { Args: { "p_school": string }; Returns: {
               "ask_ra": boolean,"building": string,"first_name": string,"level": string,"note": string,"reasons": (string)[],"room": string,"score": number,"submitted_at": string,"tags": (string)[],"user_id": string
