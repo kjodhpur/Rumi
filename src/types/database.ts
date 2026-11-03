@@ -835,6 +835,33 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"match_share_tokens": {
+                  Row: {
+                    "id": string,"user_a": string,"user_b": string,"token": string,"token_hash": string,"user_a_consented": boolean,"user_b_consented": boolean,"expires_at": string,"revoked_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_a": string,"user_b": string,"token": string,"token_hash": string,"user_a_consented"?: boolean,"user_b_consented"?: boolean,"expires_at": string,"revoked_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"user_a"?: string,"user_b"?: string,"token"?: string,"token_hash"?: string,"user_a_consented"?: boolean,"user_b_consented"?: boolean,"expires_at"?: string,"revoked_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "match_share_tokens_user_a_fkey"
+                      columns: ["user_a"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "match_share_tokens_user_b_fkey"
+                      columns: ["user_b"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"messages": {
                   Row: {
                     "body": string,"client_id": string | null,"conversation_id": string,"created_at": string,"id": string,"kind": string,"sender_id": string | null

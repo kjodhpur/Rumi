@@ -43,6 +43,7 @@ import { useIsDesktop } from "@/hooks/use-media-query";
 import { spring, springSheet } from "@/lib/motion";
 import { PhotoCarousel, type CarouselHandle } from "./photo-carousel";
 import { IntroSheet } from "./intro-sheet";
+import { ShareMatchDialog } from "@/components/share/share-match-dialog";
 import {
   Breakdown,
   HousingFacts,
@@ -348,9 +349,19 @@ export function ProfileView({
 
       {!isSelf && (reasons.length > 0 || watchouts.length > 0) ? (
         <section className="mt-8" aria-labelledby={`why-${id}`}>
-          <SectionTitle>
-            <span id={`why-${id}`}>Why you match</span>
-          </SectionTitle>
+          <div className="flex items-center justify-between gap-3">
+            <SectionTitle>
+              <span id={`why-${id}`}>Why you match</span>
+            </SectionTitle>
+            {score !== null ? (
+              <ShareMatchDialog
+                candidateId={id}
+                candidateFirstName={firstName}
+                score={score}
+                reasons={reasons}
+              />
+            ) : null}
+          </div>
           <Reasons reasons={reasons} watchouts={watchouts} />
         </section>
       ) : null}
