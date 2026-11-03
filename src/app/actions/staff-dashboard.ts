@@ -244,7 +244,8 @@ export async function runAutoPair(raw: z.input<typeof runInput>): Promise<Action
   const candidateIds = candidates.map((c) => c.id);
 
   // Existing mutual scores already exclude every pair that fails a hard filter.
-  const edges: { a: string; b: string; score: number; reasons: Json }[] = [];
+  // Both directions share the score; keep whichever side has reasons to show staff.
+  const byPair = new Map<string, { a: string; b: string; score: number; reasons: Json }>();
   for (let i = 0; i < candidateIds.length; i += 200) {
     const { data } = await db
       .from("match_scores")
@@ -252,9 +253,15 @@ export async function runAutoPair(raw: z.input<typeof runInput>): Promise<Action
       .in("viewer_id", candidateIds.slice(i, i + 200))
       .in("candidate_id", candidateIds);
     for (const row of data ?? []) {
-      if (row.viewer_id < row.candidate_id) edges.push({ a: row.viewer_id, b: row.candidate_id, score: row.score, reasons: row.reasons });
+      const [a, b] = row.viewer_id < row.candidate_id ? [row.viewer_id, row.candidate_id] : [row.candidate_id, row.viewer_id];
+      const existing = byPair.get(`${a}|${b}`);
+      const hasReasons = Array.isArray(row.reasons) && row.reasons.length > 0;
+      if (!existing || (hasReasons && !(Array.isArray(existing.reasons) && existing.reasons.length > 0))) {
+        byPair.set(`${a}|${b}`, { a, b, score: row.score, reasons: row.reasons });
+      }
     }
   }
+  const edges = [...byPair.values()];
 
   const result = assignPairs(
     candidates.map((c) => ({ id: c.id, signedUpAt: c.created_at })),
@@ -262,6 +269,8 @@ export async function runAutoPair(raw: z.input<typeof runInput>): Promise<Action
     { minScore },
   );
   const reasonsOf = new Map(edges.map((e) => [`${e.a}|${e.b}`, e.reasons]));
+  // Proposals list members by sign-up order; the lookup key is ordered by id.
+  const pairKey = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
   const nameOf = new Map(candidates.map((c) => [c.id, `${c.first_name}${c.last_initial ? ` ${c.last_initial}.` : ""}`]));
 
   // A new run supersedes earlier proposals that haven't been sent; sent and answered ones stay.
@@ -294,7 +303,7 @@ export async function runAutoPair(raw: z.input<typeof runInput>): Promise<Action
         school_id: school,
         member_ids: [p.a, p.b],
         score: p.score,
-        reasons: (reasonsOf.get(`${p.a}|${p.b}`) ?? []) as NonNullable<Json>,
+        reasons: (reasonsOf.get(pairKey(p.a, p.b)) ?? []) as NonNullable<Json>,
       })),
     );
   }

@@ -30,8 +30,8 @@ export const SCORE_BINS = ["none", "0-49", "50-59", "60-69", "70-79", "80-89", "
 export type ScoreBin = (typeof SCORE_BINS)[number];
 
 export const BIN_LABELS: Record<ScoreBin, string> = {
-  none: "No match",
-  "0-49": "Under 50",
+  none: "None",
+  "0-49": "<50",
   "50-59": "50s",
   "60-69": "60s",
   "70-79": "70s",

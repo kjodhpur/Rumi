@@ -15,6 +15,8 @@ export interface Datum {
   /** Longer label for tooltips and the table (defaults to label). */
   detail?: string;
   value: number;
+  /** Small annotation beside the value, e.g. a share of the first funnel stage. */
+  note?: string | null;
 }
 
 function niceMax(max: number) {
@@ -133,12 +135,12 @@ export function ColumnChart({
 }) {
   const [active, setActive] = React.useState<number | null>(null);
   const max = niceMax(Math.max(0, ...data.map((d) => d.value)));
-  const ticks = [0, max / 2, max];
-  const summary = `${title}. ${data.map((d) => `${d.detail ?? d.label}: ${fmt(d.value)}`).join("; ")}.`;
+  const ticks = Number.isInteger(max / 2) ? [0, max / 2, max] : [0, max];
 
   return (
     <ChartFrame title={title} description={description} table={<DataTable data={data} valueLabel={valueLabel} />}>
-      <div className="flex gap-2" role="img" aria-label={summary}>
+      {/* Each column is a focusable button with its own label; the table view lists every value. */}
+      <div className="flex gap-2 pt-2" role="group" aria-label={`${title}, ${valueLabel.toLowerCase()} per bar`}>
         <div aria-hidden className="relative w-7 shrink-0 text-right text-micro text-ink-3 tabular-nums" style={{ height }}>
           {ticks.map((t) => (
             <span key={t} className="absolute right-0 -translate-y-1/2" style={{ bottom: `${(t / max) * 100}%` }}>
@@ -180,12 +182,19 @@ export function ColumnChart({
               })}
             </div>
           </div>
-          <div aria-hidden className="mt-1.5 flex gap-0.5 text-micro text-ink-3">
-            {data.map((d, i) => (
-              <span key={d.label} className="min-w-0 flex-1 truncate text-center">
-                {i % labelEvery === 0 ? d.label : ""}
-              </span>
-            ))}
+          {/* Labels sit under their column but may run wider than it; labelEvery keeps them apart. */}
+          <div aria-hidden className="relative mt-1.5 h-4 text-micro text-ink-3">
+            {data.map((d, i) =>
+              i % labelEvery === 0 ? (
+                <span
+                  key={d.label}
+                  className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
+                  style={{ left: `${((i + 0.5) / data.length) * 100}%` }}
+                >
+                  {d.label}
+                </span>
+              ) : null,
+            )}
           </div>
         </div>
       </div>
@@ -199,14 +208,11 @@ export function BarList({
   description,
   data,
   valueLabel,
-  extra,
 }: {
   title: string;
   description?: string;
   data: Datum[];
   valueLabel: string;
-  /** Right-hand annotation per row, e.g. the share of the first stage. */
-  extra?: (d: Datum, index: number) => string | null;
 }) {
   const [active, setActive] = React.useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
@@ -215,14 +221,14 @@ export function BarList({
       <ol className="flex flex-col gap-3">
         {data.map((d, i) => {
           const share = d.value === 0 ? 0 : isSuppressed(d.value) ? STUB : d.value / max;
-          const note = extra?.(d, i);
+          const note = d.note;
           return (
             <li key={d.label}>
               <div className="flex items-baseline justify-between gap-3 text-body-sm">
                 <span className="truncate text-ink-2">{d.detail ?? d.label}</span>
                 <span className="shrink-0 text-ink tabular-nums">
                   <span className="font-semibold">{fmt(d.value)}</span>
-                  {note ? <span className="ml-1.5 text-caption text-ink-3">{note}</span> : null}
+                  {note && !isSuppressed(d.value) ? <span className="ml-1.5 text-caption text-ink-3">{note}</span> : null}
                 </span>
               </div>
               <button

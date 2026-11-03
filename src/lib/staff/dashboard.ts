@@ -2,20 +2,9 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Overview } from "./metrics";
+import type { Term } from "./terms";
 
-export interface Term {
-  id: string;
-  name: string;
-  startsOn: string;
-  endsOn: string;
-  deadlines: { roommateRequest?: string; selectionOpens?: string; selectionCloses?: string };
-}
-
-export const DEADLINE_LABELS: Record<keyof Term["deadlines"], string> = {
-  roommateRequest: "Roommate request deadline",
-  selectionOpens: "Room selection opens",
-  selectionCloses: "Room selection closes",
-};
+export { DEADLINE_LABELS, nextDeadline, type Term } from "./terms";
 
 function toTerm(row: { id: string; name: string; starts_on: string; ends_on: string; deadlines: unknown }): Term {
   const d = (row.deadlines ?? {}) as Record<string, unknown>;
@@ -41,18 +30,6 @@ export async function loadActiveTerm(schoolId: string): Promise<Term | null> {
     .eq("active", true)
     .maybeSingle();
   return data ? toTerm(data) : null;
-}
-
-/** The next deadline on or after today, for the overview header. */
-export function nextDeadline(term: Term | null, today = new Date().toISOString().slice(0, 10)) {
-  if (!term) return null;
-  const upcoming = (Object.entries(term.deadlines) as [keyof Term["deadlines"], string | undefined][])
-    .filter((entry): entry is [keyof Term["deadlines"], string] => Boolean(entry[1]) && entry[1]! >= today)
-    .sort((a, b) => a[1].localeCompare(b[1]));
-  if (upcoming.length === 0) return null;
-  const [key, date] = upcoming[0];
-  const daysLeft = Math.round((Date.parse(date) - Date.parse(today)) / 86_400_000);
-  return { label: DEADLINE_LABELS[key], date, daysLeft };
 }
 
 /** Role is enforced inside the SQL function (has_role), so this runs as the signed-in staff member. */

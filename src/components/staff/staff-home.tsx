@@ -6,7 +6,7 @@ import { BarList, ColumnChart } from "@/components/staff/charts";
 import { ScoreSegments } from "@/components/staff/score-segments";
 import { ROLE_INFO, type StaffRole } from "@/lib/staff/roles";
 import { AUDIT_LABELS, type AuditRow } from "@/lib/staff/team";
-import { BIN_LABELS, FUNNEL_LABELS, SCORE_BINS, count, days, share, type Overview } from "@/lib/staff/metrics";
+import { BIN_LABELS, FUNNEL_LABELS, SCORE_BINS, count, days, isSuppressed, share, type Overview } from "@/lib/staff/metrics";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -216,6 +216,7 @@ function Dashboard({ overview, weeks, canSeeStudents }: { overview: Overview; we
     overview.weekly.map((w) => ({ label: weekLabel(w.week), detail: `Week of ${weekLabel(w.week)}`, value: w[key] }));
   const bins = SCORE_BINS.map((bin) => ({
     label: BIN_LABELS[bin],
+    detail: bin === "none" ? "No compatible match" : bin === "0-49" ? "Under 50" : `Best match ${BIN_LABELS[bin]}`,
     value: overview.distribution.find((d) => d.bin === bin)?.n ?? 0,
   }));
   const labelEvery = weeks > 26 ? 8 : weeks > 8 ? 4 : 2;
@@ -244,11 +245,20 @@ function Dashboard({ overview, weeks, canSeeStudents }: { overview: Overview; we
 
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-5" aria-label="Key numbers">
         <Kpi label="Students" value={count(k.students)} note={`${share(k.verified, k.students)} verified`} />
-        <Kpi label="Finished profile" value={share(k.onboarded, k.students)} note={`${count(k.onboarded)} students`} />
+        <Kpi label="Finished profile" value={share(k.onboarded, k.students)} note={isSuppressed(k.onboarded) ? undefined : `${count(k.onboarded)} students`} />
         <Kpi label="Have a 70+ match" value={share(k.withStrongMatch, k.onboarded)} note="of finished profiles" />
-        <Kpi label="In a pair or group" value={share(k.matched, k.onboarded)} note={`${count(k.matched)} students`} href={canSeeStudents ? "/staff/pairings" : undefined} />
+        <Kpi
+          label="In a pair or group"
+          value={share(k.matched, k.onboarded)}
+          note={isSuppressed(k.matched) ? "of finished profiles" : `${count(k.matched)} students`}
+          href={canSeeStudents ? "/staff/pairings" : undefined}
+        />
         <Kpi label="Unmatched" value={count(k.unmatched)} note="finished, no pair yet" href={canSeeStudents ? "/staff/students" : undefined} />
-        <Kpi label="Intros sent" value={count(k.introsSent)} note={`${share(k.introsAccepted, k.introsSent)} accepted`} />
+        <Kpi
+          label="Intros sent"
+          value={count(k.introsSent)}
+          note={k.introsSent === 0 ? "none yet" : k.introsSent < 5 ? undefined : `${share(k.introsAccepted, k.introsSent)} accepted`}
+        />
         <Kpi label="Median time to match" value={days(k.medianDaysToMatch)} note="profile done → paired" />
         <Kpi label="Open reports" value={count(k.openReports)} />
       </ul>
@@ -258,8 +268,12 @@ function Dashboard({ overview, weeks, canSeeStudents }: { overview: Overview; we
           title="Funnel"
           description="Where students are, from sign-up to a confirmed pair."
           valueLabel="Students"
-          data={overview.funnel.map((f) => ({ label: f.stage, detail: FUNNEL_LABELS[f.stage], value: f.n }))}
-          extra={(d, i) => (i === 0 ? null : share(d.value, first))}
+          data={overview.funnel.map((f, i) => ({
+            label: f.stage,
+            detail: FUNNEL_LABELS[f.stage],
+            value: f.n,
+            note: i === 0 ? null : share(f.n, first),
+          }))}
         />
         <ColumnChart
           title="Best-match scores"

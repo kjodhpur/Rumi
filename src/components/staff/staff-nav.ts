@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScrollText, ShieldCheck, Users, type LucideIcon } from "lucide-react";
+import { CalendarDays, HeartHandshake, LayoutDashboard, ScrollText, ShieldCheck, UserRoundSearch, Users, type LucideIcon } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
 
 export interface StaffNavItem {
@@ -17,11 +17,16 @@ export interface StaffNavSection {
 
 export const STAFF_NAV: StaffNavSection[] = [
   {
-    items: [{ href: "/staff", label: "Overview", icon: LayoutDashboard, capability: "home" }],
+    items: [
+      { href: "/staff", label: "Overview", icon: LayoutDashboard, capability: "home" },
+      { href: "/staff/students", label: "Students", icon: UserRoundSearch, capability: "viewStudents" },
+      { href: "/staff/pairings", label: "Pairings", icon: HeartHandshake, capability: "managePairings" },
+    ],
   },
   {
     label: "Settings",
     items: [
+      { href: "/staff/settings/term", label: "Term", icon: CalendarDays, capability: "configureTerm" },
       { href: "/staff/settings/team", label: "Team", icon: Users, capability: "manageTeam" },
       { href: "/staff/settings/privacy", label: "Privacy & retention", icon: ShieldCheck, capability: "managePrivacy" },
       { href: "/staff/audit", label: "Audit log", icon: ScrollText, capability: "viewAudit" },

@@ -62,11 +62,22 @@ test("new student completes onboarding and lands on ranked matches", async ({ pa
   await expect(page.getByText("Any dealbreakers?")).toBeVisible();
   await next(page);
 
-  // The music step only exists when Spotify is enabled for this deployment.
+  // The music step exists only when Spotify is enabled, and the sharing step only when
+  // the school has a partnered housing office.
   const music = page.getByText("Bring your music.");
+  const sharing = page.getByRole("heading", { name: /^Share with / });
   const finish = page.getByRole("button", { name: "See my matches" });
-  await expect(music.or(finish)).toBeVisible({ timeout: 20_000 });
-  if (await music.isVisible()) await next(page);
+  await expect(music.or(sharing).or(finish)).toBeVisible({ timeout: 20_000 });
+  if (await music.isVisible()) {
+    await next(page);
+    await expect(sharing.or(finish)).toBeVisible({ timeout: 20_000 });
+  }
+  if (await sharing.isVisible()) {
+    const toggle = page.getByRole("switch", { name: /Share my Rumi results with/ });
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+    await next(page);
+  }
   await finish.click();
   await expect(page).toHaveURL(/\/matches/);
   await ready(page);

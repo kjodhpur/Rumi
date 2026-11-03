@@ -200,7 +200,9 @@ npm test
 - Full onboarding, including photo crop and autosave across a reload.
 - Ranked matches: profile overlay, save, Saved view and filters.
 - Intro → accept → realtime chat with typing indicator and read receipts, across two browsers.
-- Staff: a platform admin invites a housing admin, who accepts; the last-admin rule; turning access off; students switching housing sharing on and off. Staff specs also run axe and fail on any serious or critical WCAG 2.1 AA violation.
+- Staff: a platform admin invites a housing admin, who accepts; the last-admin rule; turning access off; students switching housing sharing on and off.
+- Staff dashboard: term setup, overview, unmatched list, an auto-pair run approved and sent, both students saying yes, and the new pair approved.
+- Staff specs also run axe and fail on any serious or critical WCAG 2.1 AA violation.
 
 Onboarding and matching also run at a 375px mobile viewport.
 
@@ -301,6 +303,11 @@ Housing offices get their own workspace at `/staff`, separate from the student a
 - **Audit log.** Every staff action and every look at a student's records is recorded. Entries can't be edited or deleted by any API role.
 - **Retention.** Each school sets how long orphaned messages, inactive accounts (emailed first) and audit records are kept. A nightly job (inside `/api/cron/recompute`) applies it; `/api/cron/retention` runs it on demand.
 - **Demo profiles.** Platform admins can hide a school's seeded profiles from **Admin → People** without a redeploy.
+- **Overview.** Live numbers for the school: students, finished profiles, students with a 70+ match, students in a pair or group, intros, median time to match, unmatched students and open reports. Also a sign-up-to-pair funnel, weekly trends, and best-match scores overall and by segment. Every chart has a table view. Any count from 1 to 4 shows as "<5", and seed profiles count only at demo schools.
+- **Students.** Unmatched students who chose to share, with their best score. Staff can send a nudge (email and in-app, at most one a week per student).
+- **Pairings.** Pairs and groups students formed, with pairwise scores and dealbreaker flags. Members who haven't shared show without names. Staff approve them for assignment or mark them for review, and an approved group whose members change goes back to review automatically.
+- **Auto-pair.** Proposes roommates for sharing students still looking: as many pairs as possible, then the highest total score, never across a dealbreaker (Edmonds' blossom matching, `src/lib/matching/blossom.ts`). Staff approve and send. Each student sees the suggestion at `/suggestions/[id]`, and a two-person group with a chat forms only if both say yes.
+- **Term.** The term's dates and deadlines; the next deadline shows on the overview.
 
 To give a school its first housing admin, sign in as a platform admin, open `/staff`, pick the school and send an invite from **Team**.
 

@@ -8,8 +8,8 @@ The plan is [`MASTER-PROMPT.md`](MASTER-PROMPT.md) (its first-pass build order i
 | --- | --- | --- |
 | Setup | Done | Local Supabase stack for development and tests; master prompt saved with corrections; demo-profile switch (`schools.hide_seed_profiles`, Admin → People). |
 | Phase 0 — staff roles, consent, audit, retention | Done | `docs/phase-0.md`. Staff workspace at `/staff`, invites, roles with building scopes for RAs, last-admin rule, consent (onboarding step + Settings → Privacy), append-only audit log, per-school retention with a nightly job. RLS tests per role; e2e with axe. |
-| Phase 1 core + 1.C — dashboard, pairings, term setup, auto-pair | Next | |
-| Phase 2a — StarRez CSV export | Pending | |
+| Phase 1 core + 1.C — dashboard, pairings, term setup, auto-pair | Done | `docs/phase-1.md`. Live overview (KPIs, funnel, trends, score distribution with "<5" suppression), unmatched students with nudges, pairing review, term setup, auto-pair (blossom matching, tested against brute force and at 2,000 students) with student accept/decline. RLS tests; e2e with axe. Auto-grouping into 3–4 is later work. |
+| Phase 2a — StarRez CSV export | Next | |
 | Phase 4 + 4.1 — roommate agreements, conversation starters | Pending | |
 | Phase 5 core — check-ins, risk, RA workspace | Pending | |
 | Phase 6 core — outcomes report | Pending | |
@@ -30,3 +30,5 @@ The plan is [`MASTER-PROMPT.md`](MASTER-PROMPT.md) (its first-pass build order i
 - Students are never shown a housing-office consent prompt until the Rumi team sets `schools.housing_office_name` (no implied ASU partnership before a signed pilot).
 - New nightly work registers in `src/lib/jobs/nightly.ts`, not `vercel.json`, to stay within the plan's cron limits.
 - The audit log is append-only even for the service role; only `purge_audit_log()` (retention) deletes.
+- Staff metrics count seed profiles only at demo schools (`school_students()`), so a real school's numbers never include demo data.
+- A "confirmed pair" is a Rumi group with 2+ members; housing suggestions become a two-person group when both students accept.

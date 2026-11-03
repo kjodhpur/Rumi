@@ -164,35 +164,34 @@ export function PairingsReview({
                 <button
                   type="button"
                   onClick={() => setOpen(p)}
-                  className="flex min-w-0 flex-1 flex-col gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-focus sm:flex-row sm:items-center sm:gap-4"
+                  className="grid min-w-0 flex-1 grid-cols-[1fr_auto] items-center gap-x-4 gap-y-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-body-sm font-semibold text-ink">{p.members.map((m) => m.name).join(", ")}</span>
-                    </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-body-sm font-semibold text-ink">{p.members.map((m) => m.name).join(", ")}</span>
                     <span className="mt-0.5 block text-caption text-ink-3">
                       {p.members.length === p.targetSize ? `${p.members.length} people` : `${p.members.length} of ${p.targetSize} people`}
                       {p.membersChanged ? " · members changed since approval" : ""}
                     </span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-2">
-                    {p.dealbreaker ? (
-                      <Badge variant="danger">
-                        <AlertTriangle aria-hidden /> Dealbreaker
+                    <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <Badge variant={STATUS_BADGE[p.status].variant}>
+                        {p.status === "approved" ? <CircleCheck aria-hidden /> : null}
+                        {STATUS_BADGE[p.status].label}
                       </Badge>
-                    ) : null}
-                    {p.members.some((m) => m.hidden) ? (
-                      <Badge variant="outline">
-                        <EyeOff aria-hidden /> Profile hidden
-                      </Badge>
-                    ) : null}
-                    <Badge variant={STATUS_BADGE[p.status].variant}>
-                      {p.status === "approved" ? <CircleCheck aria-hidden /> : null}
-                      {STATUS_BADGE[p.status].label}
-                    </Badge>
-                    <span className="w-14 text-right text-title font-semibold text-ink tabular-nums" aria-label={`Combined score ${p.combinedScore ?? "unknown"}`}>
-                      {p.combinedScore ?? "—"}
+                      {p.dealbreaker ? (
+                        <Badge variant="danger">
+                          <AlertTriangle aria-hidden /> Dealbreaker
+                        </Badge>
+                      ) : null}
+                      {p.members.some((m) => m.hidden) ? (
+                        <Badge variant="outline">
+                          <EyeOff aria-hidden /> Profile hidden
+                        </Badge>
+                      ) : null}
                     </span>
+                  </span>
+                  <span className="flex flex-col items-end">
+                    <span className="text-title font-semibold text-ink tabular-nums">{p.combinedScore ?? "—"}</span>
+                    <span className="text-caption text-ink-3">{p.combinedScore === null ? "no score" : "combined"}</span>
                   </span>
                 </button>
               </li>

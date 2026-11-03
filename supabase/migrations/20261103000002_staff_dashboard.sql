@@ -345,7 +345,7 @@ begin
         'classYear', case when public.has_consent(gm.user_id, 'share_with_housing') then p.class_year end,
         'hidden', p.is_hidden,
         'joinedAt', gm.joined_at
-      ) order by gm.joined_at)
+      ) order by gm.role = 'owner' desc, gm.joined_at, gm.user_id)
       from public.group_members gm join public.profiles p on p.id = gm.user_id
       where gm.group_id = g.id
     ),
@@ -403,10 +403,10 @@ begin
     return 'waiting';
   end if;
 
-  -- Both said yes. Someone may have joined a group in the meantime.
+  -- Both said yes. Someone may have joined a group in the meantime (returning, not raising, keeps the status).
   if exists (select 1 from public.group_members where user_id = any (r.member_ids)) then
     update public.auto_pair_proposals set status = 'invalid' where id = r.id;
-    raise exception 'already_in_group';
+    return 'invalid';
   end if;
 
   v_name := left(public.first_name_of(r.member_ids[1]) || ' & ' || public.first_name_of(r.member_ids[2]), 40);

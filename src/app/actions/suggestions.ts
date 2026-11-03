@@ -10,7 +10,7 @@ import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
 export async function respondToSuggestion(
   proposalId: string,
   accept: boolean,
-): Promise<ActionResult<{ state: "accepted" | "waiting" | "declined" }>> {
+): Promise<ActionResult<{ state: "accepted" | "waiting" | "declined" | "invalid" }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!z.string().uuid().safeParse(proposalId).success || typeof accept !== "boolean") return fail("Unknown suggestion.");
@@ -22,5 +22,5 @@ export async function respondToSuggestion(
   }
   revalidatePath(`/suggestions/${proposalId}`);
   revalidatePath("/groups");
-  return ok({ state: data as "accepted" | "waiting" | "declined" });
+  return ok({ state: data as "accepted" | "waiting" | "declined" | "invalid" });
 }
