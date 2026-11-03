@@ -253,4 +253,23 @@ describe("explanations", () => {
       expect(factor.similarity).toBeLessThanOrEqual(1);
     }
   });
+
+  it("applies a capped trust bonus and surfaces verified social accounts in reasons", () => {
+    const a = person("a", { sleepSchedule: 3 });
+    const b = person("b", { sleepSchedule: 3 });
+    const baseline = evaluateMatch(a, b)!;
+    const withTrust = evaluateMatch(a, b, { hasVerifiedSocial: true, sharedConnectionsCount: 2 })!;
+
+    expect(withTrust.score).toBeGreaterThanOrEqual(baseline.score);
+    expect(withTrust.score - baseline.score).toBeLessThanOrEqual(5);
+    const hasSocialReason = withTrust.forA.reasons.some((r) => r.key === "social");
+    expect(hasSocialReason).toBe(true);
+  });
+
+  it("never lets social trust override a hard dealbreaker", () => {
+    const a = person("a", { dealbreakers: ["smoking"] });
+    const b = person("b", { smoking: "regularly" });
+    const result = evaluateMatch(a, b, { hasVerifiedSocial: true, sharedConnectionsCount: 5 });
+    expect(result).toBeNull();
+  });
 });

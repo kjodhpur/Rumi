@@ -16,7 +16,12 @@ import {
   Send,
   ShieldOff,
   X,
+  ExternalLink,
+  Check,
 } from "lucide-react";
+import { InstagramMark } from "@/components/brand/instagram-mark";
+import { LinkedinMark } from "@/components/brand/linkedin-mark";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -282,10 +287,63 @@ export function ProfileView({
         </div>
       ) : null}
 
+      {/* Verified Social Links */}
+      {detail?.socialLinks && detail.socialLinks.length > 0 ? (
+        <div className="mt-4 flex flex-wrap gap-2.5">
+          {detail.socialLinks.map((s) => (
+            <a
+              key={s.platform}
+              href={s.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-caption font-medium text-ink transition-colors hover:border-ink-3"
+            >
+              {s.platform === "instagram" ? (
+                <InstagramMark className="size-3.5 text-ink" />
+              ) : (
+                <LinkedinMark className="size-3.5 text-ink" />
+              )}
+              <span>@{s.handle}</span>
+              {s.verified ? (
+                <Check className="size-3 text-accent" strokeWidth={2.5} />
+              ) : null}
+              <ExternalLink className="size-3 text-ink-3" />
+            </a>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Mutual Connections & Points of Contact */}
       {!isSelf && detail?.mutualCount ? (
-        <p className="mt-4 text-body-sm text-ink-2">
-          {detail.mutualCount} mutual {detail.mutualCount === 1 ? "connection" : "connections"}
-        </p>
+        <div className="mt-5 rounded-xl border border-line bg-surface p-4 shadow-xs">
+          <p className="text-body-sm font-semibold text-ink">
+            {detail.mutualCount} mutual {detail.mutualCount === 1 ? "connection" : "connections"}
+          </p>
+          {detail.mutualContacts && detail.mutualContacts.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {detail.mutualContacts.map((contact) => (
+                <div
+                  key={contact.userId}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-card py-1 pr-2.5 pl-1 text-caption text-ink"
+                >
+                  <Avatar
+                    src={contact.avatarUrl}
+                    firstName={contact.firstName}
+                    lastInitial={contact.lastInitial}
+                    size={22}
+                  />
+                  <span>
+                    {contact.firstName} {contact.lastInitial}.
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-caption text-ink-3">
+              People you both know through shared groups or accepted intros.
+            </p>
+          )}
+        </div>
       ) : null}
 
       {!isSelf && (reasons.length > 0 || watchouts.length > 0) ? (

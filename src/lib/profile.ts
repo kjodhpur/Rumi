@@ -2,6 +2,7 @@ import type { ServerSupabase } from "@/lib/supabase/server";
 import { generateWhyYouMatch } from "@/lib/bedrock/client";
 import { photoUrl } from "@/lib/photos";
 import { isVerified } from "@/lib/verification";
+import { buildSocialUrl, type SocialPlatform } from "@/lib/social/links";
 import type { FactorKey, Importance } from "@/lib/options";
 
 export interface ProfilePhoto {
@@ -55,6 +56,10 @@ export interface ProfileDetail {
   } | null;
   /** People you both know who opted in. Null when the count should stay hidden. */
   mutualCount: number | null;
+  /** Opted-in mutual contacts with names and avatars for points of contact. */
+  mutualContacts: { userId: string; firstName: string; lastInitial: string; avatarUrl: string | null }[];
+  /** Self-attested / verified social media links (Instagram, LinkedIn). */
+  socialLinks: { platform: SocialPlatform; handle: string; verified: boolean; url: string }[];
 }
 
 type Breakdown = NonNullable<ProfileDetail["match"]>["breakdown"];
@@ -85,7 +90,7 @@ export async function loadProfileDetail(
     .maybeSingle();
   if (!profile) return null;
 
-  const [photos, prefs, score, music, saved, intros, areas] = await Promise.all([
+  const [photos, prefs, score, music, saved, intros, areas, social] = await Promise.all([
     supabase
       .from("photos")
       .select("id, storage_path, placeholder")
@@ -118,6 +123,7 @@ export async function loadProfileDetail(
       .order("created_at", { ascending: false })
       .limit(1),
     supabase.from("areas").select("slug, name").eq("school_id", profile.school_id),
+    supabase.from("social_links").select("platform, handle, verified_at").eq("user_id", targetId),
   ]);
 
   const areaNames = Object.fromEntries(
@@ -214,8 +220,27 @@ export async function loadProfileDetail(
           conversationId: intro.conversation_id,
         }
       : null,
+    socialLinks: (social.data ?? []).map((s) => ({
+      platform: s.platform as SocialPlatform,
+      handle: s.handle,
+      verified: Boolean(s.verified_at),
+      url: buildSocialUrl(s.platform as SocialPlatform, s.handle),
+    })),
     mutualCount: await mutualCount(supabase, profile.id === viewerId ? null : profile.id),
+    mutualContacts: await loadMutualContacts(supabase, profile.id === viewerId ? null : profile.id),
   };
+}
+
+async function loadMutualContacts(supabase: ServerSupabase, otherId: string | null) {
+  if (!otherId) return [];
+  const { data, error } = await supabase.rpc("mutual_connections_details", { target_id: otherId });
+  if (error || !Array.isArray(data)) return [];
+  return data.map((c) => ({
+    userId: c.user_id,
+    firstName: c.first_name,
+    lastInitial: c.last_initial,
+    avatarUrl: photoUrl(c.avatar_path),
+  }));
 }
 
 async function mutualCount(supabase: ServerSupabase, otherId: string | null) {

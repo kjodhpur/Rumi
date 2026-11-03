@@ -4,14 +4,18 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BadgeCheck, Mail, RefreshCw } from "lucide-react";
+import { BadgeCheck, Check, Copy, ExternalLink, Mail, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SpotifyMark } from "@/components/brand/spotify-mark";
 import { GoogleMark } from "@/components/brand/google-mark";
+import { InstagramMark } from "@/components/brand/instagram-mark";
+import { LinkedinMark } from "@/components/brand/linkedin-mark";
 import { disconnectSpotify } from "@/app/actions/settings";
 import { resyncSpotify } from "@/app/actions/spotify";
+import { removeSocialLink, saveSocialLink, verifySocialLink } from "@/app/actions/social-links";
 import { cn } from "@/lib/utils";
 import { SettingsBack, SettingsSection } from "./settings-ui";
 import { showSpotifyStatus } from "./spotify-status";
@@ -28,6 +32,18 @@ export interface AccountsData {
     artists: { name: string; image: string | null }[];
     genres: string[];
   };
+  social: {
+    instagram: {
+      handle: string | null;
+      verified: boolean;
+      verificationCode: string | null;
+    };
+    linkedin: {
+      handle: string | null;
+      verified: boolean;
+      verificationCode: string | null;
+    };
+  };
 }
 
 export function AccountsSettings({ data, status }: { data: AccountsData; status?: string }) {
@@ -35,6 +51,15 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
   const [syncing, setSyncing] = React.useState(false);
   const [synced, setSynced] = React.useState(false);
   const [disconnecting, setDisconnecting] = React.useState(false);
+
+  // Social account states
+  const [igHandle, setIgHandle] = React.useState(data.social.instagram.handle ?? "");
+  const [liHandle, setLiHandle] = React.useState(data.social.linkedin.handle ?? "");
+  const [savingIg, setSavingIg] = React.useState(false);
+  const [savingLi, setSavingLi] = React.useState(false);
+  const [verifyingIg, setVerifyingIg] = React.useState(false);
+  const [verifyingLi, setVerifyingLi] = React.useState(false);
+  const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (showSpotifyStatus(status)) router.replace("/settings/accounts", { scroll: false });
@@ -65,7 +90,67 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
     router.refresh();
   }
 
-  const { spotify } = data;
+  async function handleSaveSocial(platform: "instagram" | "linkedin") {
+    const handle = platform === "instagram" ? igHandle : liHandle;
+    if (!handle.trim()) return;
+
+    if (platform === "instagram") setSavingIg(true);
+    else setSavingLi(true);
+
+    const result = await saveSocialLink(platform, handle);
+
+    if (platform === "instagram") setSavingIg(false);
+    else setSavingLi(false);
+
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success(`Saved ${platform === "instagram" ? "Instagram" : "LinkedIn"} handle.`, {
+      description: "Paste your verification code in your bio to earn a verified badge.",
+    });
+    router.refresh();
+  }
+
+  async function handleVerifySocial(platform: "instagram" | "linkedin") {
+    if (platform === "instagram") setVerifyingIg(true);
+    else setVerifyingLi(true);
+
+    const result = await verifySocialLink(platform);
+
+    if (platform === "instagram") setVerifyingIg(false);
+    else setVerifyingLi(false);
+
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success(`Verified ${platform === "instagram" ? "Instagram" : "LinkedIn"} profile!`);
+    router.refresh();
+  }
+
+  async function handleRemoveSocial(platform: "instagram" | "linkedin") {
+    const result = await removeSocialLink(platform);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    if (platform === "instagram") setIgHandle("");
+    else setLiHandle("");
+    toast.success(`Disconnected ${platform === "instagram" ? "Instagram" : "LinkedIn"}.`);
+    router.refresh();
+  }
+
+  function copyCode(code: string) {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast.success("Verification code copied to clipboard!");
+    window.setTimeout(() => setCopiedCode(null), 2000);
+  }
+
+  const { spotify, social } = data;
 
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-8">
@@ -104,6 +189,210 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
             {data.google.linked ? <Badge variant="neutral">Linked</Badge> : null}
           </div>
         ) : null}
+      </SettingsSection>
+
+      {/* Social Accounts Section */}
+      <SettingsSection
+        title="Social accounts"
+        footer="Your handles appear as direct links on your profile. Rumi never scrapes or calls social media APIs. Adding a verification code to your bio earns a verified trust badge."
+      >
+        {/* Instagram */}
+        <div className="flex flex-col gap-4 border-b border-line p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken">
+                <InstagramMark className="size-[18px] text-ink" />
+              </span>
+              <div>
+                <span className="block text-body-sm font-medium text-ink">Instagram</span>
+                <span className="block text-caption text-ink-3">
+                  {social.instagram.handle ? `@${social.instagram.handle}` : "Optional link on your profile"}
+                </span>
+              </div>
+            </div>
+            {social.instagram.verified ? (
+              <Badge variant="success">
+                <Check className="mr-1 size-3" strokeWidth={2.5} /> Verified
+              </Badge>
+            ) : null}
+          </div>
+
+          {social.instagram.handle ? (
+            <div className="flex flex-col gap-3 rounded-lg bg-surface-sunken p-3 text-caption">
+              {!social.instagram.verified && social.instagram.verificationCode ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-ink-2">
+                    To verify ownership, place this code in your Instagram bio:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-card px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
+                      {social.instagram.verificationCode}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyCode(social.instagram.verificationCode!)}
+                      aria-label="Copy verification code"
+                    >
+                      <Copy className="size-3.5 mr-1" />
+                      {copiedCode === social.instagram.verificationCode ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => void handleVerifySocial("instagram")}
+                      loading={verifyingIg}
+                    >
+                      Verify bio code
+                    </Button>
+                    <Button
+                      variant="danger-ghost"
+                      size="sm"
+                      onClick={() => void handleRemoveSocial("instagram")}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <a
+                    href={`https://instagram.com/${social.instagram.handle}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-ink underline"
+                  >
+                    View profile <ExternalLink className="size-3" />
+                  </a>
+                  <Button
+                    variant="danger-ghost"
+                    size="sm"
+                    onClick={() => void handleRemoveSocial("instagram")}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                placeholder="@username"
+                value={igHandle}
+                onChange={(e) => setIgHandle(e.target.value)}
+                className="max-w-sm"
+              />
+              <Button
+                size="md"
+                variant="secondary"
+                onClick={() => void handleSaveSocial("instagram")}
+                loading={savingIg}
+              >
+                Link Instagram
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* LinkedIn */}
+        <div className="flex flex-col gap-4 p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken">
+                <LinkedinMark className="size-[18px] text-ink" />
+              </span>
+              <div>
+                <span className="block text-body-sm font-medium text-ink">LinkedIn</span>
+                <span className="block text-caption text-ink-3">
+                  {social.linkedin.handle ? `in/${social.linkedin.handle}` : "Professional profile link"}
+                </span>
+              </div>
+            </div>
+            {social.linkedin.verified ? (
+              <Badge variant="success">
+                <Check className="mr-1 size-3" strokeWidth={2.5} /> Verified
+              </Badge>
+            ) : null}
+          </div>
+
+          {social.linkedin.handle ? (
+            <div className="flex flex-col gap-3 rounded-lg bg-surface-sunken p-3 text-caption">
+              {!social.linkedin.verified && social.linkedin.verificationCode ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-ink-2">
+                    To verify ownership, place this code in your LinkedIn headline or bio:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-card px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
+                      {social.linkedin.verificationCode}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copyCode(social.linkedin.verificationCode!)}
+                      aria-label="Copy verification code"
+                    >
+                      <Copy className="size-3.5 mr-1" />
+                      {copiedCode === social.linkedin.verificationCode ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => void handleVerifySocial("linkedin")}
+                      loading={verifyingLi}
+                    >
+                      Verify headline code
+                    </Button>
+                    <Button
+                      variant="danger-ghost"
+                      size="sm"
+                      onClick={() => void handleRemoveSocial("linkedin")}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <a
+                    href={`https://linkedin.com/in/${social.linkedin.handle}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-medium text-ink underline"
+                  >
+                    View profile <ExternalLink className="size-3" />
+                  </a>
+                  <Button
+                    variant="danger-ghost"
+                    size="sm"
+                    onClick={() => void handleRemoveSocial("linkedin")}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                placeholder="linkedin.com/in/username"
+                value={liHandle}
+                onChange={(e) => setLiHandle(e.target.value)}
+                className="max-w-sm"
+              />
+              <Button
+                size="md"
+                variant="secondary"
+                onClick={() => void handleSaveSocial("linkedin")}
+                loading={savingLi}
+              >
+                Link LinkedIn
+              </Button>
+            </div>
+          )}
+        </div>
       </SettingsSection>
 
       {spotify.enabled ? (

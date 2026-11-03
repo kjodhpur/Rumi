@@ -50,7 +50,7 @@ export interface MatchProfile {
 }
 
 export interface Reason {
-  key: FactorKey;
+  key: FactorKey | "social";
   label: string;
 }
 

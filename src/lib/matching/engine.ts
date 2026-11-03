@@ -282,7 +282,11 @@ export function satisfaction(owner: MatchPreferences, sims: Partial<Record<Facto
 export function evaluateMatch(
   a: MatchProfile,
   b: MatchProfile,
-  options: { areaNames?: Record<string, string> } = {},
+  options: {
+    areaNames?: Record<string, string>;
+    hasVerifiedSocial?: boolean;
+    sharedConnectionsCount?: number;
+  } = {},
 ): MatchEvaluation | null {
   if (a.id === b.id) return null;
   if (hardFilterFailure(a, b)) return null;
@@ -290,10 +294,25 @@ export function evaluateMatch(
   const sims = factorSimilarities(a, b);
   const sa = satisfaction(a.prefs, sims);
   const sb = satisfaction(b.prefs, sims);
-  const score = Math.round(100 * Math.sqrt(sa * sb));
+  let score = Math.round(100 * Math.sqrt(sa * sb));
+
+  // Small, capped trust bonus (max +5) for verified accounts or mutual connections.
+  const trustBonus = Math.min(
+    5,
+    (options.hasVerifiedSocial ? 2 : 0) +
+      (options.sharedConnectionsCount ? Math.min(3, options.sharedConnectionsCount) : 0),
+  );
+  if (trustBonus > 0 && score > 0) {
+    score = Math.min(100, score + trustBonus);
+  }
 
   const sharedArtists = a.music && b.music ? sharedArtistList(a, b) : [];
-  const ctx = { areaNames: options.areaNames ?? {}, sharedArtists };
+  const ctx: DescribeContext = {
+    areaNames: options.areaNames ?? {},
+    sharedArtists,
+    hasVerifiedSocial: Boolean(options.hasVerifiedSocial),
+    sharedConnectionsCount: options.sharedConnectionsCount ?? 0,
+  };
 
   return {
     score: Math.max(0, Math.min(100, score)),
@@ -315,6 +334,8 @@ function sharedArtistList(a: MatchProfile, b: MatchProfile) {
 interface DescribeContext {
   areaNames: Record<string, string>;
   sharedArtists: { id: string; name: string }[];
+  hasVerifiedSocial?: boolean;
+  sharedConnectionsCount?: number;
 }
 
 function describe(
@@ -351,6 +372,22 @@ function describe(
     const label = reasonText(c.key, viewer, other, ctx);
     if (label) reasons.push({ key: c.key, label });
     if (reasons.length === 3) break;
+  }
+
+  // If there is social trust verification, surface it in the top reasons
+  if (ctx.hasVerifiedSocial) {
+    if (reasons.length < 3) {
+      reasons.push({ key: "social", label: "Both have verified student accounts" });
+    } else {
+      reasons[2] = { key: "social", label: "Both have verified student accounts" };
+    }
+  } else if (ctx.sharedConnectionsCount && ctx.sharedConnectionsCount > 0) {
+    const label = `Shared campus connections (${ctx.sharedConnectionsCount})`;
+    if (reasons.length < 3) {
+      reasons.push({ key: "social", label });
+    } else {
+      reasons[2] = { key: "social", label };
+    }
   }
 
   const watchouts: Reason[] = [];

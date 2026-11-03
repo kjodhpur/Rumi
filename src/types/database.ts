@@ -529,6 +529,92 @@ isOneToOne: false
                       referencedColumns: ["id"]
                     }
                   ]
+                },"connections": {
+                  Row: {
+                    "confirmed_at": string | null,
+                    "created_at": string,
+                    "id": string,
+                    "source": string,
+                    "status": string,
+                    "user_a": string,
+                    "user_b": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "confirmed_at"?: string | null,
+                    "created_at"?: string,
+                    "id"?: string,
+                    "source"?: string,
+                    "status"?: string,
+                    "user_a": string,
+                    "user_b": string
+                  }
+                  Update: {
+                    "confirmed_at"?: string | null,
+                    "created_at"?: string,
+                    "id"?: string,
+                    "source"?: string,
+                    "status"?: string,
+                    "user_a"?: string,
+                    "user_b"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "connections_user_a_fkey"
+                      columns: ["user_a"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "connections_user_b_fkey"
+                      columns: ["user_b"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"social_links": {
+                  Row: {
+                    "created_at": string,
+                    "handle": string,
+                    "id": string,
+                    "platform": string,
+                    "updated_at": string,
+                    "user_id": string,
+                    "verification_code": string | null,
+                    "verified_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,
+                    "handle": string,
+                    "id"?: string,
+                    "platform": string,
+                    "updated_at"?: string,
+                    "user_id": string,
+                    "verification_code"?: string | null,
+                    "verified_at"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,
+                    "handle"?: string,
+                    "id"?: string,
+                    "platform"?: string,
+                    "updated_at"?: string,
+                    "user_id"?: string,
+                    "verification_code"?: string | null,
+                    "verified_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "social_links_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"conversation_members": {
                   Row: {
                     "conversation_id": string,"joined_at": string,"last_emailed_at": string | null,"last_read_at": string,"user_id": string
@@ -1199,6 +1285,11 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
+            "mutual_connections_details":
+{ Args: { "target_id": string }; Returns: {
+              "avatar_path": string | null,"first_name": string,"last_initial": string,"user_id": string
+            }[]
+                           },
             "accept_intro":
 { Args: { "p_intro_id": string }; Returns: string
                            },
