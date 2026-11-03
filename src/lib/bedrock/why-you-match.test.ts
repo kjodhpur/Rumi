@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   BEDROCK_NOT_CONFIGURED_ERROR,
+  BEDROCK_EFFORT,
   DEFAULT_BEDROCK_MODEL_ID,
   buildWhyYouMatchPrompt,
   fallbackSentences,
@@ -166,7 +167,8 @@ describe("readBedrockConfig", () => {
   });
 
   it("defaults region and model id, and honors BEDROCK_MODEL_ID", () => {
-    expect(DEFAULT_BEDROCK_MODEL_ID).toBe("us.anthropic.claude-sonnet-5-5");
+    expect(DEFAULT_BEDROCK_MODEL_ID).toBe("us.anthropic.claude-opus-5-5");
+    expect(BEDROCK_EFFORT).toBe("max");
     const config = readBedrockConfig({
       AWS_ACCESS_KEY_ID: "AKIAEXAMPLE",
       AWS_SECRET_ACCESS_KEY: "secret",
@@ -174,7 +176,7 @@ describe("readBedrockConfig", () => {
     expect(config).toMatchObject({
       ok: true,
       region: "us-east-1",
-      modelId: "us.anthropic.claude-sonnet-5-5",
+      modelId: "us.anthropic.claude-opus-5-5",
       accessKeyId: "AKIAEXAMPLE",
     });
 
