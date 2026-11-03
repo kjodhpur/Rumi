@@ -60,3 +60,13 @@ export function generateVerificationCode(): string {
 export function isSocialPlatform(val: string): val is SocialPlatform {
   return val === "instagram" || val === "linkedin";
 }
+
+/**
+ * Checks whether a student's public bio or headline contains their unique RUMI verification code.
+ * Case-insensitive match, stripping spaces or dashes.
+ */
+export function verifyBioCode(bioText: string, expectedCode: string): boolean {
+  if (!bioText || !expectedCode) return false;
+  const normalize = (t: string) => t.toUpperCase().replace(/[\s\-_]/g, "");
+  return normalize(bioText).includes(normalize(expectedCode));
+}

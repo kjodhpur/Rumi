@@ -4,6 +4,7 @@ import {
   cleanHandle,
   generateVerificationCode,
   isSocialPlatform,
+  verifyBioCode,
 } from "./links";
 
 describe("social links handling", () => {
@@ -34,5 +35,13 @@ describe("social links handling", () => {
     expect(isSocialPlatform("instagram")).toBe(true);
     expect(isSocialPlatform("linkedin")).toBe(true);
     expect(isSocialPlatform("twitter")).toBe(false);
+  });
+
+  it("verifies bio verification codes correctly", () => {
+    const code = "RUMI-9K4P";
+    expect(verifyBioCode("ASU CS '28 | Tooker House | RUMI-9K4P", code)).toBe(true);
+    expect(verifyBioCode("rumi-9k4p in bio", code)).toBe(true);
+    expect(verifyBioCode("ASU Freshman | No code here", code)).toBe(false);
+    expect(verifyBioCode("", code)).toBe(false);
   });
 });

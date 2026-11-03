@@ -12,6 +12,7 @@ import {
   isSocialPlatform,
   type SocialPlatform,
 } from "@/lib/social/links";
+import { recomputeMatchesFor } from "@/lib/matching/recompute";
 
 const uuidSchema = z.string().uuid();
 
@@ -67,8 +68,15 @@ export async function verifySocialLink(platform: SocialPlatform): Promise<Action
 
   if (error) return fail("Couldn't verify handle. Please try again.");
 
+  try {
+    await recomputeMatchesFor(user.id);
+  } catch (err) {
+    console.error("[matching] Failed to recompute after social verify", err);
+  }
+
   revalidatePath("/settings/accounts");
   revalidatePath(`/profile/${user.id}`);
+  revalidatePath("/matches");
   return ok();
 }
 
@@ -87,8 +95,15 @@ export async function removeSocialLink(platform: SocialPlatform): Promise<Action
 
   if (error) return fail("Couldn't remove social link.");
 
+  try {
+    await recomputeMatchesFor(user.id);
+  } catch (err) {
+    console.error("[matching] Failed to recompute after social remove", err);
+  }
+
   revalidatePath("/settings/accounts");
   revalidatePath(`/profile/${user.id}`);
+  revalidatePath("/matches");
   return ok();
 }
 
@@ -137,6 +152,13 @@ export async function confirmPeerConnection(connectionId: string): Promise<Actio
 
   if (error) return fail("Couldn't confirm connection.");
 
+  try {
+    await recomputeMatchesFor(user.id);
+  } catch (err) {
+    console.error("[matching] Failed to recompute after peer confirm", err);
+  }
+
+  revalidatePath("/matches");
   return ok();
 }
 

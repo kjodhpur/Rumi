@@ -80,13 +80,21 @@ export async function loadSchoolPool(schoolId: string) {
     .eq("is_staff", false);
   if (school?.hide_seed_profiles) poolQuery = poolQuery.eq("is_seed", false);
   const today = new Date().toISOString().slice(0, 10);
-  const [people, areas, constraints] = await Promise.all([
+  const [people, areas, constraints, socialLinks, connections] = await Promise.all([
     poolQuery.returns<PoolRow[]>(),
     admin.from("areas").select("slug, name").eq("school_id", schoolId),
     admin
       .from("accommodation_constraints")
       .select("user_id, constraint_key, expires_on")
       .eq("school_id", schoolId),
+    admin
+      .from("social_links")
+      .select("user_id")
+      .not("verified_at", "is", null),
+    admin
+      .from("connections")
+      .select("user_a, user_b")
+      .eq("status", "confirmed"),
   ]);
   if (people.error) throw people.error;
 
@@ -96,6 +104,15 @@ export async function loadSchoolPool(schoolId: string) {
     const existing = userAccommodations.get(c.user_id) ?? [];
     existing.push(c.constraint_key as AccommodationConstraintKey);
     userAccommodations.set(c.user_id, existing);
+  }
+
+  const verifiedUsers = new Set((socialLinks.data ?? []).map((s) => s.user_id));
+  const userConnections = new Map<string, Set<string>>();
+  for (const conn of connections.data ?? []) {
+    if (!userConnections.has(conn.user_a)) userConnections.set(conn.user_a, new Set());
+    if (!userConnections.has(conn.user_b)) userConnections.set(conn.user_b, new Set());
+    userConnections.get(conn.user_a)!.add(conn.user_b);
+    userConnections.get(conn.user_b)!.add(conn.user_a);
   }
 
   const pool: MatchProfile[] = [];
@@ -113,7 +130,7 @@ export async function loadSchoolPool(schoolId: string) {
   }
   // "Tempe — near campus" reads better as "Tempe" inside a sentence.
   const areaNames = Object.fromEntries((areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]));
-  return { pool, areaNames };
+  return { pool, areaNames, verifiedUsers, userConnections };
 }
 
 function toRow(
@@ -160,7 +177,7 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
     return { matches: 0, strongNotified: 0 };
   }
 
-  const { pool, areaNames } = await loadSchoolPool(me.school_id);
+  const { pool, areaNames, verifiedUsers, userConnections } = await loadSchoolPool(me.school_id);
   const viewer = pool.find((p) => p.id === userId);
   if (!viewer) return { matches: 0, strongNotified: 0 };
 
@@ -176,9 +193,25 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
   const keep: string[] = [];
   const strong: { viewerId: string; score: number }[] = [];
 
+  const myConns = userConnections.get(userId);
+
   for (const other of pool) {
     if (other.id === userId) continue;
-    const result = evaluateMatch(viewer, other, { areaNames });
+
+    const hasVerifiedSocial = verifiedUsers.has(userId) && verifiedUsers.has(other.id);
+    const theirConns = userConnections.get(other.id);
+    let sharedConnectionsCount = 0;
+    if (myConns && theirConns) {
+      for (const id of myConns) {
+        if (theirConns.has(id)) sharedConnectionsCount++;
+      }
+    }
+
+    const result = evaluateMatch(viewer, other, {
+      areaNames,
+      hasVerifiedSocial,
+      sharedConnectionsCount,
+    });
     if (!result) continue;
     keep.push(other.id);
     rows.push(toRow(userId, other.id, result, "forA", now));
