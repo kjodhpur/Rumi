@@ -54,6 +54,10 @@ The school is configurable: allowed email domains and neighborhoods live in the 
 - **Groups.**
   - Teams of 2–4 with combined fit and pairwise compatibility.
   - Invites, join requests and a group chat.
+  - **Roommate agreement:**
+    - A draft prefilled from everyone's answers: quiet hours, chores, guests, noise, shared items, smoking/drinking/pets, study time, temperature and conflict, plus whatever the match flagged to talk through.
+    - Members edit and accept section by section, see what changed, sign with their typed name, save a PDF and reopen it anytime.
+- **Conversation starters.** In one-to-one chats, each watch-out becomes a couple of ready-to-send openers above the composer.
 - **Notifications.**
   - In-app (live) and email for intros, messages, groups and strong new matches.
   - A daily digest email, with per-channel toggles.
@@ -202,7 +206,8 @@ npm test
 - Ranked matches: profile overlay, save, Saved view and filters.
 - Intro → accept → realtime chat with typing indicator and read receipts, across two browsers.
 - Staff: a platform admin invites a housing admin, who accepts; the last-admin rule; turning access off; students switching housing sharing on and off.
-- Staff dashboard: term setup, overview, unmatched list, an auto-pair run approved and sent, both students saying yes, and the new pair approved.
+- Staff dashboard: term setup, overview, unmatched list, an auto-pair run approved and sent, both students saying yes, the new pair approved, and a StarRez CSV download.
+- Roommate agreement: draft, edit, accept, sign (with a wrong-name check), print and reopen, across two browsers; conversation starters fill the composer.
 - Staff specs also run axe and fail on any serious or critical WCAG 2.1 AA violation.
 
 Onboarding and matching also run at a 375px mobile viewport.

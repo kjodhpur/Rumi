@@ -98,6 +98,8 @@ export interface Pairing {
   combinedScore: number | null;
   /** Some pair in the group fails a hard filter (dealbreaker). */
   dealbreaker: boolean;
+  /** Roommate agreement status only; staff never see its text. */
+  agreement: "draft" | "signed" | "reopened" | "void" | null;
 }
 
 export async function loadPairings(schoolId: string): Promise<Pairing[] | null> {
@@ -139,6 +141,7 @@ export async function loadPairings(schoolId: string): Promise<Pairing[] | null> 
       approvedAt: r.approved_at,
       combinedScore: scored.length ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : null,
       dealbreaker: pairScores.some((p) => p.score === null),
+      agreement: (r.agreement_status as Pairing["agreement"]) ?? null,
     };
   });
 }

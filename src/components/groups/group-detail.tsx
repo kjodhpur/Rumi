@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { Crown, LogOut, MessageCircle, MoreHorizontal, UserPlus, Users } from "lucide-react";
+import { ChevronRight, Crown, FileSignature, LogOut, MessageCircle, MoreHorizontal, UserPlus, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,16 @@ import { revealDelay, spring } from "@/lib/motion";
 import { useEntrance } from "@/hooks/use-entrance";
 import { moveInLabel } from "@/components/matches/card-meta";
 
-export function GroupDetailView({ userId, group }: { userId: string; group: GroupDetail }) {
+export function GroupDetailView({
+  userId,
+  group,
+  agreementStatus,
+}: {
+  userId: string;
+  group: GroupDetail;
+  /** The current agreement's status, or null when there isn't one for these members. */
+  agreementStatus: "draft" | "signed" | "reopened" | null;
+}) {
   const entrance = useEntrance(group.candidates.map((c) => c.id));
   const router = useRouter();
   const overlay = useProfileOverlay();
@@ -172,6 +181,28 @@ export function GroupDetailView({ userId, group }: { userId: string; group: Grou
           )}
         </div>
       </section>
+
+      {group.members.length >= 2 ? (
+        <Link
+          href={`/groups/${group.id}/agreement`}
+          className="mt-4 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+        >
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
+            <FileSignature className="size-5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-body font-semibold text-ink">Roommate agreement</span>
+            <span className="mt-0.5 block text-body-sm text-ink-2">
+              {agreementStatus === "signed"
+                ? "Signed by everyone. Reopen it anytime things change."
+                : agreementStatus
+                  ? "In progress. Review each section and sign when you all agree."
+                  : "Agree on quiet hours, guests, chores and more. We've drafted it from your profiles."}
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
+        </Link>
+      ) : null}
 
       {group.status === "full" && group.conversationId ? (
         <section className="mt-4 flex flex-col gap-4 rounded-xl bg-ink p-6 text-ink-inverse sm:flex-row sm:items-center sm:justify-between">

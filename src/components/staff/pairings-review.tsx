@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AlertTriangle, CircleCheck, EyeOff, Sparkles, Users } from "lucide-react";
+import { AlertTriangle, CircleCheck, EyeOff, FileSignature, Sparkles, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -180,6 +180,15 @@ export function PairingsReview({
                       {p.dealbreaker ? (
                         <Badge variant="danger">
                           <AlertTriangle aria-hidden /> Dealbreaker
+                        </Badge>
+                      ) : null}
+                      {p.agreement === "signed" ? (
+                        <Badge variant="outline">
+                          <FileSignature aria-hidden /> Agreement signed
+                        </Badge>
+                      ) : p.agreement === "draft" || p.agreement === "reopened" ? (
+                        <Badge variant="outline">
+                          <FileSignature aria-hidden /> Agreement in progress
                         </Badge>
                       ) : null}
                       {p.members.some((m) => m.hidden) ? (

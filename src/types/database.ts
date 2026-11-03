@@ -25,6 +25,104 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"agreement_events": {
+                  Row: {
+                    "actor_id": string | null,"after": string | null,"agreement_id": string,"before": string | null,"created_at": string,"id": string,"kind": string,"section_key": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "actor_id"?: string | null,"after"?: string | null,"agreement_id": string,"before"?: string | null,"created_at"?: string,"id"?: string,"kind": string,"section_key"?: string | null
+                  }
+                  Update: {
+                    "actor_id"?: string | null,"after"?: string | null,"agreement_id"?: string,"before"?: string | null,"created_at"?: string,"id"?: string,"kind"?: string,"section_key"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agreement_events_actor_id_fkey"
+      columns: ["actor_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agreement_events_agreement_id_fkey"
+      columns: ["agreement_id"]
+isOneToOne: false
+      referencedRelation: "agreements"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"agreement_sections": {
+                  Row: {
+                    "accepted_by": (string)[],"agreement_id": string,"content": string,"key": string,"position": number,"proposed_by": string | null,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accepted_by"?: (string)[],"agreement_id": string,"content": string,"key": string,"position": number,"proposed_by"?: string | null,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "accepted_by"?: (string)[],"agreement_id"?: string,"content"?: string,"key"?: string,"position"?: number,"proposed_by"?: string | null,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agreement_sections_agreement_id_fkey"
+      columns: ["agreement_id"]
+isOneToOne: false
+      referencedRelation: "agreements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agreement_sections_proposed_by_fkey"
+      columns: ["proposed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"agreement_signatures": {
+                  Row: {
+                    "agreement_id": string,"signed_at": string,"typed_name": string,"user_id": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agreement_id": string,"signed_at"?: string,"typed_name": string,"user_id": string,"version": number
+                  }
+                  Update: {
+                    "agreement_id"?: string,"signed_at"?: string,"typed_name"?: string,"user_id"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agreement_signatures_agreement_id_fkey"
+      columns: ["agreement_id"]
+isOneToOne: false
+      referencedRelation: "agreements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agreement_signatures_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"agreements": {
+                  Row: {
+                    "created_at": string,"group_id": string,"id": string,"member_ids": (string)[],"signed_at": string | null,"status": string,"updated_at": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"group_id": string,"id"?: string,"member_ids": (string)[],"signed_at"?: string | null,"status"?: string,"updated_at"?: string,"version"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"group_id"?: string,"id"?: string,"member_ids"?: (string)[],"signed_at"?: string | null,"status"?: string,"updated_at"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agreements_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: true
+      referencedRelation: "groups"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"areas": {
                   Row: {
                     "description": string,"id": string,"name": string,"school_id": string,"slug": string,"sort_order": number
@@ -1058,7 +1156,7 @@ isOneToOne: true
                            },
 "staff_pairings":
 { Args: { "p_school": string }; Returns: {
-              "approved_at": string,"created_at": string,"group_id": string,"members": Json,"name": string,"pair_scores": Json,"snapshot": (string)[],"staff_notes": string,"status": string,"target_size": number
+              "agreement_status": string,"approved_at": string,"created_at": string,"group_id": string,"members": Json,"name": string,"pair_scores": Json,"snapshot": (string)[],"staff_notes": string,"status": string,"target_size": number
             }[]
                            },
 "staff_scope_includes":

@@ -19,6 +19,7 @@ export const LIMITS = {
   suggestionResponsesPerHour: { max: 30, window: 3600 },
   staffExportsPerHour: { max: 30, window: 3600 },
   studentIdChangesPerHour: { max: 10, window: 3600 },
+  agreementEditsPerHour: { max: 120, window: 3600 },
 } as const;
 
 /**

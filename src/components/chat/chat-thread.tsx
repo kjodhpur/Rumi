@@ -27,6 +27,8 @@ import { getSupabaseBrowser } from "@/lib/supabase/client";
 import { loadOlderMessages, markRead, sendMessage } from "@/app/actions/messages";
 import { leaveGroup } from "@/app/actions/groups";
 import type { ChatMember, ChatMessage } from "@/lib/messages";
+import type { ChatStarter } from "@/lib/starters";
+import { StarterChips } from "./starter-chips";
 import { cn } from "@/lib/utils";
 import { PAYMENT_SAFETY_TIP } from "@/lib/safety-copy";
 import { springSnappy } from "@/lib/motion";
@@ -45,7 +47,7 @@ interface Thread {
 
 const GROUP_GAP_MS = 5 * 60 * 1000;
 
-export function ChatThread({ userId, thread }: { userId: string; thread: Thread }) {
+export function ChatThread({ userId, thread, starters = [] }: { userId: string; thread: Thread; starters?: ChatStarter[] }) {
   const router = useRouter();
   const [messages, setMessages] = React.useState<ChatMessage[]>(thread.messages);
   const [members, setMembers] = React.useState<ChatMember[]>(thread.members);
@@ -60,6 +62,7 @@ export function ChatThread({ userId, thread }: { userId: string; thread: Thread 
   const [blocked, setBlocked] = React.useState(thread.blocked);
 
   const scroller = React.useRef<HTMLDivElement>(null);
+  const composer = React.useRef<HTMLTextAreaElement>(null);
   const topSentinel = React.useRef<HTMLDivElement>(null);
   const channelRef = React.useRef<RealtimeChannel | null>(null);
   const lastTypingSent = React.useRef(0);
@@ -413,6 +416,17 @@ export function ChatThread({ userId, thread }: { userId: string; thread: Thread 
               You can&apos;t send messages in this conversation.
             </p>
           ) : (
+            <>
+            {starters.length > 0 && !draft ? (
+              <StarterChips
+                conversationId={thread.id}
+                starters={starters}
+                onPick={(line) => {
+                  setDraft(line);
+                  composer.current?.focus();
+                }}
+              />
+            ) : null}
             <form
               className="mx-auto flex max-w-[820px] items-end gap-2 px-3 py-2.5 sm:px-6 sm:py-3"
               onSubmit={(e) => {
@@ -421,6 +435,7 @@ export function ChatThread({ userId, thread }: { userId: string; thread: Thread 
               }}
             >
               <Textarea
+                ref={composer}
                 aria-label={`Message ${thread.title}`}
                 placeholder={thread.kind === "group" ? `Message ${thread.title}` : `Message ${other?.firstName ?? ""}`}
                 rows={1}
@@ -451,6 +466,7 @@ export function ChatThread({ userId, thread }: { userId: string; thread: Thread 
                 <ArrowUp className="size-5" strokeWidth={2.25} />
               </motion.button>
             </form>
+            </>
           )}
         </div>
       </div>

@@ -127,6 +127,32 @@ describe.skipIf(!available)("RLS: dashboard, pairings and auto-pair", () => {
     expect(write.error).not.toBeNull();
   });
 
+  it("agreements are readable by group members only and never writable directly", async () => {
+    const { data: group } = await admin.from("groups").insert({ school_id: "asu", name: `RLS ${run}`, owner_id: ids.a, target_size: 2 }).select("id").single();
+    await admin.from("group_members").insert([
+      { group_id: group!.id, user_id: ids.a, role: "owner" },
+      { group_id: group!.id, user_id: ids.b, role: "member" },
+    ]);
+    const { data: agreement } = await admin.from("agreements").insert({ group_id: group!.id, member_ids: [ids.a, ids.b] }).select("id").single();
+    await admin.from("agreement_sections").insert({ agreement_id: agreement!.id, key: "sleep", title: "Sleep", position: 0, content: "Quiet at 11." });
+    try {
+      expect((await clients.a.from("agreement_sections").select("content").eq("agreement_id", agreement!.id)).data).toHaveLength(1);
+      expect((await clients.c.from("agreement_sections").select("content").eq("agreement_id", agreement!.id)).data).toEqual([]);
+      expect((await clients.lead.from("agreements").select("id").eq("id", agreement!.id)).data).toEqual([]);
+      const write = await clients.a.from("agreement_sections").update({ accepted_by: [ids.a, ids.b] }).eq("agreement_id", agreement!.id).select("key");
+      expect(write.data ?? []).toEqual([]);
+      const sign = await clients.a.from("agreement_signatures").insert({ agreement_id: agreement!.id, user_id: ids.a, version: 1, typed_name: "Forged" });
+      expect(sign.error).not.toBeNull();
+      // Staff see the status (never the text) through staff_pairings once a member shares.
+      await admin.from("consents").insert({ user_id: ids.a, school_id: "asu", kind: "share_with_housing", version: "rls" });
+      const pairings = await clients.lead.rpc("staff_pairings", { p_school: "asu" });
+      expect(pairings.data?.find((p) => p.group_id === group!.id)?.agreement_status).toBe("draft");
+    } finally {
+      await admin.from("groups").delete().eq("id", group!.id);
+      await admin.from("consents").delete().eq("user_id", ids.a);
+    }
+  });
+
   it("students can't write proposals or pairings directly", async () => {
     const update = await clients.a.from("auto_pair_proposals").update({ status: "accepted" }).eq("id", proposalId).select("id");
     expect(update.data ?? []).toEqual([]);

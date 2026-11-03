@@ -10,8 +10,8 @@ The plan is [`MASTER-PROMPT.md`](MASTER-PROMPT.md) (its first-pass build order i
 | Phase 0 — staff roles, consent, audit, retention | Done | `docs/phase-0.md`. Staff workspace at `/staff`, invites, roles with building scopes for RAs, last-admin rule, consent (onboarding step + Settings → Privacy), append-only audit log, per-school retention with a nightly job. RLS tests per role; e2e with axe. |
 | Phase 1 core + 1.C — dashboard, pairings, term setup, auto-pair | Done | `docs/phase-1.md`. Live overview (KPIs, funnel, trends, score distribution with "<5" suppression), unmatched students with nudges, pairing review, term setup, auto-pair (blossom matching, tested against brute force and at 2,000 students) with student accept/decline. RLS tests; e2e with axe. Auto-grouping into 3–4 is later work. |
 | Phase 2a — StarRez CSV export | Done | `docs/phase-2a.md`. Approved, fully-sharing groups to CSV with configurable columns, optional encrypted student ID, formula-safe CSV, audited downloads. Import comes later. |
-| Phase 4 + 4.1 — roommate agreements, conversation starters | Next | |
-| Phase 5 core — check-ins, risk, RA workspace | Pending | |
+| Phase 4 + 4.1 — roommate agreements, conversation starters | Done | `docs/phase-4.md`. Prefilled agreement per group, section-by-section edit/accept with history, typed-name signing, print-to-PDF page, reopen/void; staff see status only. Template-based conversation starters in one-to-one chats. Staff-editable templates, room calendar and chores/expenses are later work. |
+| Phase 5 core — check-ins, risk, RA workspace | Next | |
 | Phase 6 core — outcomes report | Pending | |
 | Phase 7.2 — mutual connections | Pending | |
 | Demo University seed | Pending | |
