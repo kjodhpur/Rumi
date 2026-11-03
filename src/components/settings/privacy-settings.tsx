@@ -25,12 +25,14 @@ export function PrivacySettings({
   blocked: initialBlocked,
   consents,
   consentHistory,
+  studentIdLast4,
 }: {
   initial: { is_hidden: boolean; verified_only: boolean };
   verifiedUntil: string | null;
   blocked: Blocked[];
   consents: ConsentRow[];
   consentHistory: ConsentEvent[];
+  studentIdLast4: string | null;
 }) {
   const [values, setValues] = React.useState(initial);
   const [blocked, setBlocked] = React.useState(initialBlocked);
@@ -101,7 +103,7 @@ export function PrivacySettings({
         />
       </SettingsSection>
 
-      <ConsentSettings consents={consents} history={consentHistory} />
+      <ConsentSettings consents={consents} history={consentHistory} studentIdLast4={studentIdLast4} />
 
       <SettingsSection title="Blocked" footer="Blocked people can't see you, message you, or appear in your matches. They aren't notified.">
         {blocked.length === 0 ? (

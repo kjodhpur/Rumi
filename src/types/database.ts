@@ -375,6 +375,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"integration_mappings": {
+                  Row: {
+                    "direction": string,"mapping": NonNullable<Json>,"provider": string,"school_id": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "direction": string,"mapping": NonNullable<Json>,"provider": string,"school_id": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "direction"?: string,"mapping"?: NonNullable<Json>,"provider"?: string,"school_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "integration_mappings_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "integration_mappings_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"intros": {
                   Row: {
                     "conversation_id": string | null,"created_at": string,"id": string,"message": string,"recipient_id": string,"responded_at": string | null,"sender_id": string,"status": string
@@ -539,14 +565,14 @@ isOneToOne: false
                   ]
                 },"pairings": {
                   Row: {
-                    "approved_at": string | null,"approved_by": string | null,"created_at": string,"group_id": string | null,"id": string,"member_ids": (string)[],"school_id": string,"staff_notes": string | null,"status": string,"updated_at": string,"updated_by": string | null
+                    "approved_at": string | null,"approved_by": string | null,"created_at": string,"exported_at": string | null,"group_id": string | null,"id": string,"member_ids": (string)[],"school_id": string,"staff_notes": string | null,"status": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id": string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"exported_at"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id": string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id"?: string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"exported_at"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id"?: string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -859,14 +885,14 @@ isOneToOne: false
                   ]
                 },"user_settings": {
                   Row: {
-                    "created_at": string,"email": string,"last_digest_at": string | null,"last_name": string,"notify_email_groups": boolean,"notify_email_intros": boolean,"notify_email_matches": boolean,"notify_email_messages": boolean,"notify_inapp_groups": boolean,"notify_inapp_intros": boolean,"notify_inapp_matches": boolean,"notify_inapp_messages": boolean,"theme": string,"updated_at": string,"user_id": string
+                    "created_at": string,"email": string,"last_digest_at": string | null,"last_name": string,"notify_email_groups": boolean,"notify_email_intros": boolean,"notify_email_matches": boolean,"notify_email_messages": boolean,"notify_inapp_groups": boolean,"notify_inapp_intros": boolean,"notify_inapp_matches": boolean,"notify_inapp_messages": boolean,"student_id_enc": string | null,"theme": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"email": string,"last_digest_at"?: string | null,"last_name"?: string,"notify_email_groups"?: boolean,"notify_email_intros"?: boolean,"notify_email_matches"?: boolean,"notify_email_messages"?: boolean,"notify_inapp_groups"?: boolean,"notify_inapp_intros"?: boolean,"notify_inapp_matches"?: boolean,"notify_inapp_messages"?: boolean,"theme"?: string,"updated_at"?: string,"user_id": string
+                    "created_at"?: string,"email": string,"last_digest_at"?: string | null,"last_name"?: string,"notify_email_groups"?: boolean,"notify_email_intros"?: boolean,"notify_email_matches"?: boolean,"notify_email_messages"?: boolean,"notify_inapp_groups"?: boolean,"notify_inapp_intros"?: boolean,"notify_inapp_matches"?: boolean,"notify_inapp_messages"?: boolean,"student_id_enc"?: string | null,"theme"?: string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"email"?: string,"last_digest_at"?: string | null,"last_name"?: string,"notify_email_groups"?: boolean,"notify_email_intros"?: boolean,"notify_email_matches"?: boolean,"notify_email_messages"?: boolean,"notify_inapp_groups"?: boolean,"notify_inapp_intros"?: boolean,"notify_inapp_matches"?: boolean,"notify_inapp_messages"?: boolean,"theme"?: string,"updated_at"?: string,"user_id"?: string
+                    "created_at"?: string,"email"?: string,"last_digest_at"?: string | null,"last_name"?: string,"notify_email_groups"?: boolean,"notify_email_intros"?: boolean,"notify_email_matches"?: boolean,"notify_email_messages"?: boolean,"notify_inapp_groups"?: boolean,"notify_inapp_intros"?: boolean,"notify_inapp_matches"?: boolean,"notify_inapp_messages"?: boolean,"student_id_enc"?: string | null,"theme"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {

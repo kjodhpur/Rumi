@@ -17,6 +17,8 @@ export const LIMITS = {
   nudgeCampaignsPerDay: { max: 10, window: 86400 },
   autoPairRunsPerHour: { max: 20, window: 3600 },
   suggestionResponsesPerHour: { max: 30, window: 3600 },
+  staffExportsPerHour: { max: 30, window: 3600 },
+  studentIdChangesPerHour: { max: 10, window: 3600 },
 } as const;
 
 /**

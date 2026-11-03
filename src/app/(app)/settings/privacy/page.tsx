@@ -5,6 +5,7 @@ import { photoUrl } from "@/lib/photos";
 import { verifiedUntil } from "@/lib/verification";
 import { PrivacySettings } from "@/components/settings/privacy-settings";
 import { CONSENT_COPY, consentTitle, isConsentKind, visibleConsents } from "@/lib/consent";
+import { decrypt } from "@/lib/crypto";
 
 export const metadata: Metadata = { title: "Privacy & safety" };
 export const dynamic = "force-dynamic";
@@ -23,6 +24,15 @@ export default async function PrivacySettingsPage() {
     .eq("id", profile?.school_id ?? "")
     .maybeSingle();
   const office = school?.housing_office_name ?? null;
+  const { data: settings } = await supabase.from("user_settings").select("student_id_enc").eq("user_id", user.id).maybeSingle();
+  let studentIdLast4: string | null = null;
+  if (settings?.student_id_enc) {
+    try {
+      studentIdLast4 = decrypt(settings.student_id_enc).slice(-4);
+    } catch {
+      studentIdLast4 = null;
+    }
+  }
   const active = new Set((consentRows ?? []).filter((c) => !c.revoked_at).map((c) => c.kind));
 
   const ids = (blocks ?? []).map((b) => b.blocked_id);
@@ -47,6 +57,7 @@ export default async function PrivacySettingsPage() {
           ? [{ id: c.id, title: consentTitle(c.kind, office), grantedAt: c.granted_at, revokedAt: c.revoked_at }]
           : [],
       )}
+      studentIdLast4={studentIdLast4}
       blocked={ids.flatMap((id) => {
         const p = byId.get(id);
         return p ? [{ id, firstName: p.first_name, lastInitial: p.last_initial, avatarUrl: photoUrl(p.avatar_path) }] : [];

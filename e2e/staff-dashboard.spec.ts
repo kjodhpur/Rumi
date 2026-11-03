@@ -130,4 +130,23 @@ test("housing staff set a term, read the overview, auto-pair two students and ap
   await ready(page);
   await expect(page.getByText(/Anaya T\., Bennett T\.|Bennett T\., Anaya T\./)).toBeVisible();
   await expectAccessible(page);
+
+  // The approved pair exports to a StarRez CSV with the school's own column names.
+  await page.goto("/staff/integrations/starrez");
+  await ready(page);
+  await expect(page.getByRole("cell", { name: ana.email })).toBeVisible();
+  await page.getByLabel("CSV header for School email").fill("PrimaryEmail");
+  await page.getByRole("button", { name: "Save columns" }).click();
+  await expect(page.getByText("Columns saved")).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "PrimaryEmail" })).toBeVisible();
+  await expectAccessible(page);
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download CSV" }).click();
+  const file = await (await download).path();
+  const csv = (await import("node:fs")).readFileSync(file!, "utf8");
+  expect(csv.split("\r\n")[0]).toBe("EntryID,PrimaryEmail,GroupName,GroupLeader,GroupSize,Term");
+  expect(csv).toContain(ana.email);
+  expect(csv).toContain(ben.email);
+  expect(csv).toContain("E2E Fall 2027");
+  await admin.from("integration_mappings").delete().eq("school_id", "asu");
 });

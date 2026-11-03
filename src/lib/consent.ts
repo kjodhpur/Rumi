@@ -23,7 +23,7 @@ export const CONSENT_COPY: Record<ConsentKind, ConsentCopy> = {
   share_with_housing: {
     title: "Share my Rumi results with {office}",
     shares:
-      "Your first name, last initial, match scores, group and roommate agreement status. Staff can use them to help place you. Without this, they only see totals that include you.",
+      "Your name, school email, student ID (if you add one), match scores, group and roommate agreement status, so staff can help place you and match your Rumi group to your housing application. Without this, they only see totals that include you.",
     needsOffice: true,
   },
   checkins: {

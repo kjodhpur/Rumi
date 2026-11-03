@@ -116,6 +116,17 @@ describe.skipIf(!available)("RLS: dashboard, pairings and auto-pair", () => {
     expect((await clients.b.rpc("respond_housing_suggestion", { p_id: proposalId, p_accept: true })).error?.message).toContain("not_pending");
   });
 
+  it("export column mappings are housing-admin only, and student IDs stay with their owner", async () => {
+    await admin.from("integration_mappings").upsert({ school_id: "asu", provider: "starrez", direction: "export", mapping: [] });
+    expect((await clients.lead.from("integration_mappings").select("school_id")).data).toEqual([]);
+    expect((await clients.a.from("integration_mappings").select("school_id")).data).toEqual([]);
+    await admin.from("integration_mappings").delete().eq("school_id", "asu");
+    await admin.from("user_settings").update({ student_id_enc: "sealed" }).eq("user_id", ids.a);
+    expect((await clients.b.from("user_settings").select("student_id_enc").eq("user_id", ids.a)).data).toEqual([]);
+    const write = await clients.a.from("user_settings").update({ student_id_enc: "forged" }).eq("user_id", ids.a);
+    expect(write.error).not.toBeNull();
+  });
+
   it("students can't write proposals or pairings directly", async () => {
     const update = await clients.a.from("auto_pair_proposals").update({ status: "accepted" }).eq("id", proposalId).select("id");
     expect(update.data ?? []).toEqual([]);

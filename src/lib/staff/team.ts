@@ -163,4 +163,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   viewed_unmatched_students: "Opened the student list",
   viewed_pairings: "Opened pairings",
   viewed_auto_pair: "Opened auto-pair results",
+  viewed_starrez_export: "Opened the StarRez export",
+  starrez_exported: "Downloaded the StarRez export",
+  starrez_mapping_changed: "Changed StarRez export columns",
 };

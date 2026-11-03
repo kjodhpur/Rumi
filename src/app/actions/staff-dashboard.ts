@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { assertRole } from "@/lib/staff/context";
 import { logAudit } from "@/lib/staff/audit";
 import { assignPairs } from "@/lib/matching/assign";
+import { parseMapping } from "@/lib/integrations/starrez/csv";
 import { sendEmail } from "@/lib/email/send";
 import { housingNudgeEmail, housingSuggestionEmail } from "@/lib/email/templates";
 import { cleanText } from "@/lib/sanitize";
@@ -389,4 +390,29 @@ export async function sendApprovedProposals(input: { schoolId: string }): Promis
   await logAudit({ actorId, schoolId: school, action: "proposals_sent", entity: "auto_pair_proposal", meta: { count: valid.length, invalid: invalid.length } });
   revalidatePath("/staff/pairings/auto");
   return ok({ sent: valid.length });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StarRez export mapping
+// ─────────────────────────────────────────────────────────────────────────────
+
+const mappingInput = z.object({
+  schoolId,
+  columns: z.array(z.object({ field: z.string(), header: z.string().max(60) })).min(1, "Include at least one column.").max(20),
+});
+
+export async function saveExportMapping(raw: z.input<typeof mappingInput>): Promise<ActionResult> {
+  const parsed = mappingInput.safeParse(raw);
+  if (!parsed.success) return fail(firstError(parsed.error));
+  const { schoolId: school, columns } = parsed.data;
+  const actorId = await assertRole(school, "export");
+  if (!actorId) return fail("Only housing admins can change the export.");
+  const mapping = parseMapping(columns);
+  const { error } = await createAdminClient()
+    .from("integration_mappings")
+    .upsert({ school_id: school, provider: "starrez", direction: "export", mapping: mapping as unknown as NonNullable<Json>, updated_by: actorId, updated_at: new Date().toISOString() });
+  if (error) return fail("Couldn't save the columns.");
+  await logAudit({ actorId, schoolId: school, action: "starrez_mapping_changed", entity: "integration_mapping", meta: { columns: mapping.length } });
+  revalidatePath("/staff/integrations/starrez");
+  return ok();
 }
