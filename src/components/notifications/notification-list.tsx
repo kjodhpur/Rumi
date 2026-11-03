@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, CheckCheck, Heart, MessageCircle, Send, Sparkles, Users } from "lucide-react";
+import { Bell, Building2, CheckCheck, Heart, MessageCircle, Send, Sparkles, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,16 @@ import { useEntrance } from "@/hooks/use-entrance";
 
 export interface NotificationItem {
   id: string;
-  type: "intro_received" | "intro_accepted" | "message" | "strong_match" | "group_invite" | "group_request" | "group_joined";
+  type:
+    | "intro_received"
+    | "intro_accepted"
+    | "message"
+    | "strong_match"
+    | "group_invite"
+    | "group_request"
+    | "group_joined"
+    | "housing_suggestion"
+    | "housing_nudge";
   title: string;
   body: string;
   href: string | null;
@@ -34,6 +43,8 @@ const TYPE_ICON = {
   group_invite: Users,
   group_request: Users,
   group_joined: Users,
+  housing_suggestion: Building2,
+  housing_nudge: Building2,
 } as const;
 
 export function NotificationList({ items: initial }: { items: NotificationItem[] }) {

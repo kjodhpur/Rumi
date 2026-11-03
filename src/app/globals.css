@@ -27,6 +27,8 @@
   --line-strong: #d7d2c8;
 
   --accent: #e8542a;
+  /* Single-series chart marks (validated: lightness band, chroma, 3:1 on --surface). */
+  --chart-1: #e8542a;
   --accent-ink: #b83f1b;
   --accent-strong: #c2441e;
   --accent-soft: rgb(232 84 42 / 0.1);
@@ -73,6 +75,8 @@
   --line-strong: #3a3734;
 
   --accent: #ff6b3d;
+  /* Ember's dark-mode UI step is too light for chart marks; this step passes the dark band. */
+  --chart-1: #f05d2e;
   --accent-ink: #ff7a4d;
   --accent-strong: #ff6b3d;
   --accent-soft: rgb(255 107 61 / 0.14);
@@ -112,6 +116,7 @@
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
+  --color-chart-1: var(--chart-1);
   --color-accent-ink: var(--accent-ink);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);

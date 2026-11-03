@@ -14,6 +14,9 @@ export const LIMITS = {
   groupInvitesPerDay: { max: 20, window: 86400 },
   staffInvitesPerDay: { max: 50, window: 86400 },
   consentChangesPerHour: { max: 30, window: 3600 },
+  nudgeCampaignsPerDay: { max: 10, window: 86400 },
+  autoPairRunsPerHour: { max: 20, window: 3600 },
+  suggestionResponsesPerHour: { max: 30, window: 3600 },
 } as const;
 
 /**

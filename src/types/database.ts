@@ -71,6 +71,70 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"auto_pair_proposals": {
+                  Row: {
+                    "created_at": string,"decided_at": string | null,"decided_by": string | null,"group_id": string | null,"id": string,"member_ids": (string)[],"reasons": NonNullable<Json>,"responses": NonNullable<Json>,"run_id": string,"school_id": string,"score": number,"sent_at": string | null,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids": (string)[],"reasons"?: NonNullable<Json>,"responses"?: NonNullable<Json>,"run_id": string,"school_id": string,"score": number,"sent_at"?: string | null,"status"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"reasons"?: NonNullable<Json>,"responses"?: NonNullable<Json>,"run_id"?: string,"school_id"?: string,"score"?: number,"sent_at"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "auto_pair_proposals_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "auto_pair_proposals_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: false
+      referencedRelation: "groups"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "auto_pair_proposals_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "auto_pair_runs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "auto_pair_proposals_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"auto_pair_runs": {
+                  Row: {
+                    "created_at": string,"created_by": string | null,"id": string,"params": NonNullable<Json>,"school_id": string,"stats": NonNullable<Json>,"superseded_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"params"?: NonNullable<Json>,"school_id": string,"stats"?: NonNullable<Json>,"superseded_at"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string | null,"id"?: string,"params"?: NonNullable<Json>,"school_id"?: string,"stats"?: NonNullable<Json>,"superseded_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "auto_pair_runs_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "auto_pair_runs_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"blocks": {
                   Row: {
                     "blocked_id": string,"blocker_id": string,"created_at": string
@@ -94,6 +158,58 @@ isOneToOne: false
       columns: ["blocker_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaign_sends": {
+                  Row: {
+                    "campaign_id": string,"sent_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "campaign_id": string,"sent_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "campaign_id"?: string,"sent_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaign_sends_campaign_id_fkey"
+      columns: ["campaign_id"]
+isOneToOne: false
+      referencedRelation: "campaigns"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaign_sends_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"campaigns": {
+                  Row: {
+                    "audience_count": number,"created_at": string,"created_by": string | null,"id": string,"kind": string,"school_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "audience_count"?: number,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: string,"school_id": string
+                  }
+                  Update: {
+                    "audience_count"?: number,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: string,"school_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "campaigns_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "campaigns_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
       referencedColumns: ["id"]
     }
                   ]
@@ -421,6 +537,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pairings": {
+                  Row: {
+                    "approved_at": string | null,"approved_by": string | null,"created_at": string,"group_id": string | null,"id": string,"member_ids": (string)[],"school_id": string,"staff_notes": string | null,"status": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id": string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id"?: string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pairings_approved_by_fkey"
+      columns: ["approved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pairings_group_id_fkey"
+      columns: ["group_id"]
+isOneToOne: true
+      referencedRelation: "groups"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pairings_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pairings_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"photos": {
                   Row: {
                     "created_at": string,"height": number | null,"id": string,"placeholder": string | null,"position": number,"storage_path": string,"user_id": string,"width": number | null
@@ -677,6 +831,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"terms": {
+                  Row: {
+                    "active": boolean,"created_at": string,"created_by": string | null,"deadlines": NonNullable<Json>,"ends_on": string,"id": string,"name": string,"school_id": string,"starts_on": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"deadlines"?: NonNullable<Json>,"ends_on": string,"id"?: string,"name": string,"school_id": string,"starts_on": string
+                  }
+                  Update: {
+                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"deadlines"?: NonNullable<Json>,"ends_on"?: string,"id"?: string,"name"?: string,"school_id"?: string,"starts_on"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "terms_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "terms_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"user_settings": {
                   Row: {
                     "created_at": string,"email": string,"last_digest_at": string | null,"last_name": string,"notify_email_groups": boolean,"notify_email_intros": boolean,"notify_email_matches": boolean,"notify_email_messages": boolean,"notify_inapp_groups": boolean,"notify_inapp_intros": boolean,"notify_inapp_matches": boolean,"notify_inapp_messages": boolean,"theme": string,"updated_at": string,"user_id": string
@@ -800,9 +980,44 @@ isOneToOne: true
 "respond_group_request":
 { Args: { "p_accept": boolean,"p_request_id": string }; Returns: string
                            },
+"respond_housing_suggestion":
+{ Args: { "p_accept": boolean,"p_id": string }; Returns: string
+                           },
 "school_for_email":
 { Args: { "p_email": string }; Returns: string
                            },
+"school_students":
+{ Args: { "p_school": string }; Returns: {
+              "avatar_path": string | null,
+"ban_reason": string | null,
+"banned_at": string | null,
+"bio": string,
+"class_year": string | null,
+"created_at": string,
+"first_name": string,
+"gender": string | null,
+"id": string,
+"inactivity_warned_at": string | null,
+"is_hidden": boolean,
+"is_seed": boolean,
+"is_staff": boolean,
+"last_active_at": string,
+"last_initial": string,
+"major": string | null,
+"onboarding_completed_at": string | null,
+"onboarding_step": number,
+"pronouns": string | null,
+"school_id": string,
+"student_verified_at": string | null,
+"updated_at": string,
+"verified_only": boolean
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "profiles"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "send_intro":
 { Args: { "p_message": string,"p_recipient": string }; Returns: string
                            },
@@ -812,8 +1027,21 @@ isOneToOne: true
 "shares_conversation":
 { Args: { "a": string,"b": string }; Returns: boolean
                            },
+"staff_overview":
+{ Args: { "p_school": string,"p_weeks"?: number }; Returns: Json
+                           },
+"staff_pairings":
+{ Args: { "p_school": string }; Returns: {
+              "approved_at": string,"created_at": string,"group_id": string,"members": Json,"name": string,"pair_scores": Json,"snapshot": (string)[],"staff_notes": string,"status": string,"target_size": number
+            }[]
+                           },
 "staff_scope_includes":
 { Args: { "p_building": string,"p_school": string,"p_uid"?: string }; Returns: boolean
+                           },
+"staff_unmatched":
+{ Args: { "p_school": string }; Returns: {
+              "best_score": number,"class_year": string,"first_name": string,"housing_type": string,"id": string,"last_initial": string,"last_nudged_at": string,"move_in_date": string,"onboarded_at": string,"strong_matches": number
+            }[]
                            },
 "stale_match_users":
 { Args: { "p_limit"?: number }; Returns: {

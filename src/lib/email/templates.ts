@@ -124,3 +124,27 @@ export function inactivityWarningEmail(daysLeft: number) {
     }),
   };
 }
+
+export function housingSuggestionEmail(office: string, proposalId: string) {
+  return {
+    subject: `${office} suggested a roommate for you`,
+    ...layout({
+      preheader: "See who it is and say yes or no. Nothing happens unless you both say yes.",
+      heading: "A roommate suggestion",
+      body: `${office} used Rumi to suggest someone you're compatible with. See why you match, then accept or decline. Nothing happens unless you both say yes.`,
+      cta: { label: "See the suggestion", href: `/suggestions/${proposalId}` },
+    }),
+  };
+}
+
+export function housingNudgeEmail(office: string) {
+  return {
+    subject: "Still looking for a roommate?",
+    ...layout({
+      preheader: "Your best matches are waiting.",
+      heading: "Still looking for a roommate?",
+      body: `${office} noticed you haven't found a roommate on Rumi yet. Your best matches are ranked and ready, and one intro is all it takes.`,
+      cta: { label: "See your matches", href: "/matches" },
+    }),
+  };
+}
