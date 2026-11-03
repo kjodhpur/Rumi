@@ -37,6 +37,7 @@ const termInput = z
     roommateRequest: optionalDate,
     selectionOpens: optionalDate,
     selectionCloses: optionalDate,
+    agreementDue: optionalDate,
   })
   .refine((t) => t.endsOn > t.startsOn, { message: "The term has to end after it starts.", path: ["endsOn"] })
   .refine((t) => !t.selectionOpens || !t.selectionCloses || t.selectionCloses >= t.selectionOpens, {
@@ -51,7 +52,7 @@ export async function saveTerm(raw: z.input<typeof termInput>): Promise<ActionRe
   const actorId = await assertRole(t.schoolId, "configureTerm");
   if (!actorId) return fail("Only housing admins can set up terms.");
   const db = createAdminClient();
-  const deadlines = { roommateRequest: t.roommateRequest, selectionOpens: t.selectionOpens, selectionCloses: t.selectionCloses };
+  const deadlines = { roommateRequest: t.roommateRequest, selectionOpens: t.selectionOpens, selectionCloses: t.selectionCloses, agreementDue: t.agreementDue };
   const { data: existing } = await db.from("terms").select("id").eq("school_id", t.schoolId).eq("active", true).maybeSingle();
   const row = { name: t.name, starts_on: t.startsOn, ends_on: t.endsOn, deadlines: deadlines as NonNullable<Json> };
   const { error } = existing

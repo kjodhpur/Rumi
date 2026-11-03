@@ -5,13 +5,14 @@ export interface Term {
   name: string;
   startsOn: string;
   endsOn: string;
-  deadlines: { roommateRequest?: string; selectionOpens?: string; selectionCloses?: string };
+  deadlines: { roommateRequest?: string; selectionOpens?: string; selectionCloses?: string; agreementDue?: string };
 }
 
 export const DEADLINE_LABELS: Record<keyof Term["deadlines"], string> = {
   roommateRequest: "Roommate request deadline",
   selectionOpens: "Room selection opens",
   selectionCloses: "Room selection closes",
+  agreementDue: "Roommate agreement due",
 };
 
 /** The next deadline on or after today, for the overview header. */

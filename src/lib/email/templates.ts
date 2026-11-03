@@ -168,3 +168,8 @@ export function escalationForwardEmail(input: {
   });
   return { subject: `Forwarded report from a student (${input.category})`, html, text };
 }
+
+export function deadlineNudgeEmail(copy: { title: string; body: string; href: string }) {
+  const { html, text } = layout({ preheader: copy.body, heading: copy.title, body: copy.body, cta: { label: "Open Rumi", href: copy.href } });
+  return { subject: copy.title, html, text };
+}

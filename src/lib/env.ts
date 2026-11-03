@@ -35,6 +35,29 @@ export const publicEnv = {
   get supportEmail() {
     return process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "support@rumimatch.app";
   },
+  /** Phase 7.5: web push. Needs VAPID keys on the server too. */
+  get pushEnabled() {
+    return process.env.NEXT_PUBLIC_PUSH_ENABLED === "true" && Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+  },
+  get vapidPublicKey() {
+    return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+  },
+  /** Phase 7.5: text messages (Twilio). */
+  get smsEnabled() {
+    return process.env.NEXT_PUBLIC_SMS_ENABLED === "true";
+  },
+  /** Phase 7.3: Google / Microsoft calendar free-busy. */
+  get calendarEnabled() {
+    return process.env.NEXT_PUBLIC_CALENDAR_ENABLED === "true";
+  },
+  /** Phase 3: school single sign-on (SAML/OIDC through Supabase Auth SSO). */
+  get ssoEnabled() {
+    return process.env.NEXT_PUBLIC_SSO_ENABLED === "true";
+  },
+  /** Phase 8: language picker (English, Spanish). */
+  get i18nEnabled() {
+    return process.env.NEXT_PUBLIC_I18N_ENABLED !== "false";
+  },
 };
 
 export const serverEnv = {
@@ -68,5 +91,40 @@ export const serverEnv = {
   },
   get moderationWebhookUrl() {
     return process.env.MODERATION_WEBHOOK_URL ?? "";
+  },
+  get sms() {
+    return {
+      enabled: process.env.SMS_ENABLED === "true" && process.env.NEXT_PUBLIC_SMS_ENABLED === "true",
+      accountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+      authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+      from: process.env.TWILIO_FROM_NUMBER ?? "",
+      messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID ?? "",
+    };
+  },
+  get push() {
+    return {
+      publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+      privateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+      subject: process.env.VAPID_SUBJECT ?? "mailto:support@rumimatch.app",
+    };
+  },
+  get calendar() {
+    return {
+      googleClientId: process.env.GOOGLE_CALENDAR_CLIENT_ID ?? "",
+      googleClientSecret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET ?? "",
+      microsoftClientId: process.env.MICROSOFT_CALENDAR_CLIENT_ID ?? "",
+      microsoftClientSecret: process.env.MICROSOFT_CALENDAR_CLIENT_SECRET ?? "",
+    };
+  },
+  /** Phase 0.5: model-based moderation through the Vercel AI Gateway. */
+  get aiModeration() {
+    return {
+      enabled: process.env.AI_MODERATION_ENABLED === "true",
+      gatewayUrl: process.env.AI_GATEWAY_URL ?? "https://ai-gateway.vercel.sh/v1/chat/completions",
+      apiKey: process.env.AI_GATEWAY_API_KEY ?? "",
+      model: process.env.AI_MODERATION_MODEL ?? "anthropic/claude-haiku-4.5",
+      threshold: Number(process.env.AI_MODERATION_THRESHOLD ?? "0.8"),
+      timeoutMs: Number(process.env.AI_MODERATION_TIMEOUT_MS ?? "2500"),
+    };
   },
 };

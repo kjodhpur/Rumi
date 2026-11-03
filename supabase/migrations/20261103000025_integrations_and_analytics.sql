@@ -593,3 +593,19 @@ alter table public.notifications add constraint notifications_type_check check (
 -- Phase 6.2: a carried-forward group becomes a pairing in the new term.
 alter table public.pairings add column if not exists term_id uuid references public.terms (id) on delete set null;
 alter table public.pairings add column if not exists carried_from_term uuid references public.terms (id) on delete set null;
+
+-- Phase 7.5: phone verification codes for SMS (hash only; service role only).
+create table public.phone_verifications (
+  user_id     uuid primary key references public.profiles (id) on delete cascade,
+  phone_enc   text not null,
+  code_hash   text not null check (char_length(code_hash) = 64),
+  attempts    integer not null default 0,
+  expires_at  timestamptz not null,
+  created_at  timestamptz not null default now()
+);
+alter table public.phone_verifications enable row level security;
+revoke all on public.phone_verifications from anon, authenticated;
+
+-- Phase 1 term configuration: required school questions and allowed importance ranges.
+-- { "requiredQuestions": ["key", …], "maxImportance": { "<factor>": 0–3 } }
+alter table public.terms add column if not exists config jsonb not null default '{}'::jsonb check (jsonb_typeof(config) = 'object');

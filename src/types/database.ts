@@ -1545,6 +1545,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"phone_verifications": {
+                  Row: {
+                    "attempts": number,"code_hash": string,"created_at": string,"expires_at": string,"phone_enc": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attempts"?: number,"code_hash": string,"created_at"?: string,"expires_at": string,"phone_enc": string,"user_id": string
+                  }
+                  Update: {
+                    "attempts"?: number,"code_hash"?: string,"created_at"?: string,"expires_at"?: string,"phone_enc"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "phone_verifications_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: true
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"photos": {
                   Row: {
                     "created_at": string,"height": number | null,"id": string,"placeholder": string | null,"position": number,"storage_path": string,"user_id": string,"width": number | null
@@ -2431,14 +2451,14 @@ isOneToOne: false
                   ]
                 },"terms": {
                   Row: {
-                    "active": boolean,"created_at": string,"created_by": string | null,"deadlines": NonNullable<Json>,"ends_on": string,"id": string,"name": string,"school_id": string,"starts_on": string
+                    "active": boolean,"config": NonNullable<Json>,"created_at": string,"created_by": string | null,"deadlines": NonNullable<Json>,"ends_on": string,"id": string,"name": string,"school_id": string,"starts_on": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"deadlines"?: NonNullable<Json>,"ends_on": string,"id"?: string,"name": string,"school_id": string,"starts_on": string
+                    "active"?: boolean,"config"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"deadlines"?: NonNullable<Json>,"ends_on": string,"id"?: string,"name": string,"school_id": string,"starts_on": string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"created_by"?: string | null,"deadlines"?: NonNullable<Json>,"ends_on"?: string,"id"?: string,"name"?: string,"school_id"?: string,"starts_on"?: string
+                    "active"?: boolean,"config"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"deadlines"?: NonNullable<Json>,"ends_on"?: string,"id"?: string,"name"?: string,"school_id"?: string,"starts_on"?: string
                   }
                   Relationships: [
                     {

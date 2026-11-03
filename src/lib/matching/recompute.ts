@@ -2,7 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database";
 import type { FactorKey, Importance } from "@/lib/options";
-import { evaluateMatch, STRONG_MATCH_THRESHOLD, type PoolContext } from "./engine";
+import { evaluateMatch, importanceOf, STRONG_MATCH_THRESHOLD, type PoolContext } from "./engine";
+import { parseTermConfig } from "@/lib/staff/term-config";
 import { isAccommodationKey } from "./accommodations";
 import { loadActiveQuestions } from "./questions";
 import { toScenarioAnswers } from "./scenarios";
@@ -116,10 +117,12 @@ export interface SchoolPool {
 export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: school }, { data: pilot }] = await Promise.all([
+  const [{ data: school }, { data: pilot }, { data: term }] = await Promise.all([
     admin.from("schools").select("hide_seed_profiles, merge_track_pools").eq("id", schoolId).maybeSingle(),
     admin.from("pilot_configs").select("scope, starts_on, ends_on").eq("school_id", schoolId).maybeSingle(),
+    admin.from("terms").select("config").eq("school_id", schoolId).eq("active", true).maybeSingle(),
   ]);
+  const limits = parseTermConfig(term?.config).maxImportance;
   let poolQuery = admin
     .from("profiles")
     .select(
@@ -170,6 +173,14 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
         classDay: classDays.get(person.id) ?? null,
       }),
     );
+  }
+  // The school's allowed importance range caps each student's own weights.
+  if (Object.keys(limits).length) {
+    for (const p of pool) {
+      for (const [factor, max] of Object.entries(limits) as [FactorKey, Importance][]) {
+        if (importanceOf(p.prefs, factor) > max) p.prefs.weights = { ...p.prefs.weights, [factor]: max };
+      }
+    }
   }
   // "Tempe — near campus" reads better as "Tempe" inside a sentence.
   const areaNames = Object.fromEntries((areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]));
@@ -231,7 +242,11 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
 
   const { pool, areaNames, context } = await loadSchoolPool(me.school_id);
   const viewer = pool.find((p) => p.id === userId);
-  if (!viewer) return { matches: 0, strongNotified: 0 };
+  // Out of the pool (outside a pilot's scope, a withdrawn admit, staff): no matches at all.
+  if (!viewer) {
+    await admin.rpc("prune_match_scores", { p_user: userId, p_keep: [] });
+    return { matches: 0, strongNotified: 0 };
+  }
 
   // Everyone else's current view of this user, to detect newly strong matches.
   const { data: previous } = await admin
@@ -316,4 +331,43 @@ async function notifyStrongMatches(
     .eq("candidate_id", userId)
     .in("viewer_id", viewerIds);
   return notifications.length;
+}
+
+/**
+ * Re-scores every pair at a school in one pass (after a school rule, option or weight-limit
+ * change). Rows for pairs that now fail a hard filter are removed. No notifications.
+ */
+export async function recomputeSchool(schoolId: string): Promise<{ students: number; pairs: number }> {
+  const admin = createAdminClient();
+  const { pool, areaNames, context } = await loadSchoolPool(schoolId);
+  const now = new Date().toISOString();
+  const keep = new Map<string, string[]>(pool.map((p) => [p.id, []]));
+  let rows: ScoreInsert[] = [];
+  let pairs = 0;
+  const flush = async () => {
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const { error } = await admin.from("match_scores").upsert(rows.slice(i, i + CHUNK), { onConflict: "viewer_id,candidate_id" });
+      if (error) throw error;
+    }
+    rows = [];
+  };
+  for (let i = 0; i < pool.length; i++) {
+    for (let j = i + 1; j < pool.length; j++) {
+      const a = pool[i]!;
+      const b = pool[j]!;
+      const result = evaluateMatch(a, b, { areaNames, ...context });
+      if (!result) continue;
+      pairs += 1;
+      keep.get(a.id)!.push(b.id);
+      keep.get(b.id)!.push(a.id);
+      rows.push(toRow(a.id, b.id, result, "forA", now), toRow(b.id, a.id, result, "forB", now));
+      if (rows.length >= 2000) await flush();
+    }
+  }
+  await flush();
+  for (const [id, kept] of keep) {
+    const { error } = await admin.rpc("prune_match_scores", { p_user: id, p_keep: kept });
+    if (error) throw error;
+  }
+  return { students: pool.length, pairs };
 }

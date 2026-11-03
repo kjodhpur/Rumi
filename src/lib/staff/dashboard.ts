@@ -18,6 +18,7 @@ function toTerm(row: { id: string; name: string; starts_on: string; ends_on: str
       roommateRequest: date(d.roommateRequest),
       selectionOpens: date(d.selectionOpens),
       selectionCloses: date(d.selectionCloses),
+      agreementDue: date(d.agreementDue),
     },
   };
 }

@@ -45,6 +45,7 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.7.0",
     "vaul": "^1.1.2",
+    "web-push": "^3.6.7",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -56,11 +57,12 @@
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/web-push": "^3.6.4",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.35",
     "eslint-config-prettier": "^10.1.8",
     "fontkit": "^2.0.4",
-    "msw": "2.7.0",
+    "msw": "^2.7.0",
     "postcss": "^8.5.31",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",

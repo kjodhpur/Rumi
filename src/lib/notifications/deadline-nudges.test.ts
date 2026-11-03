@@ -1,75 +1,40 @@
 import { describe, expect, it } from "vitest";
-import {
-  calculateDaysUntil,
-  evaluateNudgeEligibility,
-  formatNudgeCopy,
-  type DeadlineKey,
-} from "./deadline-nudges";
+import { daysUntil, dueOffset, effectiveRules, needsNudge, nudgeCopy, schedulePreview } from "./deadline-nudges";
 
-describe("Phase 1.H Deadline-Aware Nudges", () => {
-  it("calculates exact calendar days remaining until deadline with fixed clock", () => {
-    const fixedNow = "2026-08-01T10:00:00Z";
-
-    expect(calculateDaysUntil("2026-08-08T23:59:59Z", fixedNow)).toBe(7);
-    expect(calculateDaysUntil("2026-08-03T23:59:59Z", fixedNow)).toBe(2);
-    expect(calculateDaysUntil("2026-08-01T23:59:59Z", fixedNow)).toBe(0);
-    expect(calculateDaysUntil("2026-07-30T10:00:00Z", fixedNow)).toBe(-2);
+describe("deadline nudges", () => {
+  it("fires at T-7, T-2 and T-0 by campus date (fixed clock)", () => {
+    expect(daysUntil("2027-03-01", "2027-02-22")).toBe(7);
+    expect(dueOffset([7, 2, 0], "2027-03-01", "2027-02-22")).toBe(7);
+    expect(dueOffset([7, 2, 0], "2027-03-01", "2027-02-27")).toBe(2);
+    expect(dueOffset([7, 2, 0], "2027-03-01", "2027-03-01")).toBe(0);
+    expect(dueOffset([7, 2, 0], "2027-03-01", "2027-02-25")).toBeNull();
+    expect(dueOffset([7, 2, 0], "2027-03-01", "2027-03-02")).toBeNull();
   });
 
-  it("evaluates nudge eligibility according to rule offsets and pause state", () => {
-    const rule = {
-      deadlineKey: "roommate_deadline" as DeadlineKey,
-      offsets: [7, 2, 0],
-      paused: false,
-    };
-
-    // T-7 fires
-    expect(evaluateNudgeEligibility(rule, 7)).toEqual({
-      shouldSend: true,
-      offsetDays: 7,
-    });
-
-    // T-2 fires
-    expect(evaluateNudgeEligibility(rule, 2)).toEqual({
-      shouldSend: true,
-      offsetDays: 2,
-    });
-
-    // T-0 fires
-    expect(evaluateNudgeEligibility(rule, 0)).toEqual({
-      shouldSend: true,
-      offsetDays: 0,
-    });
-
-    // Non-offset day (e.g. 5 days remaining) does NOT fire
-    expect(evaluateNudgeEligibility(rule, 5)).toEqual({
-      shouldSend: false,
-      offsetDays: null,
-    });
-
-    // Paused rule NEVER fires even on offset days
-    const pausedRule = { ...rule, paused: true };
-    expect(evaluateNudgeEligibility(pausedRule, 7)).toEqual({
-      shouldSend: false,
-      offsetDays: null,
-    });
+  it("nudges only students the deadline is about", () => {
+    expect(needsNudge("roommateRequest", { confirmed: false, agreementSigned: false })).toBe(true);
+    expect(needsNudge("roommateRequest", { confirmed: true, agreementSigned: false })).toBe(false);
+    expect(needsNudge("agreementDue", { confirmed: true, agreementSigned: false })).toBe(true);
+    expect(needsNudge("agreementDue", { confirmed: true, agreementSigned: true })).toBe(false);
+    expect(needsNudge("agreementDue", { confirmed: false, agreementSigned: false })).toBe(false);
   });
 
-  it("generates actionable copy and destination deep links", () => {
-    const roommateT7 = formatNudgeCopy("roommate_deadline", 7);
-    expect(roommateT7.title).toContain("7 days");
-    expect(roommateT7.link).toBe("/matches");
+  it("names the deadline and links the next step", () => {
+    expect(nudgeCopy("roommateRequest", 2, "ASU Housing")).toMatchObject({ title: "ASU Housing's roommate request deadline is in 2 days", href: "/matches" });
+    expect(nudgeCopy("agreementDue", 0, "x").title).toBe("Your roommate agreement is due today");
+  });
 
-    const roommateT0 = formatNudgeCopy("roommate_deadline", 0);
-    expect(roommateT0.title).toContain("Today");
-    expect(roommateT0.link).toBe("/matches");
+  it("uses defaults for deadlines without a saved rule, and keeps paused rules paused", () => {
+    const rules = effectiveRules([{ id: "r1", deadlineKey: "agreementDue", offsets: [3], channels: ["in_app"], paused: true }], { roommateRequest: "2027-03-01", agreementDue: "2027-09-01" });
+    expect(rules.map((r) => [r.deadlineKey, r.offsets, r.paused])).toEqual([["roommateRequest", [7, 2, 0], false], ["agreementDue", [3], true]]);
+  });
 
-    const agreementT2 = formatNudgeCopy("agreement_due", 2);
-    expect(agreementT2.title).toContain("2 days");
-    expect(agreementT2.link).toBe("/groups");
-
-    const selectionT0 = formatNudgeCopy("selection_window", 0);
-    expect(selectionT0.title).toContain("Room selection opens today!");
-    expect(selectionT0.link).toBe("/groups");
+  it("previews the schedule in date order", () => {
+    const rules = effectiveRules([], { roommateRequest: "2027-03-01" });
+    expect(schedulePreview(rules, { roommateRequest: "2027-03-01" }, "2027-02-25").map((s) => [s.date, s.offset, s.past])).toEqual([
+      ["2027-02-22", 7, true],
+      ["2027-02-27", 2, false],
+      ["2027-03-01", 0, false],
+    ]);
   });
 });
