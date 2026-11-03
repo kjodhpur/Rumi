@@ -2,12 +2,23 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import { AlertTriangle, ExternalLink, Phone, ShieldAlert } from "lucide-react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { OptionCards } from "@/components/ui/choice";
 import { reportUser } from "@/app/actions/social";
+import { fileSeriousReport, getActiveEscalationRoutes } from "@/app/actions/safety";
 import { REPORT_REASONS, type ReportReason } from "@/lib/options";
+import {
+  ESCALATION_CATEGORIES,
+  NATIONAL_EMERGENCY_RESOURCES,
+  resolveEscalationDestination,
+  SAFETY_DISCLAIMER,
+  type EscalationCategory,
+  type EscalationRoute,
+} from "@/lib/safety/escalation";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 
 type Reason = ReportReason;
@@ -28,62 +39,256 @@ export function ReportSheet({
   conversationId?: string;
 }) {
   const [reason, setReason] = React.useState<Reason | "">("");
+  const [isSerious, setIsSerious] = React.useState(false);
+  const [seriousCategory, setSeriousCategory] = React.useState<EscalationCategory | "">("");
+  const [consentForward, setConsentForward] = React.useState(false);
+  const [blockUserNow, setBlockUserNow] = React.useState(false);
   const [details, setDetails] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [routes, setRoutes] = React.useState<EscalationRoute[]>([]);
+
+  // Fetch active school routes on open
+  React.useEffect(() => {
+    if (open) {
+      void getActiveEscalationRoutes().then((data) => setRoutes(data));
+    }
+  }, [open]);
+
+  // When reason is safety or harassment, suggest serious path
+  React.useEffect(() => {
+    if (reason === "harassment") {
+      setIsSerious(true);
+      setSeriousCategory("harassment");
+      setBlockUserNow(true);
+    } else if (reason === "safety") {
+      setIsSerious(true);
+      setSeriousCategory("threat");
+      setBlockUserNow(true);
+    }
+  }, [reason]);
+
+  const activeDestination = seriousCategory ? resolveEscalationDestination(seriousCategory, routes) : null;
 
   async function submit() {
-    if (!reason) {
+    if (!reason && !seriousCategory) {
       setError("Choose what's going on.");
       return;
     }
+
     setPending(true);
-    const result = await reportUser({ reportedId, reason, details: details || undefined, messageId, conversationId });
+    setError(null);
+
+    let result;
+    if (isSerious && seriousCategory) {
+      result = await fileSeriousReport({
+        reportedId,
+        category: seriousCategory,
+        reason: (reason as Reason) || "safety",
+        details: details || undefined,
+        messageId,
+        conversationId,
+        studentConsented: consentForward,
+        blockUserNow,
+      });
+    } else {
+      result = await reportUser({
+        reportedId,
+        reason: (reason as Reason) || "other",
+        details: details || undefined,
+        messageId,
+        conversationId,
+      });
+    }
+
     setPending(false);
+
     if (!result.ok) {
       setError(result.error);
       return;
     }
+
     onOpenChange(false);
     setReason("");
+    setIsSerious(false);
+    setSeriousCategory("");
+    setConsentForward(false);
+    setBlockUserNow(false);
     setDetails("");
+
+    const extraMsg = activeDestination && consentForward
+      ? ` Forwarded to ${activeDestination.destinationLabel}.`
+      : "";
+
     toast.success("Thanks for telling us", {
-      description: `Our team reviews every report. ${firstName} won't know it was you.`,
+      description: `Our safety team reviews every report. ${firstName} won't know it was you.${extraMsg}`,
     });
   }
+
+  const seriousOptions = ESCALATION_CATEGORIES.map((c) => ({
+    value: c.key,
+    label: c.label,
+    hint: c.description,
+  }));
 
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
       title={`Report ${firstName}`}
-      description={`Reports are confidential. If you're in danger, call 911 or ${LAUNCH_SCHOOL.police.name} at ${LAUNCH_SCHOOL.police.phone}.`}
+      description={`Reports are confidential. If you're in immediate danger, dial 911 or ${LAUNCH_SCHOOL.police.name} at ${LAUNCH_SCHOOL.police.phone}.`}
       footer={
-        <Button variant="danger" size="lg" block onClick={() => void submit()} loading={pending}>
-          Send report
-        </Button>
+        <div className="flex w-full flex-col gap-2">
+          <Button variant="danger" size="lg" block onClick={() => void submit()} loading={pending}>
+            {isSerious && consentForward ? "Submit and forward report" : "Send report"}
+          </Button>
+          <p className="text-center text-caption text-ink-3">
+            {SAFETY_DISCLAIMER}
+          </p>
+        </div>
       }
     >
-      <div className="flex flex-col gap-4">
-        <OptionCards
-          aria-label="Reason for report"
-          value={reason}
-          onValueChange={(v) => {
-            setReason(v);
-            setError(null);
-          }}
-          options={REPORT_REASONS}
-          columns={2}
-          className="grid-cols-1 sm:grid-cols-2"
-        />
-        <Textarea
-          aria-label="Details (optional)"
-          placeholder="Anything that helps us understand (optional)"
-          rows={3}
-          maxLength={1000}
-          value={details}
-          onChange={(e) => setDetails(e.target.value)}
-        />
+      <div className="flex flex-col gap-5">
+        {/* Serious Path Callout */}
+        <div className="flex items-center justify-between rounded-xl border border-line bg-card p-3.5">
+          <div className="flex items-center gap-2.5">
+            <ShieldAlert className="h-5 w-5 text-accent" />
+            <div>
+              <p className="text-body-sm font-semibold text-ink">Urgent safety or official escalation?</p>
+              <p className="text-caption text-ink-3">Route to campus Title IX, CARE, or emergency safety</p>
+            </div>
+          </div>
+          <Switch
+            checked={isSerious}
+            onCheckedChange={(checked) => {
+              setIsSerious(checked);
+              if (checked && !seriousCategory) setSeriousCategory("harassment");
+            }}
+            aria-label="Toggle serious safety escalation"
+          />
+        </div>
+
+        {isSerious ? (
+          /* Serious Escalation Form */
+          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+            <div>
+              <label className="text-caption font-semibold text-ink">Category of incident</label>
+              <OptionCards
+                aria-label="Serious incident category"
+                value={seriousCategory}
+                onValueChange={(v) => {
+                  setSeriousCategory(v as EscalationCategory);
+                  setError(null);
+                }}
+                options={seriousOptions}
+                className="mt-2"
+              />
+            </div>
+
+            {/* Destination Resolution & Disclaimer */}
+            <div className="rounded-xl border border-line bg-surface p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+                <div className="flex-1 text-caption text-ink">
+                  {activeDestination ? (
+                    <div>
+                      <p className="font-semibold text-ink">Official Destination:</p>
+                      <p className="font-medium text-ink-1 mt-0.5">{activeDestination.destinationLabel}</p>
+                      <div className="mt-2 flex flex-wrap gap-3 text-caption text-ink-2">
+                        {activeDestination.phone ? (
+                          <a href={`tel:${activeDestination.phone}`} className="inline-flex items-center gap-1 text-ink underline">
+                            <Phone className="h-3.5 w-3.5" />
+                            {activeDestination.phone}
+                          </a>
+                        ) : null}
+                        {activeDestination.url ? (
+                          <a href={activeDestination.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ink underline">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Official reporting page
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="font-semibold text-ink">National & Campus Emergency Contacts</p>
+                      <p className="mt-1 text-ink-2">
+                        No custom school route is configured for this category. Rumi will review internally, and you can contact official services directly:
+                      </p>
+                      <div className="mt-2 space-y-1.5">
+                        {NATIONAL_EMERGENCY_RESOURCES.slice(0, 2).map((r) => (
+                          <div key={r.name} className="flex items-center justify-between text-body-sm">
+                            <span className="font-medium text-ink">{r.name}</span>
+                            <a href={`tel:${r.phone}`} className="font-semibold text-accent underline">{r.phone}</a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Student Consent Toggle */}
+              {activeDestination ? (
+                <div className="mt-3.5 border-t border-line pt-3 flex items-center justify-between">
+                  <div className="pr-3">
+                    <p className="text-body-sm font-medium text-ink">Forward details to campus office</p>
+                    <p className="text-caption text-ink-3">Share report summary with {activeDestination.destinationLabel}</p>
+                  </div>
+                  <Switch
+                    checked={consentForward}
+                    onCheckedChange={setConsentForward}
+                    aria-label={`Forward report to ${activeDestination.destinationLabel}`}
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            {/* Immediate Block Option */}
+            <div className="flex items-center justify-between rounded-xl border border-line bg-card p-3">
+              <div className="pr-3">
+                <p className="text-body-sm font-medium text-ink">Block {firstName} immediately</p>
+                <p className="text-caption text-ink-3">They won&apos;t be able to message you or see your profile</p>
+              </div>
+              <Switch
+                checked={blockUserNow}
+                onCheckedChange={setBlockUserNow}
+                aria-label={`Block ${firstName}`}
+              />
+            </div>
+          </div>
+        ) : (
+          /* Standard Report Reason Options */
+          <div>
+            <label className="text-caption font-semibold text-ink">Reason for report</label>
+            <OptionCards
+              aria-label="Reason for report"
+              value={reason}
+              onValueChange={(v) => {
+                setReason(v);
+                setError(null);
+              }}
+              options={REPORT_REASONS}
+              columns={2}
+              className="mt-2 grid-cols-1 sm:grid-cols-2"
+            />
+          </div>
+        )}
+
+        {/* Optional Details Textarea */}
+        <div>
+          <label className="text-caption font-semibold text-ink">Additional details (optional)</label>
+          <Textarea
+            aria-label="Details (optional)"
+            placeholder="Anything that helps us understand what happened..."
+            rows={3}
+            maxLength={1000}
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            className="mt-1.5"
+          />
+        </div>
+
         {error ? (
           <p role="alert" className="text-body-sm text-danger">
             {error}

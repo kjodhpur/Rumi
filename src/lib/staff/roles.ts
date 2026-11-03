@@ -38,6 +38,7 @@ export const CAN = {
   export: ["housing_admin"],
   raWorkspace: ["housing_admin", "housing_staff", "ra"],
   moderate: ["housing_admin", "moderator"],
+  configureEscalation: ["housing_admin"],
 } as const satisfies Record<string, readonly StaffRole[]>;
 
 export type Capability = keyof typeof CAN;

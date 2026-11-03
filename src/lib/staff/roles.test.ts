@@ -19,7 +19,15 @@ describe("roleCan", () => {
     for (const role of STAFF_ROLES) {
       expect(roleCan(role, "manageTeam")).toBe(role === "housing_admin");
       expect(roleCan(role, "managePrivacy")).toBe(role === "housing_admin");
+      expect(roleCan(role, "configureEscalation")).toBe(role === "housing_admin");
     }
+  });
+
+  it("lets moderators and housing admins moderate", () => {
+    expect(roleCan("moderator", "moderate")).toBe(true);
+    expect(roleCan("housing_admin", "moderate")).toBe(true);
+    expect(roleCan("analyst", "moderate")).toBe(false);
+    expect(roleCan("ra", "moderate")).toBe(false);
   });
 
   it("gives every role a home page", () => {

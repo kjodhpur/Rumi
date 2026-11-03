@@ -1,4 +1,18 @@
-import { BarChart3, CalendarDays, ClipboardCheck, FileSpreadsheet, HeartHandshake, LayoutDashboard, ScrollText, ShieldCheck, UserRoundSearch, Users, type LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  ClipboardCheck,
+  FileSpreadsheet,
+  HeartHandshake,
+  LayoutDashboard,
+  ScrollText,
+  ShieldAlert,
+  ShieldCheck,
+  Siren,
+  UserRoundSearch,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
 
 export interface StaffNavItem {
@@ -23,6 +37,7 @@ export const STAFF_NAV: StaffNavSection[] = [
       { href: "/staff/students", label: "Students", icon: UserRoundSearch, capability: "viewStudents" },
       { href: "/staff/pairings", label: "Pairings", icon: HeartHandshake, capability: "managePairings" },
       { href: "/staff/ra", label: "Check-ins", icon: ClipboardCheck, capability: "raWorkspace" },
+      { href: "/staff/safety", label: "Safety & reports", icon: ShieldAlert, capability: "moderate" },
     ],
   },
   {
@@ -36,6 +51,7 @@ export const STAFF_NAV: StaffNavSection[] = [
     items: [
       { href: "/staff/settings/term", label: "Term", icon: CalendarDays, capability: "configureTerm" },
       { href: "/staff/settings/team", label: "Team", icon: Users, capability: "manageTeam" },
+      { href: "/staff/settings/escalation", label: "Escalation routes", icon: Siren, capability: "configureEscalation" },
       { href: "/staff/settings/privacy", label: "Privacy & retention", icon: ShieldCheck, capability: "managePrivacy" },
       { href: "/staff/audit", label: "Audit log", icon: ScrollText, capability: "viewAudit" },
     ],

@@ -3,8 +3,8 @@ import { consentTitle, visibleConsents } from "./consent";
 
 describe("consent visibility", () => {
   it("hides housing-office consents until a school has a partnered office", () => {
-    expect(visibleConsents(null)).toEqual([]);
-    expect(visibleConsents("Demo University Housing")).toEqual(["share_with_housing"]);
+    expect(visibleConsents(null, ["share_with_housing"])).toEqual([]);
+    expect(visibleConsents("Demo University Housing", ["share_with_housing"])).toEqual(["share_with_housing"]);
   });
 
   it("names the office in the title", () => {

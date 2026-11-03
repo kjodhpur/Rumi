@@ -415,6 +415,120 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"escalation_routes": {
+                  Row: {
+                    "active": boolean,
+                    "category": string,
+                    "created_at": string,
+                    "destination_label": string,
+                    "email": string | null,
+                    "id": string,
+                    "phone": string | null,
+                    "school_id": string,
+                    "updated_at": string,
+                    "url": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,
+                    "category": string,
+                    "created_at"?: string,
+                    "destination_label": string,
+                    "email"?: string | null,
+                    "id"?: string,
+                    "phone"?: string | null,
+                    "school_id": string,
+                    "updated_at"?: string,
+                    "url"?: string | null
+                  }
+                  Update: {
+                    "active"?: boolean,
+                    "category"?: string,
+                    "created_at"?: string,
+                    "destination_label"?: string,
+                    "email"?: string | null,
+                    "id"?: string,
+                    "phone"?: string | null,
+                    "school_id"?: string,
+                    "updated_at"?: string,
+                    "url"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "escalation_routes_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"escalations": {
+                  Row: {
+                    "category": string,
+                    "created_at": string,
+                    "destination_label": string,
+                    "forwarded_at": string | null,
+                    "forwarded_by": string | null,
+                    "id": string,
+                    "notes": string | null,
+                    "report_id": string,
+                    "route_id": string | null,
+                    "school_id": string,
+                    "status": string,
+                    "student_consented": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category": string,
+                    "created_at"?: string,
+                    "destination_label"?: string,
+                    "forwarded_at"?: string | null,
+                    "forwarded_by"?: string | null,
+                    "id"?: string,
+                    "notes"?: string | null,
+                    "report_id": string,
+                    "route_id"?: string | null,
+                    "school_id": string,
+                    "status"?: string,
+                    "student_consented"?: boolean
+                  }
+                  Update: {
+                    "category"?: string,
+                    "created_at"?: string,
+                    "destination_label"?: string,
+                    "forwarded_at"?: string | null,
+                    "forwarded_by"?: string | null,
+                    "id"?: string,
+                    "notes"?: string | null,
+                    "report_id"?: string,
+                    "route_id"?: string | null,
+                    "school_id"?: string,
+                    "status"?: string,
+                    "student_consented"?: boolean
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "escalations_report_id_fkey"
+                      columns: ["report_id"]
+                      isOneToOne: false
+                      referencedRelation: "reports"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "escalations_route_id_fkey"
+                      columns: ["route_id"]
+                      isOneToOne: false
+                      referencedRelation: "escalation_routes"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "escalations_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"conversation_members": {
                   Row: {
                     "conversation_id": string,"joined_at": string,"last_emailed_at": string | null,"last_read_at": string,"user_id": string
@@ -1238,6 +1352,11 @@ isOneToOne: true
 "staff_outcomes":
 { Args: { "p_school": string }; Returns: {
               "agreements_signed": number,"checkin_score_sum": number,"checkins_submitted": number,"groups_confirmed": number
+            }[]
+                           },
+"staff_school_reports":
+{ Args: { "p_school": string }; Returns: {
+              "context": Json,"created_at": string,"details": string | null,"escalation_category": string | null,"escalation_destination": string | null,"escalation_forwarded_at": string | null,"escalation_id": string | null,"escalation_status": string | null,"id": string,"reason": string,"reported_avatar_path": string | null,"reported_banned_at": string | null,"reported_first_name": string,"reported_id": string,"reported_last_initial": string,"reporter_first_name": string | null,"reporter_id": string | null,"reporter_last_initial": string | null,"resolution_note": string | null,"reviewed_at": string | null,"source": string,"status": string
             }[]
                            },
 "ra_risk_list":
