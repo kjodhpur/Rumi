@@ -47,6 +47,18 @@ export type AccommodationConstraintKey =
   | "allergen_free"
   | "mobility_accessible";
 
+export type SchoolRuleType =
+  | "same_academic_college"
+  | "same_residential_college"
+  | "llc_exclusive"
+  | "freshman_same_college";
+
+export interface SchoolRule {
+  type: SchoolRuleType;
+  active: boolean;
+  params?: Record<string, unknown>;
+}
+
 export interface MatchProfile {
   id: string;
   firstName: string;
@@ -60,6 +72,12 @@ export interface MatchProfile {
   preArrival?: boolean;
   /** Approved accessibility and housing accommodations. */
   accommodations?: AccommodationConstraintKey[];
+  /** Academic college (e.g. Fulton Engineering, W.P. Carey) */
+  academicCollege?: string | null;
+  /** Residential college boundary (e.g. Barrett, Hassayampa) */
+  residentialCollege?: string | null;
+  /** Living Learning Community cohort */
+  llc?: string | null;
 }
 
 export interface Reason {
@@ -99,4 +117,5 @@ export type HardFilterFailure =
   | { kind: "dealbreaker"; who: "a" | "b"; dealbreaker: Dealbreaker }
   | { kind: "pre_arrival_pool"; who: "a" | "b" }
   | { kind: "track_pool"; who: "a" | "b" }
-  | { kind: "accommodation"; who: "a" | "b"; constraintKey: AccommodationConstraintKey };
+  | { kind: "accommodation"; who: "a" | "b"; constraintKey: AccommodationConstraintKey }
+  | { kind: "school_rule"; who: "a" | "b"; ruleType: SchoolRuleType };

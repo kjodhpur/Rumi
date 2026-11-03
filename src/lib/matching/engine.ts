@@ -14,8 +14,10 @@ import type {
   MatchPreferences,
   MatchProfile,
   Reason,
+  SchoolRule,
 } from "./types";
 import { evaluateScenarioMatch } from "./scenarios";
+import { passesSchoolRules } from "./rules";
 
 /** Importance level → weight. "Must match" counts six times "nice to have". */
 export const IMPORTANCE_WEIGHTS: Record<Importance, number> = { 0: 0, 1: 1, 2: 3, 3: 6 };
@@ -103,7 +105,11 @@ function acceptsGender(owner: MatchProfile, other: MatchProfile) {
 }
 
 /** Null when the pair may be matched; otherwise the first rule that rules it out. */
-export function hardFilterFailure(a: MatchProfile, b: MatchProfile): HardFilterFailure | null {
+export function hardFilterFailure(
+  a: MatchProfile,
+  b: MatchProfile,
+  schoolRules?: SchoolRule[],
+): HardFilterFailure | null {
   // 1. Pre-arrival pool separation (admitted non-enrolled students match only with pre-arrival students)
   if (Boolean(a.preArrival) !== Boolean(b.preArrival)) {
     return { kind: "pre_arrival_pool", who: a.preArrival ? "a" : "b" };
@@ -124,6 +130,14 @@ export function hardFilterFailure(a: MatchProfile, b: MatchProfile): HardFilterF
   }
   if (b.accommodations?.includes("allergen_free") && a.prefs.smoking !== "never") {
     return { kind: "accommodation", who: "b", constraintKey: "allergen_free" };
+  }
+
+  // 4. Institutional school rules (e.g. LLC boundaries, academic college constraints)
+  if (schoolRules && schoolRules.length > 0) {
+    const ruleCheck = passesSchoolRules(a, b, schoolRules);
+    if (!ruleCheck.allowed && ruleCheck.blockingRule) {
+      return { kind: "school_rule", who: "a", ruleType: ruleCheck.blockingRule };
+    }
   }
 
   if (!acceptsGender(a, b)) return { kind: "gender", who: "a" };
