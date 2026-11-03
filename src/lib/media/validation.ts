@@ -2,14 +2,8 @@ export const MAX_MEDIA_BYTES = 20 * 1024 * 1024; // 20 MB
 export const MAX_MEDIA_DURATION_SECONDS = 30;
 
 export const ALLOWED_VIDEO_MIMES = ["video/mp4", "video/webm"];
-export const ALLOWED_AUDIO_MIMES = [
-  "audio/mp4",
-  "audio/webm",
-  "audio/mpeg",
-  "audio/wav",
-  "audio/ogg",
-  "audio/aac",
-];
+/** MP4 or WebM only (spec 7.8); MediaRecorder produces one of these in every major browser. */
+export const ALLOWED_AUDIO_MIMES = ["audio/mp4", "audio/webm"];
 
 export interface MediaValidationResult {
   valid: boolean;
@@ -26,7 +20,8 @@ export function validateMediaUpload(input: {
   durationSeconds?: number;
   transcript?: string;
 }): MediaValidationResult {
-  const mime = input.mimeType.toLowerCase();
+  // Browsers report codecs too ("video/webm;codecs=vp9"); only the type matters here.
+  const mime = input.mimeType.toLowerCase().split(";")[0]!.trim();
 
   const isVideo = ALLOWED_VIDEO_MIMES.includes(mime);
   const isAudio = ALLOWED_AUDIO_MIMES.includes(mime);
@@ -34,7 +29,7 @@ export function validateMediaUpload(input: {
   if (!isVideo && !isAudio) {
     return {
       valid: false,
-      error: "Only MP4 and WebM video, or standard audio clips (MP3, M4A, WebM) are supported.",
+      error: "Use an MP4 or WebM clip (video or audio).",
     };
   }
 

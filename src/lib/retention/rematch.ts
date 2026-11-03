@@ -1,60 +1,57 @@
+/**
+ * End-of-term survey (Phase 6.1) and next-year re-match (Phase 6.2). Pure.
+ */
+
+export const SURVEY_OPENS_DAYS_BEFORE_END = 21;
+export const SURVEY_CLOSES_DAYS_AFTER_END = 30;
+export const FRICTION_TAGS = ["noise", "guests", "cleanliness", "schedule", "communication", "other"] as const;
+export type FrictionTag = (typeof FRICTION_TAGS)[number];
+
+const day = (iso: string) => Date.parse(`${iso}T12:00:00Z`);
+
+/** The survey is open from three weeks before the term ends until a month after. */
+export function surveyOpen(termEndsOn: string, today: string): boolean {
+  const end = day(termEndsOn);
+  const now = day(today);
+  return now >= end - SURVEY_OPENS_DAYS_BEFORE_END * 86_400_000 && now <= end + SURVEY_CLOSES_DAYS_AFTER_END * 86_400_000;
+}
+
+/** The cron invites students on the day the window opens (or the first run after). */
+export function shouldInvite(termEndsOn: string, today: string): boolean {
+  return surveyOpen(termEndsOn, today) && day(today) <= day(termEndsOn);
+}
+
 export interface SurveyResponse {
   userId: string;
   roomAgain: "yes" | "maybe" | "no";
-  score: number;
 }
 
 export interface RematchResult {
+  /** "Keep your group?" is offered: everyone answered and at least two said yes or maybe. */
   eligible: boolean;
+  /** Everyone said yes or maybe (the brief's condition for offering it as-is). */
+  everyoneIn: boolean;
   carries: string[];
   leaving: string[];
-  reason: string;
+  /** Members who haven't answered the survey yet. */
+  waiting: string[];
 }
 
-/**
- * Evaluates whether returning roommates can carry their group forward into the new term.
- * If all members said "yes" or "maybe", the whole group carries forward.
- * If one member said "no" (or graduated/leaving), a remaining pair or trio can still carry forward.
- */
-export function evaluateRematchEligibility(responses: SurveyResponse[]): RematchResult {
-  if (responses.length < 2) {
-    return {
-      eligible: false,
-      carries: responses.map((r) => r.userId),
-      leaving: [],
-      reason: "Need at least 2 members to carry a roommate group forward.",
-    };
-  }
-
-  const carries: string[] = [];
-  const leaving: string[] = [];
-
-  for (const resp of responses) {
-    if (resp.roomAgain === "yes" || resp.roomAgain === "maybe") {
-      carries.push(resp.userId);
-    } else {
-      leaving.push(resp.userId);
-    }
-  }
-
-  if (carries.length >= 2) {
-    const reason =
-      leaving.length === 0
-        ? "All roommates agreed to room together again."
-        : `${leaving.length} roommate opted out or graduated; remaining ${carries.length} can carry forward.`;
-
-    return {
-      eligible: true,
-      carries,
-      leaving,
-      reason,
-    };
-  }
-
+export function evaluateRematchEligibility(memberIds: string[], responses: SurveyResponse[]): RematchResult {
+  const byUser = new Map(responses.map((r) => [r.userId, r.roomAgain]));
+  const waiting = memberIds.filter((id) => !byUser.has(id));
+  const carries = memberIds.filter((id) => byUser.get(id) === "yes" || byUser.get(id) === "maybe");
+  const leaving = memberIds.filter((id) => byUser.get(id) === "no");
   return {
-    eligible: false,
+    eligible: memberIds.length >= 2 && waiting.length === 0 && carries.length >= 2,
+    everyoneIn: memberIds.length >= 2 && waiting.length === 0 && leaving.length === 0,
     carries,
     leaving,
-    reason: "Fewer than 2 roommates agreed to room together again.",
+    waiting,
   };
+}
+
+/** Carry forward once every staying member tapped "keep". */
+export function carryForwardReady(carries: string[], keeps: Record<string, boolean>): boolean {
+  return carries.length >= 2 && carries.every((id) => keeps[id] === true);
 }

@@ -1,212 +1,127 @@
 "use client";
 
 import * as React from "react";
-import { Sparkles, ThumbsUp, ThumbsDown, HelpCircle, CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Check, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ChoiceChips } from "@/components/ui/choice";
-import { submitOutcomeSurvey } from "@/app/actions/outcome-surveys";
+import { Field } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
+import { ChoiceChips, MultiChips } from "@/components/ui/choice";
+import { answerCarryForward, submitOutcomeSurvey } from "@/app/actions/outcome-surveys";
+import { FRICTION_TAGS, type FrictionTag } from "@/lib/retention/rematch";
+import type { SurveyContext } from "@/lib/retention/survey";
+import { cn } from "@/lib/utils";
 
-interface RoomAgainSurveyProps {
-  termId: string;
-  groupId: string;
-  groupName?: string;
-  onSubmitted?: () => void;
-}
+const FRICTION_LABEL: Record<FrictionTag, string> = {
+  noise: "Noise",
+  guests: "Guests",
+  cleanliness: "Cleanliness",
+  schedule: "Schedules",
+  communication: "Communication",
+  other: "Something else",
+};
 
-const TAG_OPTIONS = [
-  { value: "communication", label: "Great communication" },
-  { value: "cleanliness", label: "Cleanliness sync" },
-  { value: "quiet_hours", label: "Respected quiet hours" },
-  { value: "guests", label: "Guest limits respected" },
-  { value: "schedules", label: "Compatible sleep schedules" },
-  { value: "friendship", label: "Became close friends" },
-];
+export function RoomAgainSurvey({ context, userId }: { context: SurveyContext; userId: string }) {
+  const router = useRouter();
+  const [roomAgain, setRoomAgain] = React.useState<"yes" | "maybe" | "no" | "">(context.answered?.roomAgain ?? "");
+  const [score, setScore] = React.useState<number | null>(context.answered?.score ?? null);
+  const [tags, setTags] = React.useState<FrictionTag[]>((context.answered?.frictionTags ?? []).filter((t): t is FrictionTag => (FRICTION_TAGS as readonly string[]).includes(t)));
+  const [win, setWin] = React.useState(context.answered?.biggestWin ?? "");
+  const [pending, setPending] = React.useState<string | null>(null);
 
-export function RoomAgainSurvey({
-  termId,
-  groupId,
-  groupName = "your room",
-  onSubmitted,
-}: RoomAgainSurveyProps) {
-  const [roomAgain, setRoomAgain] = React.useState<"yes" | "maybe" | "no" | "">("");
-  const [score, setScore] = React.useState<number>(5);
-  const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
-  const [win, setWin] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
-  const [submitted, setSubmitted] = React.useState(false);
-
-  function toggleTag(tag: string) {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-    );
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!roomAgain) {
-      toast("Please answer whether you'd room together again.");
-      return;
-    }
-
-    setLoading(true);
-    const res = await submitOutcomeSurvey(
-      termId,
-      groupId,
-      roomAgain,
-      score,
-      selectedTags,
-      win.trim() || undefined,
-    );
-    setLoading(false);
-
-    if (res.ok) {
-      setSubmitted(true);
-      toast.success("Thank you for sharing your experience!", {
-        description: "Your feedback helps improve roommate matching for everyone.",
-      });
-      onSubmitted?.();
-    } else {
-      toast.error(res.error);
-    }
+    if (!roomAgain || score === null) return void toast.error("Answer the first two questions.");
+    setPending("survey");
+    const result = await submitOutcomeSurvey({ roomAgain, score, frictionTags: tags, biggestWin: win });
+    setPending(null);
+    if (!result.ok) return void toast.error(result.error);
+    toast.success("Thanks. Your answers stay yours; housing only sees totals.");
+    router.refresh();
   }
 
-  if (submitted) {
-    return (
-      <div className="rounded-2xl border border-line bg-surface p-6 text-center">
-        <CheckCircle2 className="mx-auto size-8 text-accent" />
-        <h3 className="mt-2 text-body font-semibold text-ink">End-of-Year Survey Completed</h3>
-        <p className="mt-1 text-body-sm text-ink-3">
-          Your answers have been recorded for next year's room selection.
-        </p>
-      </div>
-    );
+  async function keep(groupId: string, value: boolean) {
+    setPending(value ? "keep" : "leave");
+    const result = await answerCarryForward(groupId, value);
+    setPending(null);
+    if (!result.ok) return void toast.error(result.error);
+    toast.success(result.data.carried ? "Your group carries into the new term" : value ? "Saved. Waiting on the others." : "Saved");
+    router.refresh();
   }
 
+  const cf = context.carryForward;
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs">
-      <div className="flex items-center gap-2 text-body-xs font-semibold uppercase tracking-wider text-accent">
-        <Sparkles className="size-4" />
-        <span>End-of-Year Check-In</span>
-      </div>
-      <h3 className="mt-1 text-body-lg font-semibold text-ink">
-        Would you room with {groupName} again?
-      </h3>
-      <p className="text-body-sm text-ink-3">
-        Private to housing in aggregate. Answering &ldquo;Yes&rdquo; lets you carry your group forward into next year.
-      </p>
+    <div className="flex flex-col gap-6">
+      {cf && context.group ? (
+        <section className="rounded-xl bg-surface p-5 ring-1 ring-line sm:p-6" aria-labelledby="keep-title">
+          <h2 id="keep-title" className="flex items-center gap-2 text-body font-semibold text-ink">
+            <Users className="size-4 text-ink-3" aria-hidden /> Keep {context.group.name} for {cf.toTermName}?
+          </h2>
+          {cf.eligible ? (
+            <>
+              <p className="mt-1 text-body-sm text-ink-2">
+                {cf.everyoneIn ? "Everyone said they'd room together again." : `${cf.leaving.map((id) => cf.names[id] ?? "Someone").join(" and ")} won't be rooming next year, so there's space for someone new.`} One tap each carries the group forward as a confirmed pairing.
+              </p>
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {cf.carries.map((id) => (
+                  <li key={id} className={cn("inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-caption", cf.keeps[id] ? "bg-success-soft text-success" : "bg-surface-sunken text-ink-2")}>
+                    {cf.keeps[id] ? <Check className="size-3.5" aria-hidden /> : null}
+                    {id === userId ? "You" : (cf.names[id] ?? "Roommate")}
+                    <span className="sr-only">{cf.keeps[id] ? " kept the group" : cf.keeps[id] === false ? " said no" : " hasn't answered"}</span>
+                  </li>
+                ))}
+              </ul>
+              {cf.carries.includes(userId) ? (
+                <div className="mt-4 flex gap-2">
+                  <Button loading={pending === "keep"} disabled={cf.keeps[userId] === true} onClick={() => void keep(context.group!.id, true)}>
+                    Keep our group
+                  </Button>
+                  <Button variant="secondary" loading={pending === "leave"} disabled={cf.keeps[userId] === false} onClick={() => void keep(context.group!.id, false)}>
+                    Not this time
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-1 text-body-sm text-ink-2">
+              {cf.waiting.length ? "Waiting for everyone's end-of-term answers." : "Fewer than two of you wanted to room together again, so matching starts fresh, with your answers already filled in."}
+            </p>
+          )}
+        </section>
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        <div>
-          <label className="text-body-xs font-semibold text-ink">
-            Would you live together next year?
-          </label>
-          <div className="mt-1.5 grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setRoomAgain("yes")}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-body-sm font-medium transition-colors ${
-                roomAgain === "yes"
-                  ? "border-accent bg-accent/10 text-accent font-semibold"
-                  : "border-line bg-surface hover:bg-surface-sunken text-ink"
-              }`}
-            >
-              <ThumbsUp className="size-4" />
-              <span>Yes</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRoomAgain("maybe")}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-body-sm font-medium transition-colors ${
-                roomAgain === "maybe"
-                  ? "border-accent bg-accent/10 text-accent font-semibold"
-                  : "border-line bg-surface hover:bg-surface-sunken text-ink"
-              }`}
-            >
-              <HelpCircle className="size-4" />
-              <span>Maybe</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setRoomAgain("no")}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-body-sm font-medium transition-colors ${
-                roomAgain === "no"
-                  ? "border-accent bg-accent/10 text-accent font-semibold"
-                  : "border-line bg-surface hover:bg-surface-sunken text-ink"
-              }`}
-            >
-              <ThumbsDown className="size-4" />
-              <span>No</span>
-            </button>
+      {!context.term ? (
+        <p className="rounded-xl bg-surface p-5 text-body-sm text-ink-2 ring-1 ring-line">Your housing office hasn&apos;t set up the current term yet.</p>
+      ) : !context.open ? (
+        <p className="rounded-xl bg-surface p-5 text-body-sm text-ink-2 ring-1 ring-line">
+          The end-of-term survey opens three weeks before {context.term.name} ends ({new Date(`${context.term.endsOn}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" })}).
+        </p>
+      ) : (
+        <form onSubmit={submit} className="flex flex-col gap-6 rounded-xl bg-surface p-5 ring-1 ring-line sm:p-6" noValidate>
+          <div>
+            <h2 className="text-body font-semibold text-ink">{context.term.name}: how did it go?</h2>
+            <p className="mt-1 text-body-sm text-ink-2">Four questions. Your answers are private; your housing office sees totals only.</p>
           </div>
-        </div>
-
-        <div>
-          <label className="text-body-xs font-semibold text-ink">
-            Overall room experience (1 to 5)
-          </label>
-          <div className="mt-1.5 flex gap-2">
-            {[1, 2, 3, 4, 5].map((val) => (
-              <button
-                key={val}
-                type="button"
-                onClick={() => setScore(val)}
-                className={`size-10 rounded-xl border text-body-sm font-semibold transition-colors ${
-                  score === val
-                    ? "border-accent bg-accent text-white"
-                    : "border-line bg-surface hover:bg-surface-sunken text-ink"
-                }`}
-              >
-                {val}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-body-xs font-semibold text-ink">
-            Highlights from living together
-          </label>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {TAG_OPTIONS.map((tag) => (
-              <button
-                key={tag.value}
-                type="button"
-                onClick={() => toggleTag(tag.value)}
-                className={`rounded-full border px-3 py-1 text-caption font-medium transition-colors ${
-                  selectedTags.includes(tag.value)
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-line bg-surface hover:bg-surface-sunken text-ink-2"
-                }`}
-              >
-                {tag.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <label className="text-body-xs font-semibold text-ink">
-            Biggest win or memorable memory (optional)
-          </label>
-          <input
-            type="text"
-            value={win}
-            onChange={(e) => setWin(e.target.value)}
-            placeholder="e.g. cooked dinners together every Sunday"
-            className="mt-1 w-full rounded-xl border border-line bg-surface px-3 py-2 text-body-sm text-ink placeholder:text-ink-3"
-            maxLength={200}
-          />
-        </div>
-
-        <Button
-          type="submit"
-          className="w-full bg-accent text-white hover:opacity-90"
-          disabled={loading || !roomAgain}
-        >
-          {loading ? "Submitting..." : "Submit reflection"}
-        </Button>
-      </form>
+          <Field label="Would you room together again?">
+            {({ id }) => <ChoiceChips aria-labelledby={id} value={roomAgain} onValueChange={setRoomAgain} options={[{ value: "yes", label: "Yes" }, { value: "maybe", label: "Maybe" }, { value: "no", label: "No" }]} />}
+          </Field>
+          <Field label="Overall, how was living together?">
+            {({ id }) => (
+              <ChoiceChips aria-labelledby={id} value={score === null ? "" : String(score)} onValueChange={(v) => setScore(Number(v))} options={["1", "2", "3", "4", "5"].map((v) => ({ value: v, label: v === "1" ? "1 · rough" : v === "5" ? "5 · great" : v }))} />
+            )}
+          </Field>
+          <Field label="Biggest friction" hint="Optional. Up to three.">
+            {({ id }) => <MultiChips aria-labelledby={id} value={tags} onValueChange={(v) => setTags(v.slice(-3))} options={FRICTION_TAGS.map((t) => ({ value: t, label: FRICTION_LABEL[t] }))} />}
+          </Field>
+          <Field label="Biggest win" hint="Optional.">
+            {({ id }) => <Textarea id={id} rows={2} maxLength={300} value={win} onChange={(e) => setWin(e.target.value)} />}
+          </Field>
+          <Button type="submit" loading={pending === "survey"} className="self-start">
+            {context.answered ? "Update answers" : "Send answers"}
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

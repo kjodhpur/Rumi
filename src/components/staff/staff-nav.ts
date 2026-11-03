@@ -1,4 +1,5 @@
 import {
+  Accessibility,
   BarChart3,
   CalendarDays,
   ClipboardCheck,
@@ -41,6 +42,7 @@ export const STAFF_NAV: StaffNavSection[] = [
       { href: "/staff/students", label: "Students", icon: UserRoundSearch, capability: "viewStudents" },
       { href: "/staff/pairings", label: "Pairings", icon: HeartHandshake, capability: "managePairings" },
       { href: "/staff/swaps", label: "Room swaps", icon: ArrowLeftRight, capability: "managePairings" },
+      { href: "/staff/accommodations", label: "Accommodations", icon: Accessibility, capability: "manageAccommodations" },
       { href: "/staff/ra", label: "Check-ins", icon: ClipboardCheck, capability: "raWorkspace" },
       { href: "/staff/safety", label: "Safety & reports", icon: ShieldAlert, capability: "moderate" },
     ],

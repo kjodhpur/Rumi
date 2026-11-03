@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { photoUrl } from "@/lib/photos";
 import type { EscalationCategory, EscalationRoute } from "@/lib/safety/escalation";
 
@@ -43,7 +44,7 @@ export interface StaffReportItem {
 
 export interface StaffEscalationItem {
   id: string;
-  reportId: string;
+  reportId: string | null;
   category: EscalationCategory;
   destinationLabel: string;
   studentConsented: boolean;
@@ -81,89 +82,13 @@ export interface SafetyLogItem {
   createdAt: string;
 }
 
+/**
+ * The school's report queue, read as the signed-in moderator: staff_school_reports checks
+ * the role and leaves out cross-school reports (those go to the Rumi team only).
+ */
 export async function loadStaffSchoolReports(schoolId: string): Promise<StaffReportItem[]> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.rpc("staff_school_reports", { p_school: schoolId });
-  if (error || !data) {
-    // Fallback: direct query join if RPC is not deployed yet in current environment
-    const { data: reports } = await admin
-      .from("reports")
-      .select(`
-        id, reason, details, context, source, status, resolution_note, reviewed_at, created_at,
-        reported:profiles!reports_reported_id_fkey(id, first_name, last_initial, avatar_path, banned_at, school_id),
-        reporter:profiles!reports_reporter_id_fkey(id, first_name, last_initial, school_id)
-      `)
-      .order("created_at", { ascending: false });
-
-    if (!reports) return [];
-
-    const schoolReports = reports.filter((r) => {
-      const rep = r.reported as unknown as { school_id: string } | null;
-      const reporter = r.reporter as unknown as { school_id: string } | null;
-      if (!rep || rep.school_id !== schoolId) return false;
-      if (reporter && reporter.school_id !== schoolId) return false;
-      return true;
-    });
-
-    const reportIds = schoolReports.map((r) => r.id);
-    const { data: escalations } = reportIds.length
-      ? await admin.from("escalations").select("id, report_id, category, destination_label, status, forwarded_at").in("report_id", reportIds)
-      : { data: [] };
-
-    const escMap = new Map((escalations ?? []).map((e) => [e.report_id, e]));
-
-    return schoolReports.map((r) => {
-      const rep = r.reported as unknown as {
-        id: string;
-        first_name: string;
-        last_initial: string;
-        avatar_path: string | null;
-        banned_at: string | null;
-      };
-      const reporter = r.reporter as unknown as {
-        id: string;
-        first_name: string;
-        last_initial: string;
-      } | null;
-      const esc = escMap.get(r.id);
-
-      return {
-        id: r.id,
-        reason: r.reason,
-        details: r.details,
-        context: (r.context as unknown as StaffReportItem["context"]) ?? null,
-        source: (r.source as "user" | "auto") ?? "user",
-        status: (r.status as SchoolReportStatus) ?? "open",
-        resolutionNote: r.resolution_note,
-        reviewedAt: r.reviewed_at,
-        createdAt: r.created_at,
-        reported: {
-          id: rep.id,
-          firstName: rep.first_name,
-          lastInitial: rep.last_initial,
-          avatarUrl: photoUrl(rep.avatar_path),
-          bannedAt: rep.banned_at,
-        },
-        reporter: reporter
-          ? {
-              id: reporter.id,
-              firstName: reporter.first_name,
-              lastInitial: reporter.last_initial,
-            }
-          : null,
-        escalation: esc
-          ? {
-              id: esc.id,
-              category: esc.category as EscalationCategory,
-              destination: esc.destination_label,
-              status: esc.status as "pending" | "forwarded" | "closed",
-              forwardedAt: esc.forwarded_at,
-            }
-          : null,
-      };
-    });
-  }
-
+  const { data, error } = await createClient().rpc("staff_school_reports", { p_school: schoolId });
+  if (error || !data) return [];
   return data.map((r) => ({
     id: r.id,
     reason: r.reason,
@@ -192,7 +117,7 @@ export async function loadStaffSchoolReports(schoolId: string): Promise<StaffRep
       ? {
           id: r.escalation_id,
           category: r.escalation_category as EscalationCategory,
-          destination: r.escalation_destination || "Campus office",
+          destination: r.escalation_destination ?? "",
           status: r.escalation_status as "pending" | "forwarded" | "closed",
           forwardedAt: r.escalation_forwarded_at,
         }
@@ -222,7 +147,8 @@ export async function loadStaffEscalationRoutes(schoolId: string): Promise<Escal
   }));
 }
 
-export async function loadStaffEscalations(schoolId: string): Promise<StaffEscalationItem[]> {
+export async function loadStaffEscalations(schoolId: string, reportIds: string[]): Promise<StaffEscalationItem[]> {
+  if (!reportIds.length) return [];
   const admin = createAdminClient();
   const { data } = await admin
     .from("escalations")
@@ -235,6 +161,7 @@ export async function loadStaffEscalations(schoolId: string): Promise<StaffEscal
       )
     `)
     .eq("school_id", schoolId)
+    .in("report_id", reportIds)
     .order("created_at", { ascending: false });
 
   if (!data) return [];
@@ -271,13 +198,7 @@ export async function loadStaffEscalations(schoolId: string): Promise<StaffEscal
   });
 }
 
-export async function loadStaffSafetyStats(schoolId: string): Promise<StaffSafetyStats> {
-  const [reports, routes, escalations] = await Promise.all([
-    loadStaffSchoolReports(schoolId),
-    loadStaffEscalationRoutes(schoolId),
-    loadStaffEscalations(schoolId),
-  ]);
-
+export function safetyStats(reports: StaffReportItem[], routes: EscalationRoute[], escalations: StaffEscalationItem[]): StaffSafetyStats {
   return {
     open: reports.filter((r) => r.status === "open").length,
     reviewing: reports.filter((r) => r.status === "reviewing").length,
@@ -318,4 +239,40 @@ export async function loadStaffSafetyLog(schoolId: string): Promise<SafetyLogIte
       createdAt: row.created_at,
     };
   });
+}
+
+export interface HiddenMediaItem {
+  userId: string;
+  name: string;
+  kind: "video" | "audio";
+  transcript: string;
+  reports: number;
+  reasons: string[];
+  signedUrl: string | null;
+}
+
+/** Intro clips hidden after two reports, waiting for a moderator (Phase 7.8). */
+export async function loadHiddenMedia(schoolId: string): Promise<HiddenMediaItem[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profile_media")
+    .select("user_id, kind, path, transcript, profiles!inner(first_name, last_initial, school_id), profile_media_reports(reason)")
+    .eq("status", "hidden")
+    .eq("profiles.school_id", schoolId);
+  return Promise.all(
+    (data ?? []).map(async (row) => {
+      const p = row.profiles as unknown as { first_name: string; last_initial: string };
+      const reports = (row.profile_media_reports as { reason: string }[] | null) ?? [];
+      const { data: signed } = await admin.storage.from("intros-media").createSignedUrl(row.path, 600);
+      return {
+        userId: row.user_id,
+        name: `${p.first_name} ${p.last_initial}.`,
+        kind: row.kind as "video" | "audio",
+        transcript: row.transcript,
+        reports: reports.length,
+        reasons: [...new Set(reports.map((r) => r.reason))],
+        signedUrl: signed?.signedUrl ?? null,
+      };
+    }),
+  );
 }

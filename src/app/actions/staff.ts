@@ -25,8 +25,11 @@ const buildings = z
   .default([])
   .transform((list) => [...new Set(list.filter(Boolean))]);
 
-function scopesFor(r: StaffRole, list: string[]) {
-  return r === "ra" ? { buildings: list, communities: [] } : {};
+function scopesFor(r: StaffRole, list: string[], accommodations = false) {
+  if (r === "ra") return { buildings: list, communities: [] };
+  // Housing staff can be the school's accommodation coordinators (Phase 1.E).
+  if (r === "housing_staff" && accommodations) return { accommodations: true };
+  return {};
 }
 
 function revalidateStaff() {
@@ -50,6 +53,7 @@ const inviteInput = z.object({
   email: emailSchema,
   role,
   buildings,
+  accommodations: z.boolean().default(false),
 });
 
 export async function inviteStaff(raw: z.input<typeof inviteInput>): Promise<ActionResult> {
@@ -103,7 +107,7 @@ export async function inviteStaff(raw: z.input<typeof inviteInput>): Promise<Act
       school_id: input.schoolId,
       email: input.email,
       role: input.role,
-      scopes: scopesFor(input.role, input.buildings),
+      scopes: scopesFor(input.role, input.buildings, input.accommodations),
       token_hash: hash,
       expires_at: inviteExpiry().toISOString(),
       created_by: actorId,
@@ -275,7 +279,7 @@ async function wouldLeaveNoAdmin(schoolIdValue: string, memberId: string) {
   return (count ?? 0) === 0;
 }
 
-const memberInput = z.object({ memberId: z.string().uuid(), role, buildings });
+const memberInput = z.object({ memberId: z.string().uuid(), role, buildings, accommodations: z.boolean().default(false) });
 
 export async function updateStaffMember(raw: z.input<typeof memberInput>): Promise<ActionResult> {
   const parsed = memberInput.safeParse(raw);
@@ -290,7 +294,7 @@ export async function updateStaffMember(raw: z.input<typeof memberInput>): Promi
   }
   const { error } = await createAdminClient()
     .from("staff_members")
-    .update({ role: parsed.data.role, scopes: scopesFor(parsed.data.role, parsed.data.buildings) })
+    .update({ role: parsed.data.role, scopes: scopesFor(parsed.data.role, parsed.data.buildings, parsed.data.accommodations) })
     .eq("id", member.id);
   if (error) return fail("Couldn't update their role.");
   await logAudit({
@@ -299,7 +303,7 @@ export async function updateStaffMember(raw: z.input<typeof memberInput>): Promi
     action: "staff_role_changed",
     entity: "staff_member",
     entityId: member.user_id,
-    meta: { from: member.role, to: parsed.data.role, buildings: parsed.data.buildings },
+    meta: { from: member.role, to: parsed.data.role, buildings: parsed.data.buildings, accommodations: parsed.data.accommodations },
   });
   revalidateStaff();
   return ok();

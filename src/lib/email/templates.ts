@@ -148,3 +148,23 @@ export function housingNudgeEmail(office: string) {
     }),
   };
 }
+
+/** A student chose to forward a serious report to the school's configured office (Phase 0.3). */
+export function escalationForwardEmail(input: {
+  office: string;
+  category: string;
+  reporterFirstName: string;
+  reporterEmail: string;
+  details: string | null;
+  excerpt: string | null;
+}) {
+  const { html, text } = layout({
+    preheader: `A student asked Rumi to forward a ${input.category.toLowerCase()} report.`,
+    heading: `A student forwarded a report to ${input.office}`,
+    body: `${input.reporterFirstName} (${input.reporterEmail}) reported "${input.category}" on Rumi and chose to send it to your office so you can follow up. Rumi is a roommate-matching service and doesn't investigate.${input.details ? ` What they wrote: ${input.details}` : ""}`,
+    quote: input.excerpt ?? undefined,
+    cta: { label: "About Rumi", href: "/security" },
+    footer: "Sent because the student chose to forward their report to this address, which your school configured in Rumi.",
+  });
+  return { subject: `Forwarded report from a student (${input.category})`, html, text };
+}

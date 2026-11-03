@@ -194,7 +194,7 @@ export function EscalationRoutesManager({
                   <div className="mt-1.5 flex flex-wrap items-center gap-3">
                     <span className="font-medium text-ink">{route.destinationLabel}</span>
                     {route.phone ? (
-                      <span className="inline-flex items-center gap-1 text-ink-1">
+                      <span className="inline-flex items-center gap-1 text-ink">
                         <Phone className="h-3 w-3" /> {route.phone}
                       </span>
                     ) : null}

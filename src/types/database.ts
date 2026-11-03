@@ -1497,14 +1497,14 @@ isOneToOne: false
                   ]
                 },"pairings": {
                   Row: {
-                    "approved_at": string | null,"approved_by": string | null,"created_at": string,"exported_at": string | null,"group_id": string | null,"id": string,"member_ids": (string)[],"school_id": string,"staff_notes": string | null,"status": string,"updated_at": string,"updated_by": string | null
+                    "approved_at": string | null,"approved_by": string | null,"carried_from_term": string | null,"created_at": string,"exported_at": string | null,"group_id": string | null,"id": string,"member_ids": (string)[],"school_id": string,"staff_notes": string | null,"status": string,"term_id": string | null,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"exported_at"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id": string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "approved_at"?: string | null,"approved_by"?: string | null,"carried_from_term"?: string | null,"created_at"?: string,"exported_at"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id": string,"staff_notes"?: string | null,"status"?: string,"term_id"?: string | null,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "approved_at"?: string | null,"approved_by"?: string | null,"created_at"?: string,"exported_at"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id"?: string,"staff_notes"?: string | null,"status"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "approved_at"?: string | null,"approved_by"?: string | null,"carried_from_term"?: string | null,"created_at"?: string,"exported_at"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"school_id"?: string,"staff_notes"?: string | null,"status"?: string,"term_id"?: string | null,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -1512,6 +1512,12 @@ isOneToOne: false
       columns: ["approved_by"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pairings_carried_from_term_fkey"
+      columns: ["carried_from_term"]
+isOneToOne: false
+      referencedRelation: "terms"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "pairings_group_id_fkey"
@@ -1524,6 +1530,12 @@ isOneToOne: true
       columns: ["school_id"]
 isOneToOne: false
       referencedRelation: "schools"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pairings_term_id_fkey"
+      columns: ["term_id"]
+isOneToOne: false
+      referencedRelation: "terms"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "pairings_updated_by_fkey"

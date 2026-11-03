@@ -225,7 +225,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
                     To verify ownership, place this code in your Instagram bio:
                   </p>
                   <div className="flex items-center gap-2">
-                    <code className="rounded bg-card px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
+                    <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
                       {social.instagram.verificationCode}
                     </code>
                     <Button
@@ -324,7 +324,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
                     To verify ownership, place this code in your LinkedIn headline or bio:
                   </p>
                   <div className="flex items-center gap-2">
-                    <code className="rounded bg-card px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
+                    <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
                       {social.linkedin.verificationCode}
                     </code>
                     <Button

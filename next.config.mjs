@@ -12,7 +12,8 @@ const csp = [
   `img-src 'self' data: blob: ${supabase.origin} https://i.scdn.co https://*.googleusercontent.com`,
   "font-src 'self' data:",
   `connect-src 'self' ${supabase.origin} ${supabaseWs}`,
-  "media-src 'self' blob:",
+  // Intro clips play from short-lived signed Supabase Storage URLs.
+  `media-src 'self' blob: ${supabase.origin}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -26,7 +27,8 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
+  // Camera and microphone only for this origin: in-browser intro recording (Phase 7.8).
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(), browsing-topics=()" },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 

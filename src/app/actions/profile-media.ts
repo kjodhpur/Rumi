@@ -1,13 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fail, ok, type ActionResult } from "@/lib/action";
-import { MAX_MEDIA_DURATION_SECONDS } from "@/lib/media/validation";
+import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { cleanText } from "@/lib/sanitize";
+import { MAX_MEDIA_BYTES, MAX_MEDIA_DURATION_SECONDS, validateMediaUpload } from "@/lib/media/validation";
+import { mediaDurationSeconds, sniffContainer } from "@/lib/media/duration";
 
 export interface ProfileMediaInfo {
-  id: string;
   userId: string;
   kind: "video" | "audio";
   signedUrl: string;
@@ -15,72 +18,101 @@ export interface ProfileMediaInfo {
   transcript: string;
 }
 
-export async function saveProfileMedia(
-  kind: "video" | "audio",
-  path: string,
-  durationSeconds: number,
-  transcript: string,
-): Promise<ActionResult> {
+const saveInput = z.object({
+  path: z.string().max(200),
+  transcript: z.string().max(1000),
+});
+
+/**
+ * After the browser uploads to intros-media/<uid>/…, the server checks the file itself:
+ * it must be in the caller's folder, MP4 or WebM, ≤ 20 MB and ≤ 30 s (read from the file).
+ * A clip hidden by reports or removed by a moderator stays that way when replaced.
+ */
+export async function saveProfileMedia(raw: z.input<typeof saveInput>): Promise<ActionResult> {
+  const parsed = saveInput.safeParse(raw);
+  if (!parsed.success) return fail("Check the clip and transcript.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
+  if (!(await rateLimit(`media:${user.id}`, LIMITS.mediaUploadsPerHour))) return fail("Too many uploads. Try again later.");
 
-  const dur = Math.round(durationSeconds);
-  if (dur <= 0 || dur > MAX_MEDIA_DURATION_SECONDS) {
-    return fail(`Clip must be between 1 and ${MAX_MEDIA_DURATION_SECONDS} seconds.`);
+  const { path } = parsed.data;
+  const transcript = cleanText(parsed.data.transcript);
+  const db = createAdminClient();
+  const discard = () => db.storage.from("intros-media").remove([path]);
+  if (!path.startsWith(`${user.id}/`) || path.includes("..")) return fail("That upload isn't yours.");
+
+  const { data: file, error: downloadError } = await db.storage.from("intros-media").download(path);
+  if (downloadError || !file) return fail("Couldn't find the upload. Try again.");
+  if (file.size > MAX_MEDIA_BYTES) {
+    await discard();
+    return fail("Clips can be up to 20 MB.");
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const container = sniffContainer(bytes);
+  const seconds = mediaDurationSeconds(bytes);
+  const mimeType = (file.type || (container === "mp4" ? "video/mp4" : "video/webm")).split(";")[0]!;
+  const check = validateMediaUpload({ mimeType, sizeBytes: file.size, durationSeconds: seconds ?? undefined, transcript });
+  if (!container || seconds === null || !check.valid || !check.kind) {
+    await discard();
+    return fail(check.error ?? `Use an MP4 or WebM clip up to ${MAX_MEDIA_DURATION_SECONDS} seconds.`);
+  }
+  // A little slack for encoder rounding.
+  if (seconds > MAX_MEDIA_DURATION_SECONDS + 0.5) {
+    await discard();
+    return fail(`Clips can be up to ${MAX_MEDIA_DURATION_SECONDS} seconds.`);
   }
 
-  const cleanTranscript = transcript.trim();
-  if (cleanTranscript.length < 3 || cleanTranscript.length > 1000) {
-    return fail("Transcript must be between 3 and 1,000 characters for accessibility.");
+  const { data: existing } = await db.from("profile_media").select("path, status").eq("user_id", user.id).maybeSingle();
+  if (existing?.status === "removed") {
+    await discard();
+    return fail("A moderator removed your last intro, so you can't add a new one right now.");
   }
-
-  const supabase = createClient();
-  const { error } = await supabase.from("profile_media").upsert(
+  const { error } = await db.from("profile_media").upsert(
     {
       user_id: user.id,
-      kind,
+      kind: check.kind,
       path,
-      duration_s: dur,
-      transcript: cleanTranscript,
-      status: "active",
+      mime_type: `${check.kind}/${container}`,
+      size_bytes: file.size,
+      duration_s: Math.max(1, Math.round(seconds)),
+      transcript,
+      status: existing?.status === "hidden" ? "hidden" : "active",
     },
     { onConflict: "user_id" },
   );
-
-  if (error) return fail(error.message);
-
+  if (error) {
+    await discard();
+    return fail(friendlyDbError(error.message));
+  }
+  if (existing && existing.path !== path) await db.storage.from("intros-media").remove([existing.path]);
   revalidatePath(`/profile/${user.id}`);
-  revalidatePath("/settings/profile");
   return ok();
 }
 
 export async function deleteProfileMedia(): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-
   const supabase = createClient();
+  const { data: existing } = await supabase.from("profile_media").select("path, status").eq("user_id", user.id).maybeSingle();
+  if (!existing) return ok();
   const { error } = await supabase.from("profile_media").delete().eq("user_id", user.id);
-  if (error) return fail(error.message);
-
+  if (error) return fail("Couldn't remove the clip.");
+  await createAdminClient().storage.from("intros-media").remove([existing.path]);
   revalidatePath(`/profile/${user.id}`);
-  revalidatePath("/settings/profile");
   return ok();
 }
 
-export async function getSignedMediaUrl(
-  path: string,
-): Promise<ActionResult<{ signedUrl: string }>> {
+const reportInput = z.object({ ownerId: z.string().uuid(), reason: z.enum(["inappropriate", "harassment", "spam", "not_them", "other"]) });
+
+/** Two reports hide a clip until a moderator reviews it. */
+export async function reportProfileMedia(raw: z.input<typeof reportInput>): Promise<ActionResult> {
+  const parsed = reportInput.safeParse(raw);
+  if (!parsed.success) return fail("Pick a reason.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.storage
-    .from("intros-media")
-    .createSignedUrl(path, 3600); // 1 hour validity
-
-  if (error || !data) {
-    return fail("Could not generate secure media URL.");
-  }
-
-  return ok({ signedUrl: data.signedUrl });
+  if (!(await rateLimit(`media-report:${user.id}`, LIMITS.mediaReportsPerDay))) return fail("You've sent a lot of reports today.");
+  const { error } = await createClient().rpc("report_profile_media", { p_owner: parsed.data.ownerId, p_reason: parsed.data.reason });
+  if (error) return fail(friendlyDbError(error.message));
+  revalidatePath(`/profile/${parsed.data.ownerId}`);
+  return ok();
 }

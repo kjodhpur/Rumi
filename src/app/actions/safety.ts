@@ -13,13 +13,42 @@ import { recomputeMatchesFor } from "@/lib/matching/recompute";
 import { runInBackground } from "@/lib/background";
 import { ESCALATION_CATEGORIES, type EscalationCategory, type EscalationRoute } from "@/lib/safety/escalation";
 import type { SchoolReportStatus } from "@/lib/staff/safety";
+import { sendEmail } from "@/lib/email/send";
+import { escalationForwardEmail } from "@/lib/email/templates";
 
 const uuidSchema = z.string().uuid();
 const categorySchema = z.enum(["harassment", "threat", "discrimination", "wellbeing", "general"]);
+const schoolIdSchema = z.string().regex(/^[a-z0-9-]{2,32}$/);
+
+/**
+ * A report a school moderator may act on: the reported student is at this school and so is
+ * the reporter (cross-school reports are for the Rumi team only).
+ */
+async function schoolReport(schoolId: string, reportId: string) {
+  if (!schoolIdSchema.safeParse(schoolId).success || !uuidSchema.safeParse(reportId).success) return null;
+  const admin = createAdminClient();
+  const { data: report } = await admin.from("reports").select("id, reporter_id, reported_id").eq("id", reportId).maybeSingle();
+  if (!report) return null;
+  const ids = [report.reported_id, report.reporter_id].filter((id): id is string => Boolean(id));
+  const { data: people } = await admin.from("profiles").select("id, school_id").in("id", ids);
+  const schoolOf = (id: string | null) => (id ? people?.find((p) => p.id === id)?.school_id : schoolId);
+  return schoolOf(report.reported_id) === schoolId && schoolOf(report.reporter_id) === schoolId ? report : null;
+}
+
+/** A student (never staff or a Rumi admin) at this school. */
+async function schoolStudent(schoolId: string, userId: string) {
+  if (!schoolIdSchema.safeParse(schoolId).success || !uuidSchema.safeParse(userId).success) return false;
+  const admin = createAdminClient();
+  const [{ data: profile }, { data: isAdmin }] = await Promise.all([
+    admin.from("profiles").select("school_id, is_staff").eq("id", userId).maybeSingle(),
+    admin.from("admins").select("user_id").eq("user_id", userId).maybeSingle(),
+  ]);
+  return Boolean(profile && profile.school_id === schoolId && !profile.is_staff && !isAdmin);
+}
 
 const routeSchema = z.object({
   id: z.string().uuid().optional(),
-  schoolId: z.string().min(1),
+  schoolId: schoolIdSchema,
   category: categorySchema,
   destinationLabel: z.string().min(2).max(120),
   url: z.string().url().max(500).optional().or(z.literal("")),
@@ -134,10 +163,13 @@ export async function updateSchoolReportStatus(input: {
   note?: string;
 }): Promise<ActionResult> {
   if (!uuidSchema.safeParse(input.reportId).success) return fail("Invalid report ID.");
+  if (!["open", "reviewing", "actioned", "dismissed"].includes(input.status)) return fail("Pick a status.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await schoolReport(input.schoolId, input.reportId))) return fail("That report isn't in your school's queue.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour))) return fail("Too many changes. Try again in a bit.");
 
-  const resolution = input.note ? cleanText(input.note) : null;
+  const resolution = input.note ? cleanText(input.note).slice(0, 1000) : null;
   const admin = createAdminClient();
 
   const { error } = await admin
@@ -181,8 +213,10 @@ export async function warnSchoolStudent(input: {
   if (!uuidSchema.safeParse(input.userId).success) return fail("Invalid user ID.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await schoolStudent(input.schoolId, input.userId))) return fail("That student isn't at your school.");
+  if (input.reportId && !(await schoolReport(input.schoolId, input.reportId))) return fail("That report isn't in your school's queue.");
 
-  const warningNote = cleanText(input.note);
+  const warningNote = cleanText(String(input.note ?? "")).slice(0, 280);
   if (!warningNote) return fail("Warning message is required.");
 
   const admin = createAdminClient();
@@ -226,8 +260,10 @@ export async function suspendSchoolStudent(input: {
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
   if (actorId === input.userId) return fail("You cannot suspend yourself.");
+  if (!(await schoolStudent(input.schoolId, input.userId))) return fail("You can only suspend students at your school.");
+  if (input.reportId && !(await schoolReport(input.schoolId, input.reportId))) return fail("That report isn't in your school's queue.");
 
-  const reason = cleanText(input.reason) || "Violation of community standards";
+  const reason = cleanText(String(input.reason ?? "")).slice(0, 500) || "Violation of community standards";
   const admin = createAdminClient();
 
   const { error } = await admin
@@ -282,9 +318,10 @@ export async function restoreSchoolStudent(input: {
   if (!uuidSchema.safeParse(input.userId).success) return fail("Invalid user ID.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await schoolStudent(input.schoolId, input.userId))) return fail("You can only restore students at your school.");
 
   const admin = createAdminClient();
-  const note = input.note ? cleanText(input.note) : null;
+  const note = input.note ? cleanText(input.note).slice(0, 500) : null;
 
   const { error } = await admin
     .from("profiles")
@@ -325,11 +362,19 @@ export async function escalateReport(input: {
   notes?: string;
 }): Promise<ActionResult> {
   if (!uuidSchema.safeParse(input.reportId).success) return fail("Invalid report ID.");
+  if (!categorySchema.safeParse(input.category).success) return fail("Pick a category.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await schoolReport(input.schoolId, input.reportId))) return fail("That report isn't in your school's queue.");
 
-  const notes = input.notes ? cleanText(input.notes) : null;
+  const notes = input.notes ? cleanText(input.notes).slice(0, 1000) : null;
   const admin = createAdminClient();
+  // The destination comes from the school's configured route, never free text.
+  const { data: route } = input.routeId && uuidSchema.safeParse(input.routeId).success
+    ? await admin.from("escalation_routes").select("id, destination_label").eq("id", input.routeId).eq("school_id", input.schoolId).maybeSingle()
+    : { data: null };
+  if (!route) return fail("Pick one of your school's escalation routes first.");
+  input = { ...input, destinationLabel: route.destination_label, routeId: route.id };
 
   const { data: escalation, error } = await admin
     .from("escalations")
@@ -404,7 +449,8 @@ export async function getActiveEscalationRoutes(): Promise<EscalationRoute[]> {
 
   const supabase = createClient();
   const { data: profile } = await supabase.from("profiles").select("school_id").eq("id", user.id).maybeSingle();
-  const schoolId = profile?.school_id ?? "asu";
+  if (!profile) return [];
+  const schoolId = profile.school_id;
 
   const admin = createAdminClient();
   const { data } = await admin
@@ -427,7 +473,7 @@ export async function getActiveEscalationRoutes(): Promise<EscalationRoute[]> {
   }));
 }
 
-export async function fileSeriousReport(input: z.infer<typeof fileSeriousReportSchema>): Promise<ActionResult> {
+export async function fileSeriousReport(input: z.input<typeof fileSeriousReportSchema>): Promise<ActionResult<{ forwardedTo: string | null }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
 
@@ -444,7 +490,8 @@ export async function fileSeriousReport(input: z.infer<typeof fileSeriousReportS
 
   // Get user's school
   const { data: profile } = await supabase.from("profiles").select("school_id").eq("id", user.id).single();
-  const schoolId = profile?.school_id ?? "asu";
+  if (!profile) return fail("Please sign in again.");
+  const schoolId = profile.school_id;
 
   // Check reported message excerpt if present
   let excerpt: string | null = null;
@@ -475,26 +522,48 @@ export async function fileSeriousReport(input: z.infer<typeof fileSeriousReportS
   if (error || !report) return fail("Couldn't file report. Please try again.");
 
   // If a serious category was chosen, create the escalation entry
+  let forwardedTo: string | null = null;
   if (parsed.data.category) {
     const { data: route } = await admin
       .from("escalation_routes")
-      .select("id, destination_label")
+      .select("id, destination_label, email")
       .eq("school_id", schoolId)
       .eq("category", parsed.data.category)
       .eq("active", true)
       .maybeSingle();
 
-    const destLabel = route?.destination_label ?? "Campus Safety & Student Affairs";
-
+    // With no route configured, nothing is implied: the student sees national resources only.
     await admin.from("escalations").insert({
       school_id: schoolId,
       report_id: report.id,
       category: parsed.data.category,
       route_id: route?.id ?? null,
-      destination_label: destLabel,
+      destination_label: route?.destination_label ?? "",
       student_consented: parsed.data.studentConsented,
-      status: "pending",
+      status: parsed.data.studentConsented && route?.email ? "forwarded" : "pending",
+      forwarded_at: parsed.data.studentConsented && route?.email ? new Date().toISOString() : null,
     });
+
+    // Only when the student chose to, and only to the address the school configured.
+    if (parsed.data.studentConsented && route?.email) {
+      const [{ data: me }, { data: settings }] = await Promise.all([
+        admin.from("profiles").select("first_name").eq("id", user.id).maybeSingle(),
+        admin.from("user_settings").select("email").eq("user_id", user.id).maybeSingle(),
+      ]);
+      const label = ESCALATION_CATEGORIES.find((c) => c.key === parsed.data.category)?.label ?? "Safety concern";
+      const sent = await sendEmail({
+        to: route.email,
+        ...escalationForwardEmail({
+          office: route.destination_label,
+          category: label,
+          reporterFirstName: me?.first_name ?? "A student",
+          reporterEmail: settings?.email ?? "",
+          details: parsed.data.details ? cleanText(parsed.data.details) : null,
+          excerpt,
+        }),
+      });
+      if (sent) forwardedTo = route.destination_label;
+    }
   }
 
   // One-tap block if requested
@@ -512,5 +581,27 @@ export async function fileSeriousReport(input: z.infer<typeof fileSeriousReportS
 
   revalidatePath("/matches");
   revalidatePath("/messages");
+  return ok({ forwardedTo });
+}
+
+/** A school moderator restores or removes an intro clip that two reports hid. */
+export async function reviewProfileMedia(input: { schoolId: string; userId: string; decision: "restore" | "remove" }): Promise<ActionResult> {
+  if (!uuidSchema.safeParse(input.userId).success || !["restore", "remove"].includes(input.decision)) return fail("Check the clip.");
+  const actorId = await assertRole(input.schoolId, "moderate");
+  if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await schoolStudent(input.schoolId, input.userId))) return fail("That student isn't at your school.");
+  const admin = createAdminClient();
+  const { data: media } = await admin.from("profile_media").select("path, status").eq("user_id", input.userId).maybeSingle();
+  if (!media || media.status !== "hidden") return fail("That clip was already reviewed.");
+  if (input.decision === "restore") {
+    await admin.from("profile_media_reports").delete().eq("media_user_id", input.userId);
+    await admin.from("profile_media").update({ status: "active", reviewed_by: actorId, reviewed_at: new Date().toISOString() }).eq("user_id", input.userId);
+  } else {
+    await admin.from("profile_media").update({ status: "removed", reviewed_by: actorId, reviewed_at: new Date().toISOString() }).eq("user_id", input.userId);
+    await admin.storage.from("intros-media").remove([media.path]);
+  }
+  await admin.from("moderation_log").insert({ actor_id: actorId, target_id: input.userId, action: input.decision === "restore" ? "media_restored" : "media_removed", meta: { school_id: input.schoolId } });
+  await logAudit({ actorId, schoolId: input.schoolId, action: input.decision === "restore" ? "media_restored" : "media_removed", entity: "profile_media", entityId: input.userId });
+  revalidatePath("/staff/safety");
   return ok();
 }

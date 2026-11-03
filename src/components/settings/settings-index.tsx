@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Bell, ClipboardCheck, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight, Sparkles } from "lucide-react";
+import { Bell, CalendarCheck, ClipboardCheck, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -42,13 +42,17 @@ export function SettingsIndex({
 
       <SettingsSection title="Profile">
         <SettingsLinkRow href="/settings/profile" icon={<SlidersHorizontal />} label="Profile & preferences" detail="Photos, budget, lifestyle" />
-        <SettingsLinkRow href="/settings/scenarios" icon={<Sparkles />} label="Roommate scenarios" detail="Everyday living micro-questions" />
+        <SettingsLinkRow href="/settings/scenarios" icon={<Sparkles />} label="Roommate scenarios" detail="Optional everyday situations" />
+      </SettingsSection>
+
+      <SettingsSection title="Living together">
+        <SettingsLinkRow href="/check-in" icon={<ClipboardCheck />} label="Check-ins & room changes" detail="After you move in" />
+        <SettingsLinkRow href="/survey" icon={<CalendarCheck />} label="End of term" detail="Room again? Keep your group?" />
       </SettingsSection>
 
       <SettingsSection title="Preferences">
         <SettingsLinkRow href="/settings/notifications" icon={<Bell />} label="Notifications" />
         <SettingsLinkRow href="/settings/privacy" icon={<ShieldCheck />} label="Privacy & safety" />
-        <SettingsLinkRow href="/check-in" icon={<ClipboardCheck />} label="Move-in check-in" detail="Week 2, 4 and 8" />
         <SettingsLinkRow href="/settings/accounts" icon={<Link2 />} label="Connected accounts" />
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-body-sm font-medium text-ink">Appearance</span>

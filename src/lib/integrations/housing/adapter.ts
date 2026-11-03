@@ -1,31 +1,39 @@
 /**
- * Provider-agnostic Housing System Adapter interface.
- * Implemented by StarRez (REST and CSV) and stubbed for future off-campus providers (Entrata, Yardi).
+ * Provider-agnostic housing-system adapter (Phase 2b, 2e). Implementations: StarRez REST,
+ * CSV (file in, file out), and interface-only stubs for off-campus partners.
  */
 
-export interface HousingAssignment {
-  userId?: string;
-  studentId: string;
-  building: string;
-  room?: string;
-  bed?: string;
+export interface RoommateGroup {
+  /** Our pairing id, sent as the external reference so a re-push updates, not duplicates. */
+  ref: string;
+  name: string;
   term: string;
-  movedInAt: string;
+  members: { studentId: string | null; email: string; leader: boolean }[];
+}
+
+export interface HousingAssignment {
+  studentId: string | null;
+  email: string | null;
+  building: string;
+  room: string | null;
+  bed: string | null;
+  term: string | null;
+  movedIn: string | null;
 }
 
 export interface HousingRoomChange {
-  userId?: string;
-  studentId: string;
-  building: string;
-  room?: string;
-  reason?: string;
+  studentId: string | null;
+  email: string | null;
+  building: string | null;
   requestedAt: string;
-  status: "pending" | "approved" | "completed" | "cancelled";
+  reason: string | null;
+  /** Stable id from the source system, so re-pulling doesn't duplicate. */
+  externalRef: string;
 }
 
 export interface HousingQuestionnaireAnswer {
-  externalStudentId: string;
-  email?: string;
+  studentId: string | null;
+  email: string | null;
   questionCode: string;
   rawValue: string;
 }
@@ -45,29 +53,22 @@ export interface ConnectionStatus {
 
 export class NotConfiguredError extends Error {
   constructor(public provider: string) {
-    super(`Provider ${provider} is not configured. Contact us to enable this integration.`);
+    super(`${provider} isn't set up for this school. Contact Rumi to talk about it.`);
     this.name = "NotConfiguredError";
   }
 }
 
 export class RateLimitExceededError extends Error {
-  constructor(public retryAfterSeconds: number = 60) {
-    super(`Housing system rate limit exceeded. Retry after ${retryAfterSeconds} seconds.`);
+  constructor(public retryAfterSeconds = 60) {
+    super(`The housing system's rate limit was reached. Try again in ${retryAfterSeconds} seconds.`);
     this.name = "RateLimitExceededError";
-  }
-}
-
-export class AuthenticationError extends Error {
-  constructor(public provider: string, details?: string) {
-    super(`Authentication failed for ${provider}${details ? `: ${details}` : ""}`);
-    this.name = "AuthenticationError";
   }
 }
 
 export interface HousingSystemAdapter {
   provider: string;
   testConnection(): Promise<ConnectionStatus>;
-  pushRoommateGroups(schoolId: string, pairingIds?: string[]): Promise<PushResult>;
-  pullAssignments(schoolId: string, since?: Date): Promise<HousingAssignment[]>;
-  pullRoomChanges(schoolId: string, since?: Date): Promise<HousingRoomChange[]>;
+  pushRoommateGroups(groups: RoommateGroup[]): Promise<PushResult>;
+  pullAssignments(since?: Date): Promise<HousingAssignment[]>;
+  pullRoomChanges(since?: Date): Promise<HousingRoomChange[]>;
 }

@@ -589,3 +589,7 @@ alter table public.notifications add constraint notifications_type_check check (
   'checkin_due', 'ra_followup', 'swap_proposal', 'survey', 'carry_forward', 'chore_due',
   'agreement_reminder', 'imported_answers'
 ));
+
+-- Phase 6.2: a carried-forward group becomes a pairing in the new term.
+alter table public.pairings add column if not exists term_id uuid references public.terms (id) on delete set null;
+alter table public.pairings add column if not exists carried_from_term uuid references public.terms (id) on delete set null;

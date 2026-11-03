@@ -1,82 +1,50 @@
-import { describe, it, expect } from "vitest";
-import {
-  mapStarRezAnswer,
-  parseStarRezQuestionnaireCsv,
-} from "./questionnaire";
+import { describe, expect, it } from "vitest";
+import { parseCsv } from "@/lib/csv/parse";
+import { STARTER_QUESTIONNAIRE_MAPPING, latestPerFactor, parseQuestionnaire, parseQuestionnaireMapping } from "./questionnaire";
 
-describe("mapStarRezAnswer", () => {
-  it("maps numeric scales accurately", () => {
-    expect(mapStarRezAnswer("CLEANLINESS", "4")).toEqual({
-      mappedFactor: "cleanliness",
-      mappedValue: "4",
+describe("questionnaire mapping", () => {
+  it("keeps only valid factors and values, and dedupes codes", () => {
+    const m = parseQuestionnaireMapping({
+      questions: [
+        { code: "sleep", factor: "sleep_schedule", values: { early: "1", weird: "9" } },
+        { code: "SLEEP", factor: "noise", values: {} },
+        { code: "RACE", factor: "ethnicity", values: {} },
+      ],
     });
-    expect(mapStarRezAnswer("NOISE", "2")).toEqual({
-      mappedFactor: "noise",
-      mappedValue: "2",
-    });
-  });
-
-  it("maps StarRez textual codes to Rumi domain values", () => {
-    expect(mapStarRezAnswer("SLEEP", "NIGHT_OWL")).toEqual({
-      mappedFactor: "sleep_schedule",
-      mappedValue: "5",
-    });
-    expect(mapStarRezAnswer("SMOKING", "NO")).toEqual({
-      mappedFactor: "smoking",
-      mappedValue: "never",
-    });
-    expect(mapStarRezAnswer("DRINKING", "SOCIALLY")).toEqual({
-      mappedFactor: "drinking",
-      mappedValue: "socially",
-    });
-    expect(mapStarRezAnswer("PETS", "YES")).toEqual({
-      mappedFactor: "pets",
-      mappedValue: "have",
-    });
-    expect(mapStarRezAnswer("STUDY", "CAMPUS")).toEqual({
-      mappedFactor: "study",
-      mappedValue: "campus",
-    });
-  });
-
-  it("returns null for unmapped codes or unrecognized values", () => {
-    expect(mapStarRezAnswer("UNKNOWN_CODE", "5")).toBeNull();
-    expect(mapStarRezAnswer("SMOKING", "UNKNOWN_VALUE")).toBeNull();
+    expect(m.questions).toEqual([{ code: "SLEEP", factor: "sleep_schedule", values: { EARLY: "1" } }]);
+    expect(parseQuestionnaireMapping(null)).toEqual({ questions: [] });
   });
 });
 
-describe("parseStarRezQuestionnaireCsv", () => {
-  it("parses valid CSV rows with headers", () => {
-    const csv = `StudentID,Email,QuestionCode,AnswerText
-1223334444,student1@asu.edu,CLEANLINESS,4
-1223334444,student1@asu.edu,SLEEP,EARLY
-1223334445,student2@asu.edu,SMOKING,NO`;
+describe("questionnaire import", () => {
+  const csv = `StudentID,Email,QuestionCode,Answer
+1001,a@asu.edu,SLEEP,early
+1001,a@asu.edu,CLEANLINESS,Spotless
+1002,,SMOKING,no
+1002,,FAVORITE_COLOR,blue
+1003,,NOISE,very loud
+,,GUESTS,RARELY
+1001,a@asu.edu,SLEEP,night_owl`;
 
-    const parsed = parseStarRezQuestionnaireCsv(csv);
-    expect(parsed).toHaveLength(3);
-    expect(parsed[0]).toEqual({
-      externalStudentId: "1223334444",
-      email: "student1@asu.edu",
-      questionCode: "CLEANLINESS",
-      rawValue: "4",
-    });
-    expect(parsed[1].questionCode).toBe("SLEEP");
-    expect(parsed[2].rawValue).toBe("NO");
+  it("maps codes and values, and lists what it couldn't map", () => {
+    const parsed = parseQuestionnaire(parseCsv(csv), STARTER_QUESTIONNAIRE_MAPPING);
+    expect(parsed.answers.map((a) => [a.studentId, a.factor, a.value])).toEqual([
+      ["1001", "sleep_schedule", "1"],
+      ["1001", "cleanliness", "5"],
+      ["1002", "smoking", "never"],
+      ["1001", "sleep_schedule", "5"],
+    ]);
+    expect(parsed.unmappedCodes).toEqual(["FAVORITE_COLOR"]);
+    expect(parsed.unmappedValues).toEqual([{ code: "NOISE", value: "very loud", count: 1 }]);
+    expect(parsed.errors).toEqual([{ line: 7, message: "No student ID or email." }]);
   });
 
-  it("handles alternative header names (e.g. EntryID, Value)", () => {
-    const csv = `EntryID,Mail,Code,Value
-99887766,test@asu.edu,NOISE,QUIET`;
-
-    const parsed = parseStarRezQuestionnaireCsv(csv);
-    expect(parsed).toHaveLength(1);
-    expect(parsed[0].externalStudentId).toBe("99887766");
-    expect(parsed[0].questionCode).toBe("NOISE");
-    expect(parsed[0].rawValue).toBe("QUIET");
+  it("keeps the latest answer per student and factor", () => {
+    const parsed = parseQuestionnaire(parseCsv(csv), STARTER_QUESTIONNAIRE_MAPPING);
+    expect(latestPerFactor(parsed.answers).filter((a) => a.factor === "sleep_schedule").map((a) => a.value)).toEqual(["5"]);
   });
 
-  it("returns empty array for invalid headers or empty content", () => {
-    expect(parseStarRezQuestionnaireCsv("")).toEqual([]);
-    expect(parseStarRezQuestionnaireCsv("Col1,Col2,Col3\nVal1,Val2,Val3")).toEqual([]);
+  it("explains a file without the needed columns", () => {
+    expect(parseQuestionnaire(parseCsv("Name,Thing\nx,y"), STARTER_QUESTIONNAIRE_MAPPING).errors[0]?.message).toMatch(/needs StudentID/);
   });
 });

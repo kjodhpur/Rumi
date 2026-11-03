@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   escalateReport,
+  reviewProfileMedia,
   restoreSchoolStudent,
   suspendSchoolStudent,
   updateSchoolReportStatus,
@@ -54,6 +56,7 @@ import type {
   StaffEscalationItem,
   StaffReportItem,
   StaffSafetyStats,
+  HiddenMediaItem,
 } from "@/lib/staff/safety";
 
 export function SafetyCenter({
@@ -64,6 +67,7 @@ export function SafetyCenter({
   initialEscalations,
   routes,
   log,
+  hiddenMedia,
 }: {
   schoolId: string;
   schoolName: string;
@@ -72,8 +76,20 @@ export function SafetyCenter({
   initialEscalations: StaffEscalationItem[];
   routes: EscalationRoute[];
   log: SafetyLogItem[];
+  hiddenMedia: HiddenMediaItem[];
 }) {
-  const [tab, setTab] = React.useState<"reports" | "escalations" | "log">("reports");
+  const [tab, setTab] = React.useState<"reports" | "escalations" | "media" | "log">("reports");
+  const [mediaPending, setMediaPending] = React.useState<string | null>(null);
+  const router = useRouter();
+
+  async function reviewMedia(userId: string, decision: "restore" | "remove") {
+    setMediaPending(`${userId}-${decision}`);
+    const res = await reviewProfileMedia({ schoolId, userId, decision });
+    setMediaPending(null);
+    if (!res.ok) return void toast.error(res.error);
+    toast.success(decision === "restore" ? "Clip restored" : "Clip removed");
+    router.refresh();
+  }
   const [statusFilter, setStatusFilter] = React.useState<SchoolReportFilter>("open");
   const [reports, setReports] = React.useState(initialReports);
   const [escalations, setEscalations] = React.useState(initialEscalations);
@@ -175,14 +191,15 @@ export function SafetyCenter({
   async function handleEscalate() {
     if (!escalateModal) return;
     const activeRoute = routes.find((r) => r.category === escalateCategory && r.active);
-    const destinationLabel = activeRoute?.destinationLabel || `${schoolName} Campus Safety`;
+    if (!activeRoute) return void toast.error("Set up where this category goes first, in Escalation routes.");
+    const destinationLabel = activeRoute.destinationLabel;
 
     setPending(true);
     const res = await escalateReport({
       reportId: escalateModal.report.id,
       schoolId,
       category: escalateCategory,
-      routeId: activeRoute?.id,
+      routeId: activeRoute.id,
       destinationLabel,
       notes: escalateNotes.trim() || undefined,
     });
@@ -211,7 +228,7 @@ export function SafetyCenter({
       ),
     );
 
-    toast.success(`Escalated to ${destinationLabel}.`);
+    toast.success(`Recorded as handed off to ${destinationLabel}.`);
     setEscalateModal(null);
     setEscalateNotes("");
   }
@@ -221,7 +238,7 @@ export function SafetyCenter({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <PageHeader
           title="Safety & moderation"
-          description={`School-scoped report queue, moderation actions, and emergency escalations for ${schoolName}.`}
+          description={`Reports about ${schoolName} students from ${schoolName} students. Reports across schools go to the Rumi team.`}
           className="pb-0 lg:pb-0"
         />
         <Button variant="secondary" size="sm" asChild>
@@ -243,20 +260,22 @@ export function SafetyCenter({
           <p className="mt-1 text-2xl font-semibold text-ink">{stats.reviewing}</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
-          <p className="text-caption font-medium text-ink-3">Escalated to campus</p>
+          <p className="text-caption font-medium text-ink-3">Serious reports</p>
           <p className="mt-1 text-2xl font-semibold text-accent">{stats.escalated}</p>
         </div>
         <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
           <p className="text-caption font-medium text-ink-3">Active routes</p>
           <p className="mt-1 text-2xl font-semibold text-ink">
-            {stats.activeRoutesCount} / {stats.routesCount || 5}
+            {stats.activeRoutesCount} of 5
           </p>
         </div>
       </div>
 
       {/* Nav Tabs */}
-      <div className="flex border-b border-line">
+      <div className="flex overflow-x-auto border-b border-line" role="tablist" aria-label="Safety sections">
         <button
+          role="tab"
+          aria-selected={tab === "reports"}
           onClick={() => setTab("reports")}
           className={`px-4 py-2.5 text-body-sm font-medium border-b-2 transition-colors ${
             tab === "reports"
@@ -267,6 +286,8 @@ export function SafetyCenter({
           Reports Queue ({reports.filter((r) => r.status === "open").length})
         </button>
         <button
+          role="tab"
+          aria-selected={tab === "escalations"}
           onClick={() => setTab("escalations")}
           className={`px-4 py-2.5 text-body-sm font-medium border-b-2 transition-colors ${
             tab === "escalations"
@@ -277,6 +298,18 @@ export function SafetyCenter({
           Escalations Log ({escalations.length})
         </button>
         <button
+          role="tab"
+          aria-selected={tab === "media"}
+          onClick={() => setTab("media")}
+          className={`px-4 py-2.5 text-body-sm font-medium border-b-2 transition-colors ${
+            tab === "media" ? "border-accent text-ink" : "border-transparent text-ink-3 hover:text-ink"
+          }`}
+        >
+          Hidden intros ({hiddenMedia.length})
+        </button>
+        <button
+          role="tab"
+          aria-selected={tab === "log"}
           onClick={() => setTab("log")}
           className={`px-4 py-2.5 text-body-sm font-medium border-b-2 transition-colors ${
             tab === "log"
@@ -300,7 +333,7 @@ export function SafetyCenter({
                 className={`rounded-full px-3 py-1 text-caption font-medium capitalize transition-colors ${
                   statusFilter === f
                     ? "bg-ink text-ink-inverse"
-                    : "bg-surface border border-line text-ink-2 hover:bg-card"
+                    : "bg-surface border border-line text-ink-2 hover:bg-surface-hover"
                 }`}
               >
                 {f} ({reports.filter((r) => (f === "all" ? true : r.status === f)).length})
@@ -390,7 +423,7 @@ export function SafetyCenter({
                   </div>
 
                   {/* Report Reason & Content */}
-                  <div className="rounded-lg bg-bg p-3 text-body-sm text-ink-1 border border-line">
+                  <div className="rounded-lg bg-bg p-3 text-body-sm text-ink border border-line">
                     <div className="flex items-center gap-2 mb-1.5">
                       <Badge variant="outline" size="sm">
                         {labelOf(REPORT_REASONS, report.reason) || report.reason}
@@ -458,7 +491,7 @@ export function SafetyCenter({
                       Student consented: <span className="font-medium text-ink">{esc.studentConsented ? "Yes" : "No"}</span>
                     </p>
                     {esc.notes ? (
-                      <p className="mt-1.5 text-caption text-ink-1">Notes: {esc.notes}</p>
+                      <p className="mt-1.5 text-caption text-ink-2">Notes: {esc.notes}</p>
                     ) : null}
                   </div>
 
@@ -474,6 +507,28 @@ export function SafetyCenter({
       ) : null}
 
       {/* Tab: Activity Log */}
+      {tab === "media" ? (
+        hiddenMedia.length === 0 ? (
+          <p className="rounded-xl bg-surface p-5 text-body-sm text-ink-2 ring-1 ring-line">No intro clips are waiting for review. Two reports hide a clip until someone here decides.</p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {hiddenMedia.map((m) => (
+              <li key={m.userId} className="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+                <p className="text-body-sm font-medium text-ink">{m.name} · {m.reports} reports ({m.reasons.join(", ")})</p>
+                {m.signedUrl ? (
+                  m.kind === "video" ? <video src={m.signedUrl} controls playsInline className="mt-3 aspect-video w-full max-w-md rounded-md bg-ink" /> : <audio src={m.signedUrl} controls className="mt-3 w-full max-w-md" />
+                ) : null}
+                <p className="mt-2 text-caption text-ink-2">Transcript: {m.transcript}</p>
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" variant="secondary" loading={mediaPending === `${m.userId}-restore`} onClick={() => void reviewMedia(m.userId, "restore")}>Restore</Button>
+                  <Button size="sm" variant="danger" loading={mediaPending === `${m.userId}-remove`} onClick={() => void reviewMedia(m.userId, "remove")}>Remove</Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : null}
+
       {tab === "log" ? (
         <div className="flex flex-col gap-3">
           {log.length === 0 ? (
@@ -562,11 +617,11 @@ export function SafetyCenter({
         <Sheet
           open={Boolean(escalateModal)}
           onOpenChange={(open) => !open && setEscalateModal(null)}
-          title="Escalate to Campus Office"
-          description="Forward this incident to official university safety, Title IX, or CARE staff."
+          title="Hand off to a campus office"
+          description="Rumi doesn't contact the office for you. Reach them through their phone or reporting page, then record the hand-off here. Share what the student reported only if they agreed or your documented policy requires it (needs legal review)."
           footer={
-            <Button size="lg" block onClick={() => void handleEscalate()} loading={pending}>
-              Forward escalation
+            <Button size="lg" block onClick={() => void handleEscalate()} loading={pending} disabled={!routes.some((r) => r.category === escalateCategory && r.active)}>
+              Record hand-off
             </Button>
           }
         >
@@ -582,8 +637,8 @@ export function SafetyCenter({
                 {ESCALATION_CATEGORIES.map((c) => {
                   const r = routes.find((route) => route.category === c.key && route.active);
                   return (
-                    <option key={c.key} value={c.key}>
-                      {c.label} {r ? `(${r.destinationLabel})` : "(Default)"}
+                    <option key={c.key} value={c.key} disabled={!r}>
+                      {c.label} {r ? `(${r.destinationLabel})` : "(not set up)"}
                     </option>
                   );
                 })}

@@ -1,64 +1,29 @@
-import {
-  HousingSystemAdapter,
-  ConnectionStatus,
-  HousingAssignment,
-  HousingRoomChange,
-  PushResult,
-  NotConfiguredError,
-} from "./adapter";
+import { NotConfiguredError, type ConnectionStatus, type HousingAssignment, type HousingRoomChange, type HousingSystemAdapter, type PushResult } from "./adapter";
 
 /**
- * Entrata adapter stub for off-campus housing partners.
- * Master Prompt §2e: Interface only; throws NotConfiguredError without live credentials.
+ * Off-campus partner systems (Phase 2e): interface only. Rumi has no verified API docs or
+ * credentials for these, so every call throws NotConfiguredError and the UI says "Contact us".
  */
-export class EntrataStubAdapter implements HousingSystemAdapter {
-  provider = "entrata";
-
+class PartnerStub implements HousingSystemAdapter {
+  constructor(readonly provider: "entrata" | "yardi") {}
   async testConnection(): Promise<ConnectionStatus> {
-    return {
-      ok: false,
-      provider: this.provider,
-      message: "Entrata integration is available for off-campus housing partners. Contact Rumi support to configure API keys.",
-    };
+    return { ok: false, provider: this.provider, message: new NotConfiguredError(this.provider).message };
   }
-
-  async pushRoommateGroups(_schoolId: string, _pairingIds?: string[]): Promise<PushResult> {
+  async pushRoommateGroups(): Promise<PushResult> {
     throw new NotConfiguredError(this.provider);
   }
-
-  async pullAssignments(_schoolId: string, _since?: Date): Promise<HousingAssignment[]> {
+  async pullAssignments(): Promise<HousingAssignment[]> {
     throw new NotConfiguredError(this.provider);
   }
-
-  async pullRoomChanges(_schoolId: string, _since?: Date): Promise<HousingRoomChange[]> {
+  async pullRoomChanges(): Promise<HousingRoomChange[]> {
     throw new NotConfiguredError(this.provider);
   }
 }
 
-/**
- * Yardi adapter stub for off-campus housing partners.
- * Master Prompt §2e: Interface only; throws NotConfiguredError without live credentials.
- */
-export class YardiStubAdapter implements HousingSystemAdapter {
-  provider = "yardi";
+export const EntrataStubAdapter = () => new PartnerStub("entrata");
+export const YardiStubAdapter = () => new PartnerStub("yardi");
 
-  async testConnection(): Promise<ConnectionStatus> {
-    return {
-      ok: false,
-      provider: this.provider,
-      message: "Yardi Voyager integration is available for off-campus housing partners. Contact Rumi support to configure Voyager API credentials.",
-    };
-  }
-
-  async pushRoommateGroups(_schoolId: string, _pairingIds?: string[]): Promise<PushResult> {
-    throw new NotConfiguredError(this.provider);
-  }
-
-  async pullAssignments(_schoolId: string, _since?: Date): Promise<HousingAssignment[]> {
-    throw new NotConfiguredError(this.provider);
-  }
-
-  async pullRoomChanges(_schoolId: string, _since?: Date): Promise<HousingRoomChange[]> {
-    throw new NotConfiguredError(this.provider);
-  }
-}
+export const PARTNER_SYSTEMS = [
+  { provider: "entrata", label: "Entrata", note: "Off-campus apartment partners" },
+  { provider: "yardi", label: "Yardi", note: "Off-campus apartment partners" },
+] as const;

@@ -23,6 +23,19 @@ import { LAUNCH_SCHOOL } from "@/lib/school";
 
 type Reason = ReportReason;
 
+/** National lines that fit the category, always including 911. */
+function resourcesFor(category: EscalationCategory | "") {
+  const names: Record<EscalationCategory, string[]> = {
+    harassment: ["911 Emergency", "RAINN Sexual Assault Hotline", "National Domestic Violence Hotline"],
+    threat: ["911 Emergency", "988 Suicide & Crisis Lifeline"],
+    discrimination: ["911 Emergency"],
+    wellbeing: ["988 Suicide & Crisis Lifeline", "911 Emergency"],
+    general: ["911 Emergency"],
+  };
+  const wanted = category ? names[category] : ["911 Emergency", "988 Suicide & Crisis Lifeline"];
+  return NATIONAL_EMERGENCY_RESOURCES.filter((r) => wanted.includes(r.name));
+}
+
 export function ReportSheet({
   open,
   onOpenChange,
@@ -116,9 +129,8 @@ export function ReportSheet({
     setBlockUserNow(false);
     setDetails("");
 
-    const extraMsg = activeDestination && consentForward
-      ? ` Forwarded to ${activeDestination.destinationLabel}.`
-      : "";
+    const forwardedTo = result.data && "forwardedTo" in result.data ? result.data.forwardedTo : null;
+    const extraMsg = forwardedTo ? ` We sent it to ${forwardedTo}.` : "";
 
     toast.success("Thanks for telling us", {
       description: `Our safety team reviews every report. ${firstName} won't know it was you.${extraMsg}`,
@@ -150,7 +162,7 @@ export function ReportSheet({
     >
       <div className="flex flex-col gap-5">
         {/* Serious Path Callout */}
-        <div className="flex items-center justify-between rounded-xl border border-line bg-card p-3.5">
+        <div className="flex items-center justify-between rounded-xl border border-line bg-surface-sunken p-3.5">
           <div className="flex items-center gap-2.5">
             <ShieldAlert className="h-5 w-5 text-accent" />
             <div>
@@ -170,7 +182,7 @@ export function ReportSheet({
 
         {isSerious ? (
           /* Serious Escalation Form */
-          <div className="flex flex-col gap-4 animate-in fade-in duration-200">
+          <div className="flex flex-col gap-4">
             <div>
               <label className="text-caption font-semibold text-ink">Category of incident</label>
               <OptionCards
@@ -193,7 +205,7 @@ export function ReportSheet({
                   {activeDestination ? (
                     <div>
                       <p className="font-semibold text-ink">Official Destination:</p>
-                      <p className="font-medium text-ink-1 mt-0.5">{activeDestination.destinationLabel}</p>
+                      <p className="font-medium text-ink mt-0.5">{activeDestination.destinationLabel}</p>
                       <div className="mt-2 flex flex-wrap gap-3 text-caption text-ink-2">
                         {activeDestination.phone ? (
                           <a href={`tel:${activeDestination.phone}`} className="inline-flex items-center gap-1 text-ink underline">
@@ -213,10 +225,10 @@ export function ReportSheet({
                     <div>
                       <p className="font-semibold text-ink">National & Campus Emergency Contacts</p>
                       <p className="mt-1 text-ink-2">
-                        No custom school route is configured for this category. Rumi will review internally, and you can contact official services directly:
+                        Your school hasn&apos;t set up where these reports go, so no campus office is told. The Rumi team reviews it, and you can reach these services directly:
                       </p>
                       <div className="mt-2 space-y-1.5">
-                        {NATIONAL_EMERGENCY_RESOURCES.slice(0, 2).map((r) => (
+                        {resourcesFor(seriousCategory).map((r) => (
                           <div key={r.name} className="flex items-center justify-between text-body-sm">
                             <span className="font-medium text-ink">{r.name}</span>
                             <a href={`tel:${r.phone}`} className="font-semibold text-accent underline">{r.phone}</a>
@@ -232,10 +244,15 @@ export function ReportSheet({
               {activeDestination ? (
                 <div className="mt-3.5 border-t border-line pt-3 flex items-center justify-between">
                   <div className="pr-3">
-                    <p className="text-body-sm font-medium text-ink">Forward details to campus office</p>
-                    <p className="text-caption text-ink-3">Share report summary with {activeDestination.destinationLabel}</p>
+                    <p className="text-body-sm font-medium text-ink">Send this to {activeDestination.destinationLabel}</p>
+                    <p className="text-caption text-ink-3">
+                      {activeDestination.email
+                        ? "We'll email them what you write, the reported message, and your first name and school email so they can follow up."
+                        : "They don't take reports by email. Use their phone or reporting page above."}
+                    </p>
                   </div>
                   <Switch
+                    disabled={!activeDestination.email}
                     checked={consentForward}
                     onCheckedChange={setConsentForward}
                     aria-label={`Forward report to ${activeDestination.destinationLabel}`}
@@ -245,7 +262,7 @@ export function ReportSheet({
             </div>
 
             {/* Immediate Block Option */}
-            <div className="flex items-center justify-between rounded-xl border border-line bg-card p-3">
+            <div className="flex items-center justify-between rounded-xl border border-line bg-surface-sunken p-3">
               <div className="pr-3">
                 <p className="text-body-sm font-medium text-ink">Block {firstName} immediately</p>
                 <p className="text-caption text-ink-3">They won&apos;t be able to message you or see your profile</p>

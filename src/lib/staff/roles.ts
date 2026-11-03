@@ -39,6 +39,11 @@ export const CAN = {
   raWorkspace: ["housing_admin", "housing_staff", "ra"],
   moderate: ["housing_admin", "moderator"],
   configureEscalation: ["housing_admin"],
+  /** Further limited in SQL (can_manage_accommodations): housing staff need the accommodations scope. */
+  manageAccommodations: ["housing_admin", "housing_staff"],
+  /** Aggregates for analysts and leads; RAs see their own buildings only (enforced in SQL). */
+  viewAnalytics: ["housing_admin", "housing_staff", "analyst", "ra"],
+  configureSchool: ["housing_admin"],
 } as const satisfies Record<string, readonly StaffRole[]>;
 
 export type Capability = keyof typeof CAN;
@@ -46,12 +51,14 @@ export type Capability = keyof typeof CAN;
 export interface StaffScopes {
   buildings: string[];
   communities: string[];
+  /** Housing staff who coordinate approved accommodations. */
+  accommodations: boolean;
 }
 
 export function parseScopes(value: unknown): StaffScopes {
   const record = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
-  return { buildings: list(record.buildings), communities: list(record.communities) };
+  return { buildings: list(record.buildings), communities: list(record.communities), accommodations: record.accommodations === true };
 }
 
 export function roleCan(role: StaffRole | "platform_admin", capability: Capability) {

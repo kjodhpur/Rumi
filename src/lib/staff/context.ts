@@ -80,7 +80,7 @@ export const getStaffContext = cache(async (): Promise<StaffContext | null> => {
     schools,
     school,
     role: isPlatformAdmin ? "platform_admin" : (membership!.role as StaffRole),
-    scopes: isPlatformAdmin ? { buildings: [], communities: [] } : parseScopes(membership!.scopes),
+    scopes: isPlatformAdmin ? { buildings: [], communities: [], accommodations: true } : parseScopes(membership!.scopes),
   };
 });
 

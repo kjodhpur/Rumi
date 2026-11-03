@@ -1,12 +1,16 @@
 import "server-only";
 import { runRetention } from "@/lib/retention/run";
+import { sendSurveyInvites } from "@/lib/retention/survey-invites";
 
 /**
  * Jobs that ride along with the nightly recompute cron. Vercel plans cap the number
  * of cron entries, so new nightly work registers here instead of in vercel.json.
  * Each job also has its own route under /api/cron for manual runs.
  */
-const JOBS: { name: string; run: () => Promise<unknown> }[] = [{ name: "retention", run: () => runRetention() }];
+const JOBS: { name: string; run: () => Promise<unknown> }[] = [
+  { name: "retention", run: () => runRetention() },
+  { name: "survey-invites", run: () => sendSurveyInvites() },
+];
 
 export async function runNightlyJobs() {
   const results: Record<string, unknown> = {};

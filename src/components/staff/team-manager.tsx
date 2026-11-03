@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Sheet } from "@/components/ui/sheet";
 import { OptionCards } from "@/components/ui/choice";
 import { RelativeTime } from "@/components/ui/relative-time";
@@ -248,6 +249,7 @@ function InviteSheet({
   const [email, setEmail] = React.useState("");
   const [role, setRole] = React.useState<StaffRole>("housing_staff");
   const [buildings, setBuildings] = React.useState<string[]>([]);
+  const [accommodations, setAccommodations] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
 
@@ -256,6 +258,7 @@ function InviteSheet({
       setEmail("");
       setRole("housing_staff");
       setBuildings([]);
+      setAccommodations(false);
       setError(null);
     }
   }, [open]);
@@ -263,7 +266,7 @@ function InviteSheet({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setPending(true);
-    const result = await inviteStaff({ schoolId, email, role, buildings });
+    const result = await inviteStaff({ schoolId, email, role, buildings, accommodations });
     setPending(false);
     if (!result.ok) return setError(result.error);
     toast.success(`Invite sent to ${email.trim().toLowerCase()}`, { description: "The link works for 7 days." });
@@ -309,14 +312,28 @@ function InviteSheet({
           <OptionCards value={role} onValueChange={setRole} options={ROLE_OPTIONS} columns={2} aria-label="Role" className="grid-cols-1 sm:grid-cols-2" />
         </fieldset>
         {role === "ra" ? <BuildingsInput value={buildings} onChange={setBuildings} /> : null}
+        {role === "housing_staff" ? <AccommodationsToggle checked={accommodations} onChange={setAccommodations} /> : null}
       </form>
     </Sheet>
+  );
+}
+
+function AccommodationsToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between gap-4 rounded-md bg-surface-sunken px-4 py-3 text-body-sm text-ink">
+      <span>
+        Coordinates accommodations
+        <span className="block text-caption text-ink-3">Can record approved accommodations for students who share with your office.</span>
+      </span>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label="Coordinates accommodations" />
+    </label>
   );
 }
 
 function RoleSheet({ member, onClose, onDone }: { member: TeamMember | null; onClose: () => void; onDone: () => void }) {
   const [role, setRole] = React.useState<StaffRole>("housing_staff");
   const [buildings, setBuildings] = React.useState<string[]>([]);
+  const [accommodations, setAccommodations] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
 
@@ -324,6 +341,7 @@ function RoleSheet({ member, onClose, onDone }: { member: TeamMember | null; onC
     if (member) {
       setRole(member.role);
       setBuildings(member.scopes.buildings);
+      setAccommodations(member.scopes.accommodations);
       setError(null);
     }
   }, [member]);
@@ -331,7 +349,7 @@ function RoleSheet({ member, onClose, onDone }: { member: TeamMember | null; onC
   async function save() {
     if (!member) return;
     setPending(true);
-    const result = await updateStaffMember({ memberId: member.id, role, buildings });
+    const result = await updateStaffMember({ memberId: member.id, role, buildings, accommodations });
     setPending(false);
     if (!result.ok) return setError(result.error);
     toast.success(`${member.name}'s role is now ${ROLE_INFO[role].label}`);
@@ -359,6 +377,7 @@ function RoleSheet({ member, onClose, onDone }: { member: TeamMember | null; onC
         ) : null}
         <OptionCards value={role} onValueChange={setRole} options={ROLE_OPTIONS} columns={2} aria-label="Role" className="grid-cols-1 sm:grid-cols-2" />
         {role === "ra" ? <BuildingsInput value={buildings} onChange={setBuildings} /> : null}
+        {role === "housing_staff" ? <AccommodationsToggle checked={accommodations} onChange={setAccommodations} /> : null}
       </div>
     </Sheet>
   );
