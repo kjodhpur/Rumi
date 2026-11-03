@@ -1,4 +1,5 @@
 import type { ServerSupabase } from "@/lib/supabase/server";
+import { generateWhyYouMatch } from "@/lib/bedrock/client";
 import { photoUrl } from "@/lib/photos";
 import { isVerified } from "@/lib/verification";
 import type { FactorKey, Importance } from "@/lib/options";
@@ -56,24 +57,38 @@ export interface ProfileDetail {
 
 type Breakdown = NonNullable<ProfileDetail["match"]>["breakdown"];
 
+export interface LoadProfileOptions {
+  /** Fill "Why you match" from Bedrock when credentials are set. Falls back to stored reasons. */
+  explainMatch?: boolean;
+}
+
 const labels = (v: unknown) =>
-  Array.isArray(v) ? v.map((x) => (x as { label?: string }).label).filter((l): l is string => Boolean(l)) : [];
+  Array.isArray(v)
+    ? v.map((x) => (x as { label?: string }).label).filter((l): l is string => Boolean(l))
+    : [];
 
 /** Everything the profile view needs, read with the viewer's session (RLS decides visibility). */
 export async function loadProfileDetail(
   supabase: ServerSupabase,
   viewerId: string,
   targetId: string,
+  options: LoadProfileOptions = {},
 ): Promise<ProfileDetail | null> {
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, first_name, last_initial, pronouns, class_year, major, bio, student_verified_at, last_active_at, school_id, onboarding_completed_at")
+    .select(
+      "id, first_name, last_initial, pronouns, class_year, major, bio, student_verified_at, last_active_at, school_id, onboarding_completed_at",
+    )
     .eq("id", targetId)
     .maybeSingle();
   if (!profile) return null;
 
   const [photos, prefs, score, music, saved, intros, areas] = await Promise.all([
-    supabase.from("photos").select("id, storage_path, placeholder").eq("user_id", targetId).order("position"),
+    supabase
+      .from("photos")
+      .select("id, storage_path, placeholder")
+      .eq("user_id", targetId)
+      .order("position"),
     supabase.rpc("get_public_preferences", { p_user: targetId }),
     supabase
       .from("match_scores")
@@ -81,8 +96,17 @@ export async function loadProfileDetail(
       .eq("viewer_id", viewerId)
       .eq("candidate_id", targetId)
       .maybeSingle(),
-    supabase.from("music_profiles").select("top_artists, top_genres").eq("user_id", targetId).maybeSingle(),
-    supabase.from("saves").select("target_id").eq("user_id", viewerId).eq("target_id", targetId).maybeSingle(),
+    supabase
+      .from("music_profiles")
+      .select("top_artists, top_genres")
+      .eq("user_id", targetId)
+      .maybeSingle(),
+    supabase
+      .from("saves")
+      .select("target_id")
+      .eq("user_id", viewerId)
+      .eq("target_id", targetId)
+      .maybeSingle(),
     supabase
       .from("intros")
       .select("id, status, sender_id, conversation_id, created_at")
@@ -94,16 +118,46 @@ export async function loadProfileDetail(
     supabase.from("areas").select("slug, name").eq("school_id", profile.school_id),
   ]);
 
-  const areaNames = Object.fromEntries((areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]));
+  const areaNames = Object.fromEntries(
+    (areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]),
+  );
   const p = prefs.data?.[0];
   const intro = intros.data?.[0];
   const artists = Array.isArray(music.data?.top_artists)
-    ? (music.data!.top_artists as { id: string; name: string; image?: string | null }[]).map((a) => ({
-        id: a.id,
-        name: a.name,
-        image: a.image ?? null,
-      }))
+    ? (music.data!.top_artists as { id: string; name: string; image?: string | null }[]).map(
+        (a) => ({
+          id: a.id,
+          name: a.name,
+          image: a.image ?? null,
+        }),
+      )
     : [];
+
+  const breakdown =
+    score.data && Array.isArray(score.data.breakdown)
+      ? (score.data.breakdown as unknown as Breakdown)
+      : [];
+  const sharedArtists =
+    score.data && Array.isArray(score.data.shared_artists)
+      ? (score.data.shared_artists as { name: string }[]).map((a) => a.name)
+      : [];
+  const watchouts = score.data ? labels(score.data.watchouts) : [];
+  let reasons = score.data ? labels(score.data.reasons) : [];
+  if (options.explainMatch && score.data && profile.id !== viewerId) {
+    const explained = await generateWhyYouMatch({
+      firstName: profile.first_name,
+      score: score.data.score,
+      reasons,
+      watchouts,
+      breakdown: breakdown.map((item) => ({
+        label: item.label,
+        similarity: item.similarity,
+        importance: item.importance,
+      })),
+      sharedArtists,
+    });
+    if (explained.source === "bedrock") reasons = explained.sentences;
+  }
 
   return {
     id: profile.id,
@@ -116,7 +170,11 @@ export async function loadProfileDetail(
     bio: profile.bio,
     verified: isVerified(profile.student_verified_at),
     lastActiveAt: profile.last_active_at,
-    photos: (photos.data ?? []).map((ph) => ({ id: ph.id, url: photoUrl(ph.storage_path)!, placeholder: ph.placeholder })),
+    photos: (photos.data ?? []).map((ph) => ({
+      id: ph.id,
+      url: photoUrl(ph.storage_path)!,
+      placeholder: ph.placeholder,
+    })),
     prefs: p
       ? {
           budgetMin: p.budget_min,
@@ -138,12 +196,10 @@ export async function loadProfileDetail(
     match: score.data
       ? {
           score: score.data.score,
-          reasons: labels(score.data.reasons),
-          watchouts: labels(score.data.watchouts),
-          breakdown: Array.isArray(score.data.breakdown) ? (score.data.breakdown as unknown as Breakdown) : [],
-          sharedArtists: Array.isArray(score.data.shared_artists)
-            ? (score.data.shared_artists as { name: string }[]).map((a) => a.name)
-            : [],
+          reasons,
+          watchouts,
+          breakdown,
+          sharedArtists,
         }
       : null,
     music: artists.length > 0 ? { artists, genres: music.data?.top_genres ?? [] } : null,

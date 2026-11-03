@@ -11,7 +11,9 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   if (!z.string().uuid().safeParse(params.id).success) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  const detail = await loadProfileDetail(createClient(), user.id, params.id);
+  const detail = await loadProfileDetail(createClient(), user.id, params.id, {
+    explainMatch: true,
+  });
   if (!detail) return NextResponse.json({ error: "not_found" }, { status: 404 });
   return NextResponse.json(detail, { headers: { "Cache-Control": "private, no-store" } });
 }

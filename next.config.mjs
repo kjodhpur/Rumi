@@ -49,6 +49,8 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns", "radix-ui"],
+    // The AWS SDK loads Node built-ins dynamically. Keep it out of the server bundle.
+    serverComponentsExternalPackages: ["@aws-sdk/client-bedrock-runtime"],
   },
   async headers() {
     return [
