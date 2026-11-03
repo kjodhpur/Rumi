@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Bell, ClipboardCheck, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight } from "lucide-react";
+import { Bell, ClipboardCheck, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -42,6 +42,7 @@ export function SettingsIndex({
 
       <SettingsSection title="Profile">
         <SettingsLinkRow href="/settings/profile" icon={<SlidersHorizontal />} label="Profile & preferences" detail="Photos, budget, lifestyle" />
+        <SettingsLinkRow href="/settings/scenarios" icon={<Sparkles />} label="Roommate scenarios" detail="Everyday living micro-questions" />
       </SettingsSection>
 
       <SettingsSection title="Preferences">

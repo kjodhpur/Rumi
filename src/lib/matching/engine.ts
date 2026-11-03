@@ -15,6 +15,7 @@ import type {
   MatchProfile,
   Reason,
 } from "./types";
+import { evaluateScenarioMatch } from "./scenarios";
 
 /** Importance level → weight. "Must match" counts six times "nice to have". */
 export const IMPORTANCE_WEIGHTS: Record<Importance, number> = { 0: 0, 1: 1, 2: 3, 3: 6 };
@@ -286,6 +287,8 @@ export function evaluateMatch(
     areaNames?: Record<string, string>;
     hasVerifiedSocial?: boolean;
     sharedConnectionsCount?: number;
+    scenarioAnswersA?: Record<string, string>;
+    scenarioAnswersB?: Record<string, string>;
   } = {},
 ): MatchEvaluation | null {
   if (a.id === b.id) return null;
@@ -306,12 +309,26 @@ export function evaluateMatch(
     score = Math.min(100, score + trustBonus);
   }
 
+  // Evaluate behavioral micro-question scenarios if answers exist
+  let scenarioReasons: string[] = [];
+  let scenarioWatchouts: string[] = [];
+  if (options.scenarioAnswersA && options.scenarioAnswersB) {
+    const sc = evaluateScenarioMatch(options.scenarioAnswersA, options.scenarioAnswersB);
+    if (sc.bonusScore > 0 && score > 0) {
+      score = Math.min(100, score + sc.bonusScore);
+    }
+    scenarioReasons = sc.reasons;
+    scenarioWatchouts = sc.watchouts;
+  }
+
   const sharedArtists = a.music && b.music ? sharedArtistList(a, b) : [];
   const ctx: DescribeContext = {
     areaNames: options.areaNames ?? {},
     sharedArtists,
     hasVerifiedSocial: Boolean(options.hasVerifiedSocial),
     sharedConnectionsCount: options.sharedConnectionsCount ?? 0,
+    scenarioReasons,
+    scenarioWatchouts,
   };
 
   return {
@@ -336,6 +353,8 @@ interface DescribeContext {
   sharedArtists: { id: string; name: string }[];
   hasVerifiedSocial?: boolean;
   sharedConnectionsCount?: number;
+  scenarioReasons?: string[];
+  scenarioWatchouts?: string[];
 }
 
 function describe(
@@ -390,6 +409,15 @@ function describe(
     }
   }
 
+  // If there are aligned behavioral scenarios, surface in reasons
+  if (ctx.scenarioReasons && ctx.scenarioReasons.length > 0) {
+    if (reasons.length < 3) {
+      reasons.push({ key: "scenario", label: ctx.scenarioReasons[0] });
+    } else {
+      reasons[1] = { key: "scenario", label: ctx.scenarioReasons[0] };
+    }
+  }
+
   const watchouts: Reason[] = [];
   for (const c of [...candidates]
     .filter((c) => c.sim <= 0.5 && IMPORTANCE_WEIGHTS[importanceOf(viewer.prefs, c.key)] > 0)
@@ -397,6 +425,11 @@ function describe(
     const label = watchoutText(c.key, viewer, other);
     if (label) watchouts.push({ key: c.key, label });
     if (watchouts.length === 2) break;
+  }
+
+  // If there is a divergent behavioral scenario, surface in watchouts
+  if (ctx.scenarioWatchouts && ctx.scenarioWatchouts.length > 0 && watchouts.length < 2) {
+    watchouts.push({ key: "scenario", label: ctx.scenarioWatchouts[0] });
   }
 
   breakdown.sort((x, y) => y.importance - x.importance || y.similarity - x.similarity);

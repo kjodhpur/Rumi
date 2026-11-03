@@ -1404,6 +1404,53 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"school_questions": {
+                  Row: {
+                    "id": string,"school_id": string | null,"version": number,"kind": "scenario" | "general","factor": string,"stem": string,"choices": Json,"factor_map": Json,"is_active": boolean,"position": number,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"school_id"?: string | null,"version"?: number,"kind": "scenario" | "general","factor": string,"stem": string,"choices": Json,"factor_map": Json,"is_active"?: boolean,"position"?: number,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"school_id"?: string | null,"version"?: number,"kind"?: "scenario" | "general","factor"?: string,"stem"?: string,"choices"?: Json,"factor_map"?: Json,"is_active"?: boolean,"position"?: number,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "school_questions_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"school_question_answers": {
+                  Row: {
+                    "id": string,"user_id": string,"question_id": string,"choice_key": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_id": string,"question_id": string,"choice_key": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"user_id"?: string,"question_id"?: string,"choice_key"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "school_question_answers_question_id_fkey"
+                      columns: ["question_id"]
+                      isOneToOne: false
+                      referencedRelation: "school_questions"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "school_question_answers_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"spotify_accounts": {
                   Row: {
                     "access_token_enc": string,"connected_at": string,"display_name": string | null,"expires_at": string,"last_synced_at": string | null,"refresh_token_enc": string,"scopes": string,"spotify_user_id": string,"user_id": string

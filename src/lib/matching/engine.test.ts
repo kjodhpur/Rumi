@@ -272,4 +272,19 @@ describe("explanations", () => {
     const result = evaluateMatch(a, b, { hasVerifiedSocial: true, sharedConnectionsCount: 5 });
     expect(result).toBeNull();
   });
+
+  it("incorporates scenario answers into reasons and gives bounded bonus", () => {
+    const a = person("a", { sleepSchedule: 3 });
+    const b = person("b", { sleepSchedule: 3 });
+    const scenarioAnswersA = { scen_partner_overnight: "talk_first", scen_dishes: "remind" };
+    const scenarioAnswersB = { scen_partner_overnight: "talk_first", scen_dishes: "remind" };
+
+    const baseline = evaluateMatch(a, b)!;
+    const withScenarios = evaluateMatch(a, b, { scenarioAnswersA, scenarioAnswersB })!;
+
+    expect(withScenarios.score).toBeGreaterThanOrEqual(baseline.score);
+    expect(withScenarios.score - baseline.score).toBeLessThanOrEqual(3);
+    const hasScenarioReason = withScenarios.forA.reasons.some((r) => r.key === "scenario");
+    expect(hasScenarioReason).toBe(true);
+  });
 });
