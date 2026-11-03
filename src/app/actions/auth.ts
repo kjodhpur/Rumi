@@ -28,7 +28,12 @@ export async function afterSignIn(user: User) {
   const { data: school } = await admin.rpc("school_for_email", { p_email: email });
   // Signing in with the school inbox re-confirms student status for another year.
   if (school) {
-    await admin.from("profiles").update({ student_verified_at: new Date().toISOString() }).eq("id", user.id);
+    const now = new Date().toISOString();
+    // Signing in also counts as activity, which resets any inactivity-deletion warning.
+    await admin
+      .from("profiles")
+      .update({ student_verified_at: now, last_active_at: now, inactivity_warned_at: null })
+      .eq("id", user.id);
   }
   if (serverEnv.adminEmails.includes(email)) {
     await admin.from("admins").upsert({ user_id: user.id }, { onConflict: "user_id" });
@@ -39,11 +44,15 @@ export async function destinationFor(userId: string, next?: string | null) {
   const supabase = createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("onboarding_completed_at")
+    .select("onboarding_completed_at, is_staff")
     .eq("id", userId)
     .maybeSingle();
+  const target = safeNext(next);
+  // Staff invites must open before onboarding; staff never onboard as students.
+  if (target?.startsWith("/invite/")) return target;
+  if (data?.is_staff) return target?.startsWith("/staff") ? target : "/staff";
   if (!data?.onboarding_completed_at) return "/onboarding";
-  return safeNext(next) ?? "/matches";
+  return target ?? "/matches";
 }
 
 export async function requestCode(rawEmail: string): Promise<ActionResult<{ email: string }>> {

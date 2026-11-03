@@ -7,7 +7,7 @@ import { loadProfileDrafts } from "@/lib/onboarding-data";
 export const metadata: Metadata = { title: "Set up your profile" };
 export const dynamic = "force-dynamic";
 
-const STEP_IDS = ["basics", "photos", "about", "housing", "areas", "lifestyle", "habits", "priorities", "dealbreakers", "music"];
+const STEP_IDS = ["basics", "photos", "about", "housing", "areas", "lifestyle", "habits", "priorities", "dealbreakers", "music", "sharing"];
 
 export default async function OnboardingPage({ searchParams }: { searchParams: { step?: string } }) {
   const user = await getUser();
@@ -17,6 +17,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: {
   if (!loaded) redirect("/login");
   const { profile, data } = loaded;
   if (profile.banned_at) redirect("/suspended");
+  if (profile.is_staff) redirect("/staff");
   if (profile.onboarding_completed_at) redirect("/matches");
 
   const requested = STEP_IDS.indexOf(searchParams.step ?? "");

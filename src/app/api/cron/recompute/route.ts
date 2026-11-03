@@ -2,19 +2,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { recomputeMatchesFor } from "@/lib/matching/recompute";
 import { isAuthorizedCron } from "@/lib/cron";
+import { runNightlyJobs } from "@/lib/jobs/nightly";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Repair job: re-scores anyone whose preferences changed after their scores were
- * computed (e.g. a background recompute was interrupted). Normal edits re-rank
+ * Nightly. First the registered nightly jobs (retention, …), then the repair job:
+ * re-scores anyone whose preferences changed after their scores were computed
+ * (e.g. a background recompute was interrupted). Normal edits re-rank
  * immediately; this only catches stragglers.
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCron(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const started = Date.now();
+  const nightly = await runNightlyJobs();
   const { data, error } = await createAdminClient().rpc("stale_match_users", { p_limit: 200 });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -30,5 +33,5 @@ export async function GET(request: NextRequest) {
       console.error("[cron:recompute] failed for", row.user_id, err);
     }
   }
-  return NextResponse.json({ stale: data?.length ?? 0, processed, failed, ms: Date.now() - started });
+  return NextResponse.json({ nightly, stale: data?.length ?? 0, processed, failed, ms: Date.now() - started });
 }

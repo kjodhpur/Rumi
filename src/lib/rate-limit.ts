@@ -12,6 +12,8 @@ export const LIMITS = {
   introsPerDay: { max: 20, window: 86400 },
   reportsPerDay: { max: 10, window: 86400 },
   groupInvitesPerDay: { max: 20, window: 86400 },
+  staffInvitesPerDay: { max: 50, window: 86400 },
+  consentChangesPerHour: { max: 30, window: 3600 },
 } as const;
 
 /**

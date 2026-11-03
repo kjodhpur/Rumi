@@ -57,14 +57,18 @@ export function toMatchProfile(
 /** Everyone at a school who can currently be matched. */
 export async function loadSchoolPool(schoolId: string) {
   const admin = createAdminClient();
+  const { data: school } = await admin.from("schools").select("hide_seed_profiles").eq("id", schoolId).maybeSingle();
+  let poolQuery = admin
+    .from("profiles")
+    .select("id, first_name, gender, preferences(*), music_profiles(*)")
+    .eq("school_id", schoolId)
+    .not("onboarding_completed_at", "is", null)
+    .is("banned_at", null)
+    // Staff are never matched, and a school can take its demo profiles out of the pool.
+    .eq("is_staff", false);
+  if (school?.hide_seed_profiles) poolQuery = poolQuery.eq("is_seed", false);
   const [people, areas] = await Promise.all([
-    admin
-      .from("profiles")
-      .select("id, first_name, gender, preferences(*), music_profiles(*)")
-      .eq("school_id", schoolId)
-      .not("onboarding_completed_at", "is", null)
-      .is("banned_at", null)
-      .returns<PoolRow[]>(),
+    poolQuery.returns<PoolRow[]>(),
     admin.from("areas").select("slug, name").eq("school_id", schoolId),
   ]);
   if (people.error) throw people.error;

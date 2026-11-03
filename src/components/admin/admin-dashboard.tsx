@@ -26,7 +26,8 @@ import { revokeVerification, setBan, updateReportStatus } from "@/app/actions/ad
 import { REPORT_REASONS, labelOf } from "@/lib/options";
 import { spring, springSnappy } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-import type { AdminLogEntry, AdminPerson, AdminReport, AdminStats, ReportFilter, ReportStatus } from "@/lib/admin";
+import type { AdminLogEntry, AdminPerson, AdminReport, AdminStats, ReportFilter, ReportStatus, SeedSetting } from "@/lib/admin";
+import { DemoProfiles } from "./demo-profiles";
 
 export type AdminTab = "reports" | "people" | "log";
 
@@ -39,6 +40,7 @@ interface Props {
   query: string;
   people: AdminPerson[];
   log: AdminLogEntry[];
+  seedSettings: SeedSetting[];
 }
 
 const TABS: { value: AdminTab; label: string; href: string }[] = [
@@ -81,6 +83,7 @@ export function AdminDashboard(props: Props) {
       <TabBar tab={tab} />
 
       {tab === "reports" ? <ReportsPanel {...props} actions={actions} /> : null}
+      {tab === "people" ? <DemoProfiles settings={props.seedSettings} /> : null}
       {tab === "people" ? <PeoplePanel {...props} actions={actions} /> : null}
       {tab === "log" ? <LogPanel log={props.log} /> : null}
 

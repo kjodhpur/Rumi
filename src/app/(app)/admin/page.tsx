@@ -4,6 +4,7 @@ import {
   loadAdminStats,
   loadModerationLog,
   loadReports,
+  loadSeedSettings,
   requireAdmin,
   searchPeople,
   type ReportFilter,
@@ -28,11 +29,12 @@ export default async function AdminPage({
   const peopleFilter = searchParams.filter === "banned" ? "banned" : "recent";
   const query = (searchParams.q ?? "").trim().slice(0, 80);
 
-  const [stats, reports, people, log] = await Promise.all([
+  const [stats, reports, people, log, seedSettings] = await Promise.all([
     loadAdminStats(),
     tab === "reports" ? loadReports(reportFilter) : Promise.resolve([]),
     tab === "people" ? searchPeople(query, peopleFilter) : Promise.resolve([]),
     tab === "log" ? loadModerationLog() : Promise.resolve([]),
+    tab === "people" ? loadSeedSettings() : Promise.resolve([]),
   ]);
 
   return (
@@ -45,6 +47,7 @@ export default async function AdminPage({
       query={query}
       people={people}
       log={log}
+      seedSettings={seedSettings}
     />
   );
 }

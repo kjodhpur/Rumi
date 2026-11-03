@@ -20,6 +20,7 @@ The school is configurable: allowed email domains and neighborhoods live in the 
 - [Performance](#performance)
 - [Deploy to Vercel](#deploy-to-vercel)
 - [Adding a school](#adding-a-school)
+- [Housing staff](#housing-staff)
 - [Security and privacy](#security-and-privacy)
 - [Project structure](#project-structure)
 
@@ -62,6 +63,7 @@ The school is configurable: allowed email domains and neighborhoods live in the 
   - Hide profile, verified-students-only, and an admin dashboard: report queue, suspend/restore, revoke verification, people search, activity log.
 - **Settings.** Profile and preferences, notifications, privacy, connected accounts, theme (synced to the account), JSON data export and account deletion.
 - **PWA.** Installable, launch splash, offline fallback page, cached build assets.
+- **Housing staff (`/staff`).** A separate workspace for a school's housing office. Free for students, always. See [Housing staff](#housing-staff).
 
 Design: warm paper and near-black ink with one accent (Ember), Instrument Serif display type, Inter UI, layered shadows and a hand-tuned dark mode.
 
@@ -184,7 +186,9 @@ SEED_PHOTOS=unsplash npm run seed     # try real portraits (falls back to monogr
 
 ## Testing
 
-**Unit tests** cover the matching engine: hard filters, weights, mutual scoring, reasons and edge cases.
+**Unit tests** cover the matching engine (hard filters, weights, mutual scoring, reasons and edge cases), staff roles, consent visibility and data-retention rules against a fixed clock.
+
+**Database security tests** (`src/test/`) sign in as each staff role and as students against the local stack and check what Row Level Security lets each one read and write. They run with `npm test` and skip themselves when the local stack isn't running.
 
 ```bash
 npm test
@@ -196,6 +200,7 @@ npm test
 - Full onboarding, including photo crop and autosave across a reload.
 - Ranked matches: profile overlay, save, Saved view and filters.
 - Intro → accept → realtime chat with typing indicator and read receipts, across two browsers.
+- Staff: a platform admin invites a housing admin, who accepts; the last-admin rule; turning access off; students switching housing sharing on and off. Staff specs also run axe and fail on any serious or critical WCAG 2.1 AA violation.
 
 Onboarding and matching also run at a 375px mobile viewport.
 
@@ -285,10 +290,25 @@ insert into public.areas (school_id, slug, name, description, sort_order) values
 
 Students are matched only within their own school. For a deployment dedicated to another campus, set the `NEXT_PUBLIC_LAUNCH_SCHOOL_*` variables so public pages use the right name, domain, city and campus police number.
 
+## Housing staff
+
+Housing offices get their own workspace at `/staff`, separate from the student app. The build plan is in [`docs/MASTER-PROMPT.md`](docs/MASTER-PROMPT.md); each phase's design is in `docs/phase-N.md`, and progress is logged in [`docs/PROGRESS.md`](docs/PROGRESS.md).
+
+- **Roles.** Platform admins (the Rumi team, from `ADMIN_EMAILS`) can act for every school. Schools have housing admins, housing staff, RAs (scoped to buildings), analysts (totals only) and moderators. `src/lib/staff/roles.ts` lists what each role can do.
+- **Invites.** A housing admin invites by email from **Team**. The invitee signs in with that school address, adds their name and accepts. Staff accounts never appear to students and never land in the student app. Turning an existing student into staff needs an invite from the Rumi team.
+- **Access is checked on every request**, so turning someone's access off takes effect on their next click. A school always keeps at least one housing admin.
+- **Consent.** Staff see only totals unless a student turns on "Share my Rumi results with {office}" (onboarding's last step, or Settings → Privacy). The prompt appears only after the Rumi team sets the school's `housing_office_name`, so students are never told an office is involved before a signed pilot exists.
+- **Audit log.** Every staff action and every look at a student's records is recorded. Entries can't be edited or deleted by any API role.
+- **Retention.** Each school sets how long orphaned messages, inactive accounts (emailed first) and audit records are kept. A nightly job (inside `/api/cron/recompute`) applies it; `/api/cron/retention` runs it on demand.
+- **Demo profiles.** Platform admins can hide a school's seeded profiles from **Admin → People** without a redeploy.
+
+To give a school its first housing admin, sign in as a platform admin, open `/staff`, pick the school and send an invite from **Team**.
+
 ## Security and privacy
 
-- **Row Level Security on all 23 tables.**
-  - Cross-user reads go through one function, `can_view_profile()`. It checks same school, onboarding finished, not banned, not blocked, the hidden profile setting and the verified-only setting.
+- **Row Level Security on every table.**
+  - Cross-user reads go through one function, `can_view_profile()`. It checks same school, onboarding finished, not banned, not blocked, the hidden profile setting, the verified-only setting, the school's demo-profile switch, and that neither side is a staff account.
+  - Staff tables use `has_role()` and `staff_scope_includes()`; `src/test/rls-staff.test.ts` proves each role sees only what it should.
   - Writes are limited by column-level grants.
   - Multi-step operations (accept intro, join group, send message) are `security definer` functions that check `auth.uid()`.
 - **The service role is used only on the server**: recompute, notifications, moderation, rate limits and deletion.
@@ -318,6 +338,8 @@ Before a public launch, plan an upgrade to the current Next.js major (`npm audit
 src/
   app/
     (app)/          signed-in app: matches, profile/[id], messages, groups, notifications, settings, admin
+    staff/          housing staff workspace (team, privacy & retention, audit log, …)
+    invite/[token]  staff invite acceptance
     (auth)/login    email-code sign-in
     onboarding/     10-step wizard
     api/            matches feed, profile detail, Spotify OAuth, data export, cron jobs
@@ -335,6 +357,7 @@ supabase/
 scripts/            seed data and brand asset generation
 e2e/                Playwright specs and helpers
 docs/PROPOSAL.md    schema, page map, design tokens and motion spec
+docs/phase-N.md     design of each housing-staff phase (see MASTER-PROMPT.md, PROGRESS.md)
 ```
 
 ---

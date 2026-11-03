@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [{ data: profile }, { data: admin }, { data: settings }, counts] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at")
+      .select("id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at, is_staff, last_active_at")
       .eq("id", user.id)
       .single(),
     supabase.from("admins").select("user_id").eq("user_id", user.id).maybeSingle(),
@@ -24,7 +24,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!profile) redirect("/login");
   if (profile.banned_at) redirect("/suspended");
+  if (profile.is_staff) redirect("/staff");
   if (!profile.onboarding_completed_at) redirect("/onboarding");
+  // Opening the app counts as activity (at most one write a day) for inactive-account retention.
+  if (Date.now() - Date.parse(profile.last_active_at) > 86_400_000) {
+    await supabase.from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", user.id);
+  }
 
   return (
     <AppShell

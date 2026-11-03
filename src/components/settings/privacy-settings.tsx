@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { updatePrivacy } from "@/app/actions/settings";
 import { unblockUser } from "@/app/actions/social";
 import { SettingsBack, SettingsSection, SettingsToggleRow } from "./settings-ui";
+import { ConsentSettings, type ConsentEvent, type ConsentRow } from "./consent-settings";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 
 interface Blocked {
@@ -22,10 +23,14 @@ export function PrivacySettings({
   initial,
   verifiedUntil,
   blocked: initialBlocked,
+  consents,
+  consentHistory,
 }: {
   initial: { is_hidden: boolean; verified_only: boolean };
   verifiedUntil: string | null;
   blocked: Blocked[];
+  consents: ConsentRow[];
+  consentHistory: ConsentEvent[];
 }) {
   const [values, setValues] = React.useState(initial);
   const [blocked, setBlocked] = React.useState(initialBlocked);
@@ -95,6 +100,8 @@ export function PrivacySettings({
           onCheckedChange={(v) => void toggle("verified_only", v)}
         />
       </SettingsSection>
+
+      <ConsentSettings consents={consents} history={consentHistory} />
 
       <SettingsSection title="Blocked" footer="Blocked people can't see you, message you, or appear in your matches. They aren't notified.">
         {blocked.length === 0 ? (

@@ -245,3 +245,25 @@ export async function loadModerationLog(): Promise<AdminLogEntry[]> {
     };
   });
 }
+
+export interface SeedSetting {
+  schoolId: string;
+  schoolName: string;
+  seedCount: number;
+  hidden: boolean;
+}
+
+/** Schools that have seeded demo profiles, and whether students currently see them. */
+export async function loadSeedSettings(): Promise<SeedSetting[]> {
+  const db = createAdminClient();
+  const { data: schools } = await db.from("schools").select("id, name, hide_seed_profiles").order("created_at");
+  const counts = await Promise.all(
+    (schools ?? []).map(
+      async (s) =>
+        (await db.from("profiles").select("id", { count: "exact", head: true }).eq("school_id", s.id).eq("is_seed", true)).count ?? 0,
+    ),
+  );
+  return (schools ?? [])
+    .map((s, i) => ({ schoolId: s.id, schoolName: s.name, seedCount: counts[i], hidden: s.hide_seed_profiles }))
+    .filter((s) => s.seedCount > 0);
+}

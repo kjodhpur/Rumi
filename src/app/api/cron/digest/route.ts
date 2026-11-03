@@ -32,12 +32,14 @@ export async function GET(request: NextRequest) {
   const [{ data: settings }, { data: viewers }, { data: candidates }] = await Promise.all([
     db.from("user_settings").select("user_id, email, notify_email_matches, last_digest_at").in("user_id", viewerIds),
     db.from("profiles").select("id, first_name, banned_at").in("id", viewerIds),
-    db.from("profiles").select("id, first_name, last_initial, banned_at, is_hidden").in("id", candidateIds),
+    db.from("profiles").select("id, first_name, last_initial, banned_at, is_hidden, is_seed, schools(hide_seed_profiles)").in("id", candidateIds),
   ]);
   const settingsBy = new Map((settings ?? []).map((s) => [s.user_id, s]));
   const viewerBy = new Map((viewers ?? []).map((v) => [v.id, v]));
   const visible = new Map(
-    (candidates ?? []).filter((c) => !c.banned_at && !c.is_hidden).map((c) => [c.id, `${c.first_name} ${c.last_initial}.`]),
+    (candidates ?? [])
+      .filter((c) => !c.banned_at && !c.is_hidden && !(c.is_seed && c.schools?.hide_seed_profiles))
+      .map((c) => [c.id, `${c.first_name} ${c.last_initial}.`]),
   );
 
   let sent = 0;

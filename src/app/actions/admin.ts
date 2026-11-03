@@ -79,3 +79,22 @@ export async function revokeVerification(userId: string): Promise<ActionResult> 
   revalidatePath("/admin");
   return ok();
 }
+
+/**
+ * Shows or hides the seeded demo profiles for a whole school. Visibility is enforced
+ * in can_view_profile, so it takes effect on the next request — no redeploy.
+ */
+export async function setSeedProfilesHidden(input: { schoolId: string; hidden: boolean }): Promise<ActionResult> {
+  const adminId = await requireAdmin();
+  if (!adminId) return fail("Admins only.");
+  if (!/^[a-z0-9-]{2,32}$/.test(input.schoolId) || typeof input.hidden !== "boolean") return fail("Unknown school.");
+  const { error } = await createAdminClient()
+    .from("schools")
+    .update({ hide_seed_profiles: input.hidden })
+    .eq("id", input.schoolId);
+  if (error) return fail("Couldn't update the school.");
+  await log(adminId, input.hidden ? "hide_seed_profiles" : "show_seed_profiles", null, null, { school: input.schoolId });
+  revalidatePath("/admin");
+  revalidatePath("/matches");
+  return ok();
+}

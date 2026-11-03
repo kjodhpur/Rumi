@@ -10,10 +10,12 @@ interface LayoutInput {
   body: string;
   quote?: string;
   cta: { label: string; href: string };
+  /** Replaces the notification-settings footer for emails that aren't notifications. */
+  footer?: string;
 }
 
 /** One calm, accessible layout for every notification email. */
-export function layout({ preheader, heading, body, quote, cta }: LayoutInput) {
+export function layout({ preheader, heading, body, quote, cta, footer }: LayoutInput) {
   const href = absoluteUrl(cta.href);
   const settings = absoluteUrl("/settings/notifications");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${escape(heading)}</title></head>
@@ -27,9 +29,9 @@ export function layout({ preheader, heading, body, quote, cta }: LayoutInput) {
 ${quote ? `<tr><td style="padding:16px 32px 0;"><div style="background:#f0ede6;border-radius:12px;padding:14px 16px;font-size:15px;line-height:22px;color:#171614;">${escape(quote)}</div></td></tr>` : ""}
 <tr><td style="padding:24px 32px 32px;"><a href="${href}" style="display:inline-block;background:#171614;color:#f7f5f0;text-decoration:none;font-size:15px;font-weight:600;padding:12px 20px;border-radius:12px;">${escape(cta.label)}</a></td></tr>
 </table>
-<p style="margin:20px 0 0;font-size:12px;line-height:18px;color:#6f6a62;">You're getting this because of your Rumi notification settings. <a href="${settings}" style="color:#6f6a62;">Change them</a>.</p>
+<p style="margin:20px 0 0;font-size:12px;line-height:18px;color:#6f6a62;">${footer ? escape(footer) : `You're getting this because of your Rumi notification settings. <a href="${settings}" style="color:#6f6a62;">Change them</a>.`}</p>
 </td></tr></table></body></html>`;
-  const text = `${heading}\n\n${body}${quote ? `\n\n“${quote}”` : ""}\n\n${cta.label}: ${href}\n\nChange notification settings: ${settings}`;
+  const text = `${heading}\n\n${body}${quote ? `\n\n“${quote}”` : ""}\n\n${cta.label}: ${href}\n\n${footer ?? `Change notification settings: ${settings}`}`;
   return { html, text };
 }
 
@@ -93,6 +95,32 @@ export function strongMatchDigestEmail(firstName: string, matches: { name: strin
       heading: firstName ? `${firstName}, you have new strong matches` : "You have new strong matches",
       body: `People who fit how you live just joined or updated their profile: ${list}.`,
       cta: { label: "See your matches", href: "/matches" },
+    }),
+  };
+}
+
+export function staffInviteEmail(inviterName: string, schoolName: string, roleLabel: string, token: string) {
+  return {
+    subject: `${inviterName} invited you to Rumi for ${schoolName}`,
+    ...layout({
+      preheader: `Join as ${roleLabel}. The link works for 7 days.`,
+      heading: `Join ${schoolName} on Rumi`,
+      body: `${inviterName} invited you as ${roleLabel}. Sign in with this email address to accept. The link works for 7 days.`,
+      cta: { label: "Accept invite", href: `/invite/${token}` },
+      footer: "You're getting this because someone at your school invited this address. Ignore it if you weren't expecting it.",
+    }),
+  };
+}
+
+export function inactivityWarningEmail(daysLeft: number) {
+  return {
+    subject: "Your Rumi account will be deleted soon",
+    ...layout({
+      preheader: `Sign in within ${daysLeft} days to keep it.`,
+      heading: "We'll delete your account soon",
+      body: `You haven't signed in for a long time, so we'll delete your account and everything in it in ${daysLeft} days. Sign in anytime before then to keep it.`,
+      cta: { label: "Keep my account", href: "/login" },
+      footer: "We delete inactive accounts so we don't hold onto data nobody uses.",
     }),
   };
 }

@@ -57,6 +57,8 @@ export interface OnboardingData {
   photos: PhotoRecord[];
   areas: AreaOption[];
   spotify: { enabled: boolean; connected: boolean; displayName: string | null; artists: string[] };
+  /** The optional last step appears only when the school has a partnered housing office. */
+  sharing: { office: string | null; granted: boolean };
   initialStep: number;
 }
 

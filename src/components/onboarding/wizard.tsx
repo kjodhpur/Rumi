@@ -26,6 +26,7 @@ import { HabitsStep } from "./steps/habits-step";
 import { PrioritiesStep } from "./steps/priorities-step";
 import { DealbreakersStep } from "./steps/dealbreakers-step";
 import { MusicStep } from "./steps/music-step";
+import { SharingStep } from "./steps/sharing-step";
 import { PhotoManager } from "./photo-manager";
 import { ProfilePreview } from "./profile-preview";
 import { FinishScreen } from "./finish-screen";
@@ -40,7 +41,8 @@ type StepId =
   | "habits"
   | "priorities"
   | "dealbreakers"
-  | "music";
+  | "music"
+  | "sharing";
 
 interface StepDef {
   id: StepId;
@@ -60,13 +62,17 @@ const ALL_STEPS: StepDef[] = [
   { id: "priorities", eyebrow: "Priorities", title: "What matters most?", subtitle: "Your matches are weighted by what you care about." },
   { id: "dealbreakers", eyebrow: "Dealbreakers", title: "Any dealbreakers?", subtitle: "We'll never show you anyone who breaks these — and they won't see you." },
   { id: "music", eyebrow: "Music", title: "Bring your music.", subtitle: "Connect Spotify to see shared artists. Optional." },
+  { id: "sharing", eyebrow: "Your school", title: "Share with your housing office?", subtitle: "Optional, off unless you turn it on, and you can change it anytime in Settings." },
 ];
 
 export function OnboardingWizard({ data }: { data: OnboardingData }) {
   const router = useRouter();
   const steps = React.useMemo(
-    () => ALL_STEPS.filter((s) => s.id !== "music" || data.spotify.enabled),
-    [data.spotify.enabled],
+    () =>
+      ALL_STEPS.filter(
+        (s) => (s.id !== "music" || data.spotify.enabled) && (s.id !== "sharing" || Boolean(data.sharing.office)),
+      ).map((s) => (s.id === "sharing" ? { ...s, title: `Share with ${data.sharing.office}?` } : s)),
+    [data.spotify.enabled, data.sharing.office],
   );
   const [index, setIndex] = React.useState(() => Math.min(data.initialStep, steps.length - 1));
   const [direction, setDirection] = React.useState<1 | -1>(1);
@@ -283,6 +289,9 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
                   returnTo="/onboarding?step=music"
                 />
               )}
+              {step.id === "sharing" && data.sharing.office ? (
+                <SharingStep office={data.sharing.office} initialGranted={data.sharing.granted} />
+              ) : null}
             </motion.div>
           </AnimatePresence>
 

@@ -25,11 +25,17 @@ export async function loadProfileDrafts(userId: string) {
     ]);
   if (!profile || !prefs) return null;
 
-  const { data: areas } = await supabase
-    .from("areas")
-    .select("slug, name, description")
-    .eq("school_id", profile.school_id)
-    .order("sort_order");
+  const [{ data: areas }, { data: school }, { data: shareConsent }] = await Promise.all([
+    supabase.from("areas").select("slug, name, description").eq("school_id", profile.school_id).order("sort_order"),
+    supabase.from("schools").select("housing_office_name").eq("id", profile.school_id).maybeSingle(),
+    supabase
+      .from("consents")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("kind", "share_with_housing")
+      .is("revoked_at", null)
+      .maybeSingle(),
+  ]);
 
   const data: Omit<OnboardingData, "initialStep"> = {
     userId,
@@ -69,6 +75,7 @@ export async function loadProfileDrafts(userId: string) {
       displayName: spotify?.display_name ?? null,
       artists: Array.isArray(music?.top_artists) ? (music!.top_artists as { name: string }[]).map((a) => a.name) : [],
     },
+    sharing: { office: school?.housing_office_name ?? null, granted: Boolean(shareConsent) },
   };
   return { profile, data };
 }
