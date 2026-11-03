@@ -11,6 +11,7 @@ import {
   Siren,
   UserRoundSearch,
   Users,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
@@ -36,6 +37,7 @@ export const STAFF_NAV: StaffNavSection[] = [
       { href: "/staff/outcomes", label: "Outcomes", icon: BarChart3, capability: "viewDashboard" },
       { href: "/staff/students", label: "Students", icon: UserRoundSearch, capability: "viewStudents" },
       { href: "/staff/pairings", label: "Pairings", icon: HeartHandshake, capability: "managePairings" },
+      { href: "/staff/swaps", label: "Room swaps", icon: ArrowLeftRight, capability: "managePairings" },
       { href: "/staff/ra", label: "Check-ins", icon: ClipboardCheck, capability: "raWorkspace" },
       { href: "/staff/safety", label: "Safety & reports", icon: ShieldAlert, capability: "moderate" },
     ],

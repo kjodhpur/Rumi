@@ -1555,6 +1555,60 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"swap_pool": {
+                  Row: {
+                    "id": string,"user_id": string,"assignment_id": string,"school_id": string,"reason": string | null,"opted_in_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_id": string,"assignment_id": string,"school_id": string,"reason"?: string | null,"opted_in_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"user_id"?: string,"assignment_id"?: string,"school_id"?: string,"reason"?: string | null,"opted_in_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "swap_pool_assignment_id_fkey"
+                      columns: ["assignment_id"]
+                      isOneToOne: false
+                      referencedRelation: "assignments"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "swap_pool_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "swap_pool_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"swap_proposals": {
+                  Row: {
+                    "id": string,"school_id": string,"cycle": (string)[],"scores": Json,"status": "staff_pending" | "staff_approved" | "student_accepted" | "declined" | "cancelled" | "completed","staff_notes": string | null,"decided_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"school_id": string,"cycle": (string)[],"scores": Json,"status"?: "staff_pending" | "staff_approved" | "student_accepted" | "declined" | "cancelled" | "completed","staff_notes"?: string | null,"decided_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"school_id"?: string,"cycle"?: (string)[],"scores"?: Json,"status"?: "staff_pending" | "staff_approved" | "student_accepted" | "declined" | "cancelled" | "completed","staff_notes"?: string | null,"decided_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "swap_proposals_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"terms": {
                   Row: {
                     "active": boolean,"created_at": string,"created_by": string | null,"deadlines": NonNullable<Json>,"ends_on": string,"id": string,"name": string,"school_id": string,"starts_on": string
