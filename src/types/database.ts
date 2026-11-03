@@ -1194,6 +1194,202 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"chores": {
+                  Row: {
+                    "id": string,"group_id": string,"title": string,"cadence": "daily" | "weekly" | "biweekly" | "monthly","rotation": (string)[],"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"group_id": string,"title": string,"cadence": "daily" | "weekly" | "biweekly" | "monthly","rotation"?: (string)[],"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"group_id"?: string,"title"?: string,"cadence"?: "daily" | "weekly" | "biweekly" | "monthly","rotation"?: (string)[],"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "chores_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"chore_instances": {
+                  Row: {
+                    "id": string,"chore_id": string,"group_id": string,"assignee_id": string,"due_on": string,"completed_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"chore_id": string,"group_id": string,"assignee_id": string,"due_on": string,"completed_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"chore_id"?: string,"group_id"?: string,"assignee_id"?: string,"due_on"?: string,"completed_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "chore_instances_chore_id_fkey"
+                      columns: ["chore_id"]
+                      isOneToOne: false
+                      referencedRelation: "chores"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "chore_instances_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "chore_instances_assignee_id_fkey"
+                      columns: ["assignee_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"expenses": {
+                  Row: {
+                    "id": string,"group_id": string,"payer_id": string,"amount_cents": number,"currency": string,"description": string,"receipt_path": string | null,"deleted_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"group_id": string,"payer_id": string,"amount_cents": number,"currency"?: string,"description": string,"receipt_path"?: string | null,"deleted_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"group_id"?: string,"payer_id"?: string,"amount_cents"?: number,"currency"?: string,"description"?: string,"receipt_path"?: string | null,"deleted_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "expenses_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "expenses_payer_id_fkey"
+                      columns: ["payer_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"expense_splits": {
+                  Row: {
+                    "id": string,"expense_id": string,"user_id": string,"share_cents": number,"settled_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"expense_id": string,"user_id": string,"share_cents": number,"settled_at"?: string | null
+                  }
+                  Update: {
+                    "id"?: string,"expense_id"?: string,"user_id"?: string,"share_cents"?: number,"settled_at"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "expense_splits_expense_id_fkey"
+                      columns: ["expense_id"]
+                      isOneToOne: false
+                      referencedRelation: "expenses"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "expense_splits_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"room_events": {
+                  Row: {
+                    "id": string,"group_id": string,"created_by": string,"kind": "guest" | "quiet" | "away" | "shared","title": string,"starts_at": string,"ends_at": string,"overnight": boolean,"guest_count": number,"notes": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"group_id": string,"created_by": string,"kind": "guest" | "quiet" | "away" | "shared","title": string,"starts_at": string,"ends_at": string,"overnight"?: boolean,"guest_count"?: number,"notes"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"group_id"?: string,"created_by"?: string,"kind"?: "guest" | "quiet" | "away" | "shared","title"?: string,"starts_at"?: string,"ends_at"?: string,"overnight"?: boolean,"guest_count"?: number,"notes"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "room_events_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "room_events_created_by_fkey"
+                      columns: ["created_by"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"room_calendar_tokens": {
+                  Row: {
+                    "id": string,"group_id": string,"user_id": string,"token": string,"token_hash": string,"rotated_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"group_id": string,"user_id": string,"token": string,"token_hash": string,"rotated_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"group_id"?: string,"user_id"?: string,"token"?: string,"token_hash"?: string,"rotated_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "room_calendar_tokens_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "room_calendar_tokens_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"settlements": {
+                  Row: {
+                    "id": string,"group_id": string,"payer_id": string,"receiver_id": string,"amount_cents": number,"note": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"group_id": string,"payer_id": string,"receiver_id": string,"amount_cents": number,"note"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"group_id"?: string,"payer_id"?: string,"receiver_id"?: string,"amount_cents"?: number,"note"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "settlements_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "settlements_payer_id_fkey"
+                      columns: ["payer_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "settlements_receiver_id_fkey"
+                      columns: ["receiver_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"schools": {
                   Row: {
                     "active": boolean,"created_at": string,"email_domains": (string)[],"hide_seed_profiles": boolean,"housing_office_name": string | null,"id": string,"is_demo": boolean,"name": string,"short_name": string,"timezone": string

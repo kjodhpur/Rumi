@@ -5,7 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { ChevronRight, Crown, FileSignature, LogOut, MessageCircle, MoreHorizontal, UserPlus, Users } from "lucide-react";
+import {
+  ChevronRight,
+  Crown,
+  FileSignature,
+  LogOut,
+  MessageCircle,
+  MoreHorizontal,
+  UserPlus,
+  Users,
+  CalendarDays,
+  Sparkles,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -183,25 +194,59 @@ export function GroupDetailView({
       </section>
 
       {group.members.length >= 2 ? (
-        <Link
-          href={`/groups/${group.id}/agreement`}
-          className="mt-4 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
-        >
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
-            <FileSignature className="size-5" strokeWidth={1.75} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-body font-semibold text-ink">Roommate agreement</span>
-            <span className="mt-0.5 block text-body-sm text-ink-2">
-              {agreementStatus === "signed"
-                ? "Signed by everyone. Reopen it anytime things change."
-                : agreementStatus
-                  ? "In progress. Review each section and sign when you all agree."
-                  : "Agree on quiet hours, guests, chores and more. We've drafted it from your profiles."}
+        <>
+          <Link
+            href={`/groups/${group.id}/agreement`}
+            className="mt-4 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
+              <FileSignature className="size-5" strokeWidth={1.75} aria-hidden />
             </span>
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
-        </Link>
+            <span className="min-w-0 flex-1">
+              <span className="block text-body font-semibold text-ink">Roommate agreement</span>
+              <span className="mt-0.5 block text-body-sm text-ink-2">
+                {agreementStatus === "signed"
+                  ? "Signed by everyone. Reopen it anytime things change."
+                  : agreementStatus
+                    ? "In progress. Review each section and sign when you all agree."
+                    : "Agree on quiet hours, guests, chores and more. We've drafted it from your profiles."}
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
+          </Link>
+
+          <Link
+            href={`/groups/${group.id}/calendar`}
+            className="mt-3 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
+              <CalendarDays className="size-5 text-accent" strokeWidth={1.75} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-body font-semibold text-ink">Room calendar & quiet hours</span>
+              <span className="mt-0.5 block text-body-sm text-ink-2">
+                Coordinate guest stays, overnight limits, exam quiet hours, and sync with your personal calendar.
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
+          </Link>
+
+          <Link
+            href={`/groups/${group.id}/home`}
+            className="mt-3 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+          >
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
+              <Sparkles className="size-5 text-accent" strokeWidth={1.75} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-body font-semibold text-ink">Chores & expenses</span>
+              <span className="mt-0.5 block text-body-sm text-ink-2">
+                Rotating chore wheel and transparent, zero-sum shared room expenses.
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
+          </Link>
+        </>
       ) : null}
 
       {group.status === "full" && group.conversationId ? (
