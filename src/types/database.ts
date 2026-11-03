@@ -997,6 +997,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"preference_flags": {
+                  Row: {
+                    "created_at": string,
+                    "dismissed_at": string | null,
+                    "id": string,
+                    "rule_key": string,
+                    "user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,
+                    "dismissed_at"?: string | null,
+                    "id"?: string,
+                    "rule_key": string,
+                    "user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,
+                    "dismissed_at"?: string | null,
+                    "id"?: string,
+                    "rule_key"?: string,
+                    "user_id"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "preference_flags_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"preferences": {
                   Row: {
                     "areas": (string)[],"budget_max": number,"budget_min": number,"cleanliness": number,"dealbreakers": (string)[],"drinking": string,"gender_pref": (string)[],"guests": number,"housing_type": string,"lease_length": string,"move_in_date": string | null,"noise": number,"pets": string,"sleep_schedule": number,"smoking": string,"study": string,"updated_at": string,"user_id": string,"weights": NonNullable<Json>
