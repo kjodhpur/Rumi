@@ -83,6 +83,23 @@ export function BasicsStep({ profile, updateProfile, errors }: StepProps) {
         />
       </Section>
 
+      <Section
+        label="Student track"
+        hint="First-year, returning, transfer, and graduate students match within their own cohorts by default."
+      >
+        <ChoiceChips
+          aria-label="Student track"
+          value={profile.track ?? ""}
+          onValueChange={(track) => updateProfile({ track: track ? (track as "freshman" | "returning" | "transfer" | "grad") : null })}
+          options={[
+            { value: "freshman", label: "Freshman" },
+            { value: "returning", label: "Returning" },
+            { value: "transfer", label: "Transfer" },
+            { value: "grad", label: "Graduate" },
+          ]}
+        />
+      </Section>
+
       <Field label="Major" error={errors.major}>
         {({ id, describedBy, invalid }) => (
           <>

@@ -104,6 +104,14 @@ function acceptsGender(owner: MatchProfile, other: MatchProfile) {
 
 /** Null when the pair may be matched; otherwise the first rule that rules it out. */
 export function hardFilterFailure(a: MatchProfile, b: MatchProfile): HardFilterFailure | null {
+  // 1. Pre-arrival pool separation (admitted non-enrolled students match only with pre-arrival students)
+  if (Boolean(a.preArrival) !== Boolean(b.preArrival)) {
+    return { kind: "pre_arrival_pool", who: a.preArrival ? "a" : "b" };
+  }
+  // 2. Track pool separation (e.g. transfer or grad cohorts match within their track by default)
+  if (a.track && b.track && a.track !== b.track) {
+    return { kind: "track_pool", who: "a" };
+  }
   if (!acceptsGender(a, b)) return { kind: "gender", who: "a" };
   if (!acceptsGender(b, a)) return { kind: "gender", who: "b" };
   const aRule = brokenDealbreaker(a.prefs, b.prefs);

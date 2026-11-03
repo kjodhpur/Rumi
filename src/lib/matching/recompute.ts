@@ -13,6 +13,8 @@ interface PoolRow {
   id: string;
   first_name: string;
   gender: string | null;
+  track?: string | null;
+  pre_arrival?: boolean;
   preferences: PrefsRow | null;
   music_profiles: MusicRow | null;
 }
@@ -20,7 +22,13 @@ interface PoolRow {
 const CHUNK = 400;
 
 export function toMatchProfile(
-  profile: { id: string; first_name: string; gender: string | null },
+  profile: {
+    id: string;
+    first_name: string;
+    gender: string | null;
+    track?: string | null;
+    pre_arrival?: boolean;
+  },
   prefs: PrefsRow,
   music?: MusicRow | null,
 ): MatchProfile {
@@ -31,6 +39,8 @@ export function toMatchProfile(
     id: profile.id,
     firstName: profile.first_name,
     gender: (profile.gender as MatchProfile["gender"]) ?? null,
+    track: (profile.track as MatchProfile["track"]) ?? null,
+    preArrival: Boolean(profile.pre_arrival),
     music: music && artists.length > 0 ? { artists, genres: music.top_genres ?? [] } : null,
     prefs: {
       budgetMin: prefs.budget_min,
@@ -60,7 +70,7 @@ export async function loadSchoolPool(schoolId: string) {
   const { data: school } = await admin.from("schools").select("hide_seed_profiles").eq("id", schoolId).maybeSingle();
   let poolQuery = admin
     .from("profiles")
-    .select("id, first_name, gender, preferences(*), music_profiles(*)")
+    .select("id, first_name, gender, track, pre_arrival, preferences(*), music_profiles(*)")
     .eq("school_id", schoolId)
     .not("onboarding_completed_at", "is", null)
     .is("banned_at", null)

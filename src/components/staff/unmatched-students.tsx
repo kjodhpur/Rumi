@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { sendNudges } from "@/app/actions/staff-dashboard";
+import { AllowlistUploader } from "@/components/staff/allowlist-uploader";
 import { CLASS_YEARS, HOUSING_TYPES, labelOf } from "@/lib/options";
 import type { UnmatchedStudent } from "@/lib/staff/dashboard";
 
@@ -58,6 +59,7 @@ export function UnmatchedStudents({
       <PageHeader
         title="Students"
         description="Students who finished their profile, haven't paired up yet, and chose to share their results with you."
+        actions={<AllowlistUploader schoolId={schoolId} />}
         className="pb-0 lg:pb-0"
       />
 

@@ -47,6 +47,10 @@ export interface MatchProfile {
   prefs: MatchPreferences;
   /** Null when Spotify isn't connected — the music factor is then skipped entirely. */
   music: MatchMusic | null;
+  /** Cohort track (freshman, returning, transfer, grad). */
+  track?: "freshman" | "returning" | "transfer" | "grad" | null;
+  /** Admitted pre-arrival pool status. */
+  preArrival?: boolean;
 }
 
 export interface Reason {
@@ -83,4 +87,6 @@ export interface MatchEvaluation {
 
 export type HardFilterFailure =
   | { kind: "gender"; who: "a" | "b" }
-  | { kind: "dealbreaker"; who: "a" | "b"; dealbreaker: Dealbreaker };
+  | { kind: "dealbreaker"; who: "a" | "b"; dealbreaker: Dealbreaker }
+  | { kind: "pre_arrival_pool"; who: "a" | "b" }
+  | { kind: "track_pool"; who: "a" | "b" };

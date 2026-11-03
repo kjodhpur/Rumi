@@ -45,6 +45,7 @@ export async function loadProfileDrafts(userId: string) {
       pronouns: profile.pronouns ?? "",
       gender: (profile.gender as OnboardingData["profile"]["gender"]) ?? "",
       classYear: (profile.class_year as OnboardingData["profile"]["classYear"]) ?? "",
+      track: (profile.track as OnboardingData["profile"]["track"]) ?? null,
       major: profile.major ?? "",
       bio: profile.bio,
     },

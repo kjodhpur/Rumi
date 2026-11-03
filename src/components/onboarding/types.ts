@@ -20,6 +20,7 @@ export interface ProfileDraft {
   pronouns: string;
   gender: Gender | "";
   classYear: ClassYear | "";
+  track?: "freshman" | "returning" | "transfer" | "grad" | null;
   major: string;
   bio: string;
 }

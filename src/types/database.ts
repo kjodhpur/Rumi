@@ -1098,14 +1098,14 @@ isOneToOne: true
                   ]
                 },"profiles": {
                   Row: {
-                    "avatar_path": string | null,"ban_reason": string | null,"banned_at": string | null,"bio": string,"class_year": string | null,"created_at": string,"first_name": string,"gender": string | null,"id": string,"inactivity_warned_at": string | null,"is_hidden": boolean,"is_seed": boolean,"is_staff": boolean,"last_active_at": string,"last_initial": string,"major": string | null,"onboarding_completed_at": string | null,"onboarding_step": number,"pronouns": string | null,"school_id": string,"student_verified_at": string | null,"updated_at": string,"verified_only": boolean
+                    "avatar_path": string | null,"ban_reason": string | null,"banned_at": string | null,"bio": string,"class_year": string | null,"created_at": string,"first_name": string,"gender": string | null,"id": string,"inactivity_warned_at": string | null,"is_hidden": boolean,"is_seed": boolean,"is_staff": boolean,"last_active_at": string,"last_initial": string,"major": string | null,"onboarding_completed_at": string | null,"onboarding_step": number,"pre_arrival": boolean,"pronouns": string | null,"school_id": string,"student_verified_at": string | null,"track": "freshman" | "returning" | "transfer" | "grad" | null,"updated_at": string,"verified_only": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "avatar_path"?: string | null,"ban_reason"?: string | null,"banned_at"?: string | null,"bio"?: string,"class_year"?: string | null,"created_at"?: string,"first_name"?: string,"gender"?: string | null,"id": string,"inactivity_warned_at"?: string | null,"is_hidden"?: boolean,"is_seed"?: boolean,"is_staff"?: boolean,"last_active_at"?: string,"last_initial"?: string,"major"?: string | null,"onboarding_completed_at"?: string | null,"onboarding_step"?: number,"pronouns"?: string | null,"school_id": string,"student_verified_at"?: string | null,"updated_at"?: string,"verified_only"?: boolean
+                    "avatar_path"?: string | null,"ban_reason"?: string | null,"banned_at"?: string | null,"bio"?: string,"class_year"?: string | null,"created_at"?: string,"first_name"?: string,"gender"?: string | null,"id": string,"inactivity_warned_at"?: string | null,"is_hidden"?: boolean,"is_seed"?: boolean,"is_staff"?: boolean,"last_active_at"?: string,"last_initial"?: string,"major"?: string | null,"onboarding_completed_at"?: string | null,"onboarding_step"?: number,"pre_arrival"?: boolean,"pronouns"?: string | null,"school_id": string,"student_verified_at"?: string | null,"track"?: "freshman" | "returning" | "transfer" | "grad" | null,"updated_at"?: string,"verified_only"?: boolean
                   }
                   Update: {
-                    "avatar_path"?: string | null,"ban_reason"?: string | null,"banned_at"?: string | null,"bio"?: string,"class_year"?: string | null,"created_at"?: string,"first_name"?: string,"gender"?: string | null,"id"?: string,"inactivity_warned_at"?: string | null,"is_hidden"?: boolean,"is_seed"?: boolean,"is_staff"?: boolean,"last_active_at"?: string,"last_initial"?: string,"major"?: string | null,"onboarding_completed_at"?: string | null,"onboarding_step"?: number,"pronouns"?: string | null,"school_id"?: string,"student_verified_at"?: string | null,"updated_at"?: string,"verified_only"?: boolean
+                    "avatar_path"?: string | null,"ban_reason"?: string | null,"banned_at"?: string | null,"bio"?: string,"class_year"?: string | null,"created_at"?: string,"first_name"?: string,"gender"?: string | null,"id"?: string,"inactivity_warned_at"?: string | null,"is_hidden"?: boolean,"is_seed"?: boolean,"is_staff"?: boolean,"last_active_at"?: string,"last_initial"?: string,"major"?: string | null,"onboarding_completed_at"?: string | null,"onboarding_step"?: number,"pre_arrival"?: boolean,"pronouns"?: string | null,"school_id"?: string,"student_verified_at"?: string | null,"track"?: "freshman" | "returning" | "transfer" | "grad" | null,"updated_at"?: string,"verified_only"?: boolean
                   }
                   Relationships: [
                     {
@@ -1432,17 +1432,57 @@ isOneToOne: false
                   ]
                 },"schools": {
                   Row: {
-                    "active": boolean,"created_at": string,"email_domains": (string)[],"hide_seed_profiles": boolean,"housing_office_name": string | null,"id": string,"is_demo": boolean,"name": string,"short_name": string,"timezone": string
+                    "active": boolean,"created_at": string,"email_domains": (string)[],"hide_seed_profiles": boolean,"housing_office_name": string | null,"id": string,"is_demo": boolean,"name": string,"pre_arrival_enabled": boolean,"short_name": string,"timezone": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"email_domains": (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id": string,"is_demo"?: boolean,"name": string,"short_name": string,"timezone"?: string
+                    "active"?: boolean,"created_at"?: string,"email_domains": (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id": string,"is_demo"?: boolean,"name": string,"pre_arrival_enabled"?: boolean,"short_name": string,"timezone"?: string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"email_domains"?: (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id"?: string,"is_demo"?: boolean,"name"?: string,"short_name"?: string,"timezone"?: string
+                    "active"?: boolean,"created_at"?: string,"email_domains"?: (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id"?: string,"is_demo"?: boolean,"name"?: string,"pre_arrival_enabled"?: boolean,"short_name"?: string,"timezone"?: string
                   }
                   Relationships: [
                     
+                  ]
+                },"admit_allowlist": {
+                  Row: {
+                    "id": string,"school_id": string,"email_hash": string,"term_id": string | null,"used_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"school_id": string,"email_hash": string,"term_id"?: string | null,"used_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"school_id"?: string,"email_hash"?: string,"term_id"?: string | null,"used_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "admit_allowlist_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"tracks": {
+                  Row: {
+                    "id": string,"school_id": string,"key": "freshman" | "returning" | "transfer" | "grad","label": string,"question_set_id": string | null,"timeline": Json | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"school_id": string,"key": "freshman" | "returning" | "transfer" | "grad","label": string,"question_set_id"?: string | null,"timeline"?: Json | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"school_id"?: string,"key"?: "freshman" | "returning" | "transfer" | "grad","label"?: string,"question_set_id"?: string | null,"timeline"?: Json | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "tracks_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
                   ]
                 },"school_questions": {
                   Row: {

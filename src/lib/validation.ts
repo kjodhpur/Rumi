@@ -44,6 +44,7 @@ export const basicsSchema = z.object({
   pronouns: text(24, { multiline: false }).optional(),
   gender: z.enum(values(GENDERS), { message: "Choose one." }),
   classYear: z.enum(values(CLASS_YEARS), { message: "Choose your year." }),
+  track: z.enum(["freshman", "returning", "transfer", "grad"]).nullish().optional(),
   major: text(80, { multiline: false }).pipe(z.string().min(2, "Add your major.")),
 });
 

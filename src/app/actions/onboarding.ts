@@ -37,6 +37,7 @@ const profileFields = {
   pronouns: z.string().transform((v) => cleanText(v, { multiline: false }).slice(0, 24)),
   gender: oneOf(GENDERS),
   classYear: oneOf(CLASS_YEARS),
+  track: z.enum(["freshman", "returning", "transfer", "grad"]).nullable().optional(),
   major: z.string().transform((v) => cleanText(v, { multiline: false }).slice(0, 80)),
   bio: z.string().transform((v) => cleanText(v).slice(0, 500)),
 } as const;
@@ -69,6 +70,7 @@ const PROFILE_COLUMNS = {
   pronouns: "pronouns",
   gender: "gender",
   classYear: "class_year",
+  track: "track",
   major: "major",
   bio: "bio",
 } as const;
