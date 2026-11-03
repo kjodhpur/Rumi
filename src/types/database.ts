@@ -1578,6 +1578,33 @@ isOneToOne: false
                       referencedColumns: ["id"]
                     }
                   ]
+                },"outcome_surveys": {
+                  Row: {
+                    "id": string,"user_id": string,"group_id": string | null,"term_id": string | null,"room_again": "yes" | "maybe" | "no","score": number,"tags": string[],"biggest_win": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_id": string,"group_id"?: string | null,"term_id"?: string | null,"room_again": "yes" | "maybe" | "no","score": number,"tags"?: string[],"biggest_win"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"user_id"?: string,"group_id"?: string | null,"term_id"?: string | null,"room_again"?: "yes" | "maybe" | "no","score"?: number,"tags"?: string[],"biggest_win"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "outcome_surveys_group_id_fkey"
+                      columns: ["group_id"]
+                      isOneToOne: false
+                      referencedRelation: "groups"
+                      referencedColumns: ["id"]
+                    },
+                    {
+                      foreignKeyName: "outcome_surveys_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"school_questions": {
                   Row: {
                     "id": string,"school_id": string | null,"version": number,"kind": "scenario" | "general","factor": string,"stem": string,"choices": Json,"factor_map": Json,"is_active": boolean,"position": number,"created_at": string
