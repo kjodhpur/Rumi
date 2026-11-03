@@ -10,6 +10,7 @@ import { updatePrivacy } from "@/app/actions/settings";
 import { unblockUser } from "@/app/actions/social";
 import { SettingsBack, SettingsSection, SettingsToggleRow } from "./settings-ui";
 import { ConsentSettings, type ConsentEvent, type ConsentRow } from "./consent-settings";
+import { FamilyShareManager } from "./family-share-manager";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 
 interface Blocked {
@@ -121,6 +122,12 @@ export function PrivacySettings({
             </div>
           ))
         )}
+      </SettingsSection>
+
+      <SettingsSection title="Family & parents">
+        <div className="p-4">
+          <FamilyShareManager />
+        </div>
       </SettingsSection>
 
       <SettingsSection title="Staying safe">

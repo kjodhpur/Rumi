@@ -529,6 +529,26 @@ isOneToOne: false
                       referencedColumns: ["id"]
                     }
                   ]
+                },"family_shares": {
+                  Row: {
+                    "id": string,"user_id": string,"token": string,"token_hash": string,"scope": Json,"expires_at": string,"revoked_at": string | null,"created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_id": string,"token": string,"token_hash": string,"scope"?: Json,"expires_at": string,"revoked_at"?: string | null,"created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"user_id"?: string,"token"?: string,"token_hash"?: string,"scope"?: Json,"expires_at"?: string,"revoked_at"?: string | null,"created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "family_shares_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"connections": {
                   Row: {
                     "confirmed_at": string | null,
