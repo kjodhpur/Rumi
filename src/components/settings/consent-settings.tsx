@@ -47,7 +47,7 @@ export function ConsentSettings({
       return;
     }
     toast.success(value ? "Sharing turned on" : "Sharing turned off", {
-      description: value ? undefined : "Staff no longer see your individual results.",
+      description: !value && row.kind === "share_with_housing" ? "Staff no longer see your individual results." : undefined,
     });
   }
 
