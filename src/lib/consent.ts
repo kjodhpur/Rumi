@@ -54,7 +54,7 @@ export const CONSENT_COPY: Record<ConsentKind, ConsentCopy> = {
 };
 
 /** Consents whose features exist today. Others appear here as their phases ship. */
-export const LIVE_CONSENTS: ConsentKind[] = ["share_with_housing"];
+export const LIVE_CONSENTS: ConsentKind[] = ["share_with_housing", "checkins", "social_verification"];
 
 export function consentTitle(kind: ConsentKind, office: string | null) {
   return CONSENT_COPY[kind].title.replace("{office}", office ?? "your housing office");

@@ -282,6 +282,12 @@ export function ProfileView({
         </div>
       ) : null}
 
+      {!isSelf && detail?.mutualCount ? (
+        <p className="mt-4 text-body-sm text-ink-2">
+          {detail.mutualCount} mutual {detail.mutualCount === 1 ? "connection" : "connections"}
+        </p>
+      ) : null}
+
       {!isSelf && (reasons.length > 0 || watchouts.length > 0) ? (
         <section className="mt-8" aria-labelledby={`why-${id}`}>
           <SectionTitle>

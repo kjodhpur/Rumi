@@ -53,6 +53,8 @@ export interface ProfileDetail {
     direction: "sent" | "received";
     conversationId: string | null;
   } | null;
+  /** People you both know who opted in. Null when the count should stay hidden. */
+  mutualCount: number | null;
 }
 
 type Breakdown = NonNullable<ProfileDetail["match"]>["breakdown"];
@@ -212,5 +214,13 @@ export async function loadProfileDetail(
           conversationId: intro.conversation_id,
         }
       : null,
+    mutualCount: await mutualCount(supabase, profile.id === viewerId ? null : profile.id),
   };
+}
+
+async function mutualCount(supabase: ServerSupabase, otherId: string | null) {
+  if (!otherId) return null;
+  const { data, error } = await supabase.rpc("mutual_count", { p_other: otherId });
+  if (error || typeof data !== "number" || data < 1) return null;
+  return data;
 }

@@ -1155,6 +1155,9 @@ isOneToOne: true
 "is_group_member":
 { Args: { "gid": string,"uid"?: string }; Returns: boolean
                            },
+"mutual_count":
+{ Args: { "p_other": string }; Returns: number
+                           },
 "is_student_verified":
 { Args: { "uid": string }; Returns: boolean
                            },
