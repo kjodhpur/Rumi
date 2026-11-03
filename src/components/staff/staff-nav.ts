@@ -12,6 +12,8 @@ import {
   UserRoundSearch,
   Users,
   ArrowLeftRight,
+  CheckCircle2,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
@@ -34,6 +36,7 @@ export const STAFF_NAV: StaffNavSection[] = [
   {
     items: [
       { href: "/staff", label: "Overview", icon: LayoutDashboard, capability: "home" },
+      { href: "/staff/setup", label: "Setup checklist", icon: CheckCircle2, capability: "viewDashboard" },
       { href: "/staff/outcomes", label: "Outcomes", icon: BarChart3, capability: "viewDashboard" },
       { href: "/staff/students", label: "Students", icon: UserRoundSearch, capability: "viewStudents" },
       { href: "/staff/pairings", label: "Pairings", icon: HeartHandshake, capability: "managePairings" },
@@ -45,12 +48,13 @@ export const STAFF_NAV: StaffNavSection[] = [
   {
     label: "Integrations",
     items: [
-      { href: "/staff/integrations/starrez", label: "StarRez export", icon: FileSpreadsheet, capability: "export" },
+      { href: "/staff/integrations/starrez", label: "StarRez integration", icon: FileSpreadsheet, capability: "export" },
     ],
   },
   {
     label: "Settings",
     items: [
+      { href: "/staff/settings/plan", label: "Plan & beds", icon: Sparkles, capability: "viewDashboard" },
       { href: "/staff/settings/term", label: "Term", icon: CalendarDays, capability: "configureTerm" },
       { href: "/staff/settings/team", label: "Team", icon: Users, capability: "manageTeam" },
       { href: "/staff/settings/escalation", label: "Escalation routes", icon: Siren, capability: "configureEscalation" },

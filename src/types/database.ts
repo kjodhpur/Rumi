@@ -1116,6 +1116,52 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pilot_cohorts": {
+                  Row: {
+                    "arm": "rumi" | "control","created_at": string,"id": string,"name": string,"rule": Json,"school_id": string,"term_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "arm": "rumi" | "control","created_at"?: string,"id"?: string,"name": string,"rule"?: Json,"school_id": string,"term_id"?: string | null
+                  }
+                  Update: {
+                    "arm"?: "rumi" | "control","created_at"?: string,"id"?: string,"name"?: string,"rule"?: Json,"school_id"?: string,"term_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "pilot_cohorts_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    },{
+                      foreignKeyName: "pilot_cohorts_term_id_fkey"
+                      columns: ["term_id"]
+                      isOneToOne: false
+                      referencedRelation: "terms"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"pilot_configs": {
+                  Row: {
+                    "created_at": string,"ends_on": string,"school_id": string,"scope": Json,"starts_on": string,"success_metrics": Json
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_on": string,"school_id": string,"scope"?: Json,"starts_on": string,"success_metrics"?: Json
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_on"?: string,"school_id"?: string,"scope"?: Json,"starts_on"?: string,"success_metrics"?: Json
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "pilot_configs_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: true
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"photos": {
                   Row: {
                     "created_at": string,"height": number | null,"id": string,"placeholder": string | null,"position": number,"storage_path": string,"user_id": string,"width": number | null
@@ -1524,14 +1570,14 @@ isOneToOne: false
                   ]
                 },"schools": {
                   Row: {
-                    "active": boolean,"created_at": string,"email_domains": (string)[],"hide_seed_profiles": boolean,"housing_office_name": string | null,"id": string,"is_demo": boolean,"name": string,"pre_arrival_enabled": boolean,"short_name": string,"timezone": string
+                    "active": boolean,"branding": Json,"created_at": string,"email_domains": (string)[],"hide_seed_profiles": boolean,"housing_office_name": string | null,"id": string,"is_demo": boolean,"licensed_beds": number,"name": string,"plan": string,"pre_arrival_enabled": boolean,"short_name": string,"timezone": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"created_at"?: string,"email_domains": (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id": string,"is_demo"?: boolean,"name": string,"pre_arrival_enabled"?: boolean,"short_name": string,"timezone"?: string
+                    "active"?: boolean,"branding"?: Json,"created_at"?: string,"email_domains": (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id": string,"is_demo"?: boolean,"licensed_beds"?: number,"name": string,"plan"?: string,"pre_arrival_enabled"?: boolean,"short_name": string,"timezone"?: string
                   }
                   Update: {
-                    "active"?: boolean,"created_at"?: string,"email_domains"?: (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id"?: string,"is_demo"?: boolean,"name"?: string,"pre_arrival_enabled"?: boolean,"short_name"?: string,"timezone"?: string
+                    "active"?: boolean,"branding"?: Json,"created_at"?: string,"email_domains"?: (string)[],"hide_seed_profiles"?: boolean,"housing_office_name"?: string | null,"id"?: string,"is_demo"?: boolean,"licensed_beds"?: number,"name"?: string,"plan"?: string,"pre_arrival_enabled"?: boolean,"short_name"?: string,"timezone"?: string
                   }
                   Relationships: [
                     
