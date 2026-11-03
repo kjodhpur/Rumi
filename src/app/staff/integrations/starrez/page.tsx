@@ -3,8 +3,9 @@ import { requireStaffPage } from "@/lib/staff/context";
 import { buildStarRezExport } from "@/lib/integrations/starrez/export";
 import { logAudit } from "@/lib/staff/audit";
 import { StarRezExport } from "@/components/staff/starrez-export";
+import { StarRezRestSync } from "@/components/staff/starrez-rest-sync";
 
-export const metadata: Metadata = { title: "StarRez export" };
+export const metadata: Metadata = { title: "StarRez integration" };
 
 export default async function StarRezExportPage() {
   const context = await requireStaffPage("export");
@@ -16,5 +17,10 @@ export default async function StarRezExportPage() {
     entity: "pairing",
     meta: { students: preview.rows.length },
   });
-  return <StarRezExport schoolId={context.school.id} preview={preview} />;
+  return (
+    <div className="space-y-10">
+      <StarRezExport schoolId={context.school.id} preview={preview} />
+      <StarRezRestSync schoolId={context.school.id} />
+    </div>
+  );
 }

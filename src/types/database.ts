@@ -771,6 +771,72 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"imported_answers": {
+                  Row: {
+                    "confirmed_at": string | null,"created_at": string,"external_student_id": string | null,"id": string,"mapped_factor": string,"mapped_value": string,"question_code": string,"raw_value": string,"school_id": string,"source": string,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "confirmed_at"?: string | null,"created_at"?: string,"external_student_id"?: string | null,"id"?: string,"mapped_factor": string,"mapped_value": string,"question_code": string,"raw_value": string,"school_id": string,"source"?: string,"user_id"?: string | null
+                  }
+                  Update: {
+                    "confirmed_at"?: string | null,"created_at"?: string,"external_student_id"?: string | null,"id"?: string,"mapped_factor"?: string,"mapped_value"?: string,"question_code"?: string,"raw_value"?: string,"school_id"?: string,"source"?: string,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "imported_answers_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    },{
+                      foreignKeyName: "imported_answers_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"integration_credentials": {
+                  Row: {
+                    "active": boolean,"base_url": string,"created_at": string,"credentials_enc": string,"provider": string,"school_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"base_url": string,"created_at"?: string,"credentials_enc": string,"provider": string,"school_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"base_url"?: string,"created_at"?: string,"credentials_enc"?: string,"provider"?: string,"school_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "integration_credentials_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
+                },"integration_runs": {
+                  Row: {
+                    "action": string,"created_at": string,"errors": Json,"id": string,"provider": string,"records_processed": number,"school_id": string,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"created_at"?: string,"errors"?: Json,"id"?: string,"provider": string,"records_processed"?: number,"school_id": string,"status": string
+                  }
+                  Update: {
+                    "action"?: string,"created_at"?: string,"errors"?: Json,"id"?: string,"provider"?: string,"records_processed"?: number,"school_id"?: string,"status"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "integration_runs_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"integration_mappings": {
                   Row: {
                     "direction": string,"mapping": NonNullable<Json>,"provider": string,"school_id": string,"updated_at": string,"updated_by": string | null
@@ -828,6 +894,32 @@ isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
+                  ]
+                },"link_attributions": {
+                  Row: {
+                    "created_at": string,"id": string,"school_id": string,"source": "starrez" | "canvas" | "asuapp" | "direct" | "qr" | "email","token": string | null,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"school_id": string,"source": "starrez" | "canvas" | "asuapp" | "direct" | "qr" | "email","token"?: string | null,"user_id"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"school_id"?: string,"source"?: "starrez" | "canvas" | "asuapp" | "direct" | "qr" | "email","token"?: string | null,"user_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "link_attributions_school_id_fkey"
+                      columns: ["school_id"]
+                      isOneToOne: false
+                      referencedRelation: "schools"
+                      referencedColumns: ["id"]
+                    },{
+                      foreignKeyName: "link_attributions_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: false
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
                   ]
                 },"match_scores": {
                   Row: {
