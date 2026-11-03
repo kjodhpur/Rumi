@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CHECKIN_TAGS, type CheckinTag, type RiskLevel } from "@/lib/retention/risk";
+import { GuidedMediation } from "@/components/retention/guided-mediation";
 import type { CheckinHome } from "@/lib/checkins/load";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +103,10 @@ export function CheckInPanel({ home }: { home: CheckinHome }) {
           <p className="mt-1 text-body font-semibold text-ink">{RISK_COPY[home.risk.level]}</p>
           {home.risk.reasons.length ? <ul className="mt-2 list-disc pl-5 text-body-sm text-ink-2">{home.risk.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}
         </div>
+      ) : null}
+
+      {home.risk && (home.risk.level === "medium" || home.risk.level === "high") ? (
+        <GuidedMediation tags={[]} />
       ) : null}
       <form action={submit} className="flex flex-col gap-4 rounded-xl bg-surface p-5 ring-1 ring-line sm:p-6">
         <div>
