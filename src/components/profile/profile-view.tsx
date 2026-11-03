@@ -44,6 +44,7 @@ import { spring, springSheet } from "@/lib/motion";
 import { PhotoCarousel, type CarouselHandle } from "./photo-carousel";
 import { IntroSheet } from "./intro-sheet";
 import { ShareMatchDialog } from "@/components/share/share-match-dialog";
+import { ProfileMediaIntro, MediaUploader } from "@/components/profile/media-intro";
 import {
   Breakdown,
   HousingFacts,
@@ -285,6 +286,21 @@ export function ProfileView({
           <Link href="/settings/profile" className="inline-flex items-center gap-1 font-medium text-ink underline underline-offset-4">
             <Pencil className="size-3.5" strokeWidth={2} /> Edit profile
           </Link>
+        </div>
+      ) : null}
+
+      {/* 30s Video / Voice Intro */}
+      {detail?.media ? (
+        <div className="mt-4">
+          <ProfileMediaIntro media={detail.media} isSelf={isSelf} />
+        </div>
+      ) : isSelf ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-line bg-surface p-4">
+          <div className="text-body-xs text-ink-2">
+            <p className="font-semibold text-ink">Add a 30s video or voice intro</p>
+            <p className="text-caption-xs text-ink-3">Introduce yourself to prospective roommates with audio or video.</p>
+          </div>
+          <MediaUploader />
         </div>
       ) : null}
 

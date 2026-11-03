@@ -1,4 +1,5 @@
 import type { ServerSupabase } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWhyYouMatch } from "@/lib/bedrock/client";
 import { photoUrl } from "@/lib/photos";
 import { isVerified } from "@/lib/verification";
@@ -9,6 +10,15 @@ export interface ProfilePhoto {
   id: string;
   url: string;
   placeholder: string | null;
+}
+
+export interface ProfileMedia {
+  id: string;
+  userId: string;
+  kind: "video" | "audio";
+  signedUrl: string;
+  durationSeconds: number;
+  transcript: string;
 }
 
 export interface ProfileDetail {
@@ -22,6 +32,7 @@ export interface ProfileDetail {
   bio: string;
   verified: boolean;
   photos: ProfilePhoto[];
+  media: ProfileMedia | null;
   lastActiveAt: string;
   prefs: {
     budgetMin: number;
@@ -90,7 +101,7 @@ export async function loadProfileDetail(
     .maybeSingle();
   if (!profile) return null;
 
-  const [photos, prefs, score, music, saved, intros, areas, social] = await Promise.all([
+  const [photos, prefs, score, music, saved, intros, areas, social, mediaRes] = await Promise.all([
     supabase
       .from("photos")
       .select("id, storage_path, placeholder")
@@ -124,6 +135,12 @@ export async function loadProfileDetail(
       .limit(1),
     supabase.from("areas").select("slug, name").eq("school_id", profile.school_id),
     supabase.from("social_links").select("platform, handle, verified_at").eq("user_id", targetId),
+    supabase
+      .from("profile_media")
+      .select("id, kind, path, duration_s, transcript")
+      .eq("user_id", targetId)
+      .eq("status", "active")
+      .maybeSingle(),
   ]);
 
   const areaNames = Object.fromEntries(
@@ -167,6 +184,28 @@ export async function loadProfileDetail(
     if (explained.source === "bedrock") reasons = explained.sentences;
   }
 
+  let mediaInfo: ProfileMedia | null = null;
+  if (mediaRes.data) {
+    try {
+      const admin = createAdminClient();
+      const { data: signed } = await admin.storage
+        .from("intros-media")
+        .createSignedUrl(mediaRes.data.path, 3600);
+      if (signed?.signedUrl) {
+        mediaInfo = {
+          id: mediaRes.data.id,
+          userId: targetId,
+          kind: mediaRes.data.kind as "video" | "audio",
+          signedUrl: signed.signedUrl,
+          durationSeconds: mediaRes.data.duration_s,
+          transcript: mediaRes.data.transcript,
+        };
+      }
+    } catch {
+      // Storage access failure or mock fallback
+    }
+  }
+
   return {
     id: profile.id,
     isSelf: profile.id === viewerId,
@@ -183,6 +222,7 @@ export async function loadProfileDetail(
       url: photoUrl(ph.storage_path)!,
       placeholder: ph.placeholder,
     })),
+    media: mediaInfo,
     prefs: p
       ? {
           budgetMin: p.budget_min,

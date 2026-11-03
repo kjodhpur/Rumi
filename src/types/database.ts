@@ -1116,6 +1116,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"profile_media": {
+                  Row: {
+                    "id": string,"user_id": string,"kind": "video" | "audio","path": string,"duration_s": number,"transcript": string,"status": "active" | "flagged" | "removed","created_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"user_id": string,"kind": "video" | "audio","path": string,"duration_s": number,"transcript": string,"status"?: "active" | "flagged" | "removed","created_at"?: string
+                  }
+                  Update: {
+                    "id"?: string,"user_id"?: string,"kind"?: "video" | "audio","path"?: string,"duration_s"?: number,"transcript"?: string,"status"?: "active" | "flagged" | "removed","created_at"?: string
+                  }
+                  Relationships: [
+                    {
+                      foreignKeyName: "profile_media_user_id_fkey"
+                      columns: ["user_id"]
+                      isOneToOne: true
+                      referencedRelation: "profiles"
+                      referencedColumns: ["id"]
+                    }
+                  ]
                 },"rate_limits": {
                   Row: {
                     "count": number,"key": string,"window_start": string
