@@ -47,13 +47,23 @@ interface Thread {
 
 const GROUP_GAP_MS = 5 * 60 * 1000;
 
-export function ChatThread({ userId, thread, starters = [] }: { userId: string; thread: Thread; starters?: ChatStarter[] }) {
+export function ChatThread({
+  userId,
+  thread,
+  starters = [],
+  initialDraft = "",
+}: {
+  userId: string;
+  thread: Thread;
+  starters?: ChatStarter[];
+  initialDraft?: string;
+}) {
   const router = useRouter();
   const [messages, setMessages] = React.useState<ChatMessage[]>(thread.messages);
   const [members, setMembers] = React.useState<ChatMember[]>(thread.members);
   const [hasMore, setHasMore] = React.useState(thread.hasMore);
   const [loadingOlder, setLoadingOlder] = React.useState(false);
-  const [draft, setDraft] = React.useState("");
+  const [draft, setDraft] = React.useState(initialDraft);
   const [typing, setTyping] = React.useState<Record<string, number>>({});
   const [online, setOnline] = React.useState<Set<string>>(new Set());
   const [showJump, setShowJump] = React.useState(false);

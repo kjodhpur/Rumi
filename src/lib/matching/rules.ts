@@ -6,9 +6,9 @@ export interface RuleEvaluation {
 }
 
 /**
- * Pure evaluation: do these two students satisfy all active school housing rules?
- * E.g. freshman academic college match, Living Learning Community (LLC) cohort boundaries,
- * or residential college quad restrictions.
+ * School rules as extra hard filters (pure). A rule only bites when the values it compares
+ * are known: a student who hasn't picked an academic college isn't excluded by a college rule.
+ * LLC is the exception: an LLC member matches only inside their LLC.
  */
 export function passesSchoolRules(
   a: MatchProfile,
@@ -27,8 +27,8 @@ export function passesSchoolRules(
       }
 
       case "freshman_same_college": {
-        const isAFreshman = a.track === "freshman" || a.prefs.housingType === "on_campus";
-        const isBFreshman = b.track === "freshman" || b.prefs.housingType === "on_campus";
+        const isAFreshman = a.track === "freshman";
+        const isBFreshman = b.track === "freshman";
 
         if (
           isAFreshman &&

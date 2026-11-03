@@ -13,7 +13,6 @@ export interface ProfilePhoto {
 }
 
 export interface ProfileMedia {
-  id: string;
   userId: string;
   kind: "video" | "audio";
   signedUrl: string;
@@ -69,8 +68,12 @@ export interface ProfileDetail {
   mutualCount: number | null;
   /** Opted-in mutual contacts with names and avatars for points of contact. */
   mutualContacts: { userId: string; firstName: string; lastInitial: string; avatarUrl: string | null }[];
-  /** Self-attested / verified social media links (Instagram, LinkedIn). */
+  /** Instagram / LinkedIn handles, shown as links only. "verified" is self-attested. */
   socialLinks: { platform: SocialPlatform; handle: string; verified: boolean; url: string }[];
+  /** The viewer's first name (for the share card preview). */
+  viewerFirstName: string;
+  /** A "people I know" connection between the viewer and this person, if any. */
+  connection: { id: string; status: "pending" | "confirmed"; direction: "sent" | "received" } | null;
 }
 
 type Breakdown = NonNullable<ProfileDetail["match"]>["breakdown"];
@@ -101,7 +104,7 @@ export async function loadProfileDetail(
     .maybeSingle();
   if (!profile) return null;
 
-  const [photos, prefs, score, music, saved, intros, areas, social, mediaRes] = await Promise.all([
+  const [photos, prefs, score, music, saved, intros, areas, social, mediaRes, viewer, connection] = await Promise.all([
     supabase
       .from("photos")
       .select("id, storage_path, placeholder")
@@ -137,9 +140,15 @@ export async function loadProfileDetail(
     supabase.from("social_links").select("platform, handle, verified_at").eq("user_id", targetId),
     supabase
       .from("profile_media")
-      .select("id, kind, path, duration_s, transcript")
+      .select("user_id, kind, path, duration_s, transcript")
       .eq("user_id", targetId)
       .eq("status", "active")
+      .maybeSingle(),
+    supabase.from("profiles").select("first_name").eq("id", viewerId).maybeSingle(),
+    supabase
+      .from("connections")
+      .select("id, status, user_a")
+      .or(`and(user_a.eq.${viewerId},user_b.eq.${targetId}),and(user_a.eq.${targetId},user_b.eq.${viewerId})`)
       .maybeSingle(),
   ]);
 
@@ -184,16 +193,16 @@ export async function loadProfileDetail(
     if (explained.source === "bedrock") reasons = explained.sentences;
   }
 
+  // RLS returned the clip only if the viewer may see this profile; sign a short-lived URL.
   let mediaInfo: ProfileMedia | null = null;
   if (mediaRes.data) {
     try {
       const admin = createAdminClient();
       const { data: signed } = await admin.storage
         .from("intros-media")
-        .createSignedUrl(mediaRes.data.path, 3600);
+        .createSignedUrl(mediaRes.data.path, 900);
       if (signed?.signedUrl) {
         mediaInfo = {
-          id: mediaRes.data.id,
           userId: targetId,
           kind: mediaRes.data.kind as "video" | "audio",
           signedUrl: signed.signedUrl,
@@ -201,8 +210,8 @@ export async function loadProfileDetail(
           transcript: mediaRes.data.transcript,
         };
       }
-    } catch {
-      // Storage access failure or mock fallback
+    } catch (error) {
+      console.error("[profile] couldn't sign intro clip", error);
     }
   }
 
@@ -266,6 +275,14 @@ export async function loadProfileDetail(
       verified: Boolean(s.verified_at),
       url: buildSocialUrl(s.platform as SocialPlatform, s.handle),
     })),
+    viewerFirstName: viewer.data?.first_name ?? "",
+    connection: connection.data
+      ? {
+          id: connection.data.id,
+          status: connection.data.status as "pending" | "confirmed",
+          direction: connection.data.user_a === viewerId ? "sent" : "received",
+        }
+      : null,
     mutualCount: await mutualCount(supabase, profile.id === viewerId ? null : profile.id),
     mutualContacts: await loadMutualContacts(supabase, profile.id === viewerId ? null : profile.id),
   };

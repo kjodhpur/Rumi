@@ -125,14 +125,12 @@ export function computeGroupBalances(
     }
   }
 
-  // 2. Process settlements
+  // 2. Process settlements (including people who have since left, so the sum stays zero)
+  const ensure = (userId: string) =>
+    (balances[userId] ??= { userId, paidCents: 0, shareCents: 0, settledPaidCents: 0, settledReceivedCents: 0, netCents: 0 });
   for (const s of settlements) {
-    if (balances[s.payerId]) {
-      balances[s.payerId].settledPaidCents += s.amountCents;
-    }
-    if (balances[s.receiverId]) {
-      balances[s.receiverId].settledReceivedCents += s.amountCents;
-    }
+    ensure(s.payerId).settledPaidCents += s.amountCents;
+    ensure(s.receiverId).settledReceivedCents += s.amountCents;
   }
 
   // 3. Compute net balances:

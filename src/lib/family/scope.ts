@@ -1,88 +1,76 @@
-import { containsPii, extractFirstName } from "@/lib/share/token";
+import { containsPii, extractFirstName, reasonLabels } from "@/lib/share/token";
+
+/**
+ * Parent view (Phase 7.9): a read-only summary a student shares with family. Pure.
+ * Never chat, never last names, emails or rooms. A roommate appears by first name and
+ * photo only when that roommate turned on family_view; otherwise "Your student's roommate".
+ */
 
 export interface FamilyShareScope {
-  [key: string]: boolean | undefined;
-  include_agreement?: boolean;
-  include_photos?: boolean;
+  include_agreement: boolean;
 }
 
-export interface ParentViewProfile {
-  id: string;
-  firstName: string;
-  avatarUrl?: string | null;
+export function parseScope(value: unknown): FamilyShareScope {
+  const v = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return { include_agreement: v.include_agreement !== false };
 }
 
-export interface ParentMatchSummary {
-  studentFirstName: string;
-  studentAvatarUrl?: string | null;
-  roommateDisplayName: string;
-  roommateAvatarUrl?: string | null;
-  score: number;
+export interface ParentRoommateInput {
+  firstName: string | null;
+  avatarUrl: string | null;
+  consented: boolean;
+  /** The student's match score and reasons with this roommate, if they have one. */
+  score: number | null;
+  reasons: unknown;
+}
+
+export interface ParentRoommate {
+  name: string;
+  avatarUrl: string | null;
+  score: number | null;
   reasons: string[];
+}
+
+export interface ParentSummary {
+  studentFirstName: string;
+  studentAvatarUrl: string | null;
+  groupName: string | null;
+  roommates: ParentRoommate[];
+  agreementStatus: "draft" | "signed" | "reopened" | null;
+  expiresAt: string;
+}
+
+export function buildParentSummary(input: {
+  studentFirstName: string | null;
+  studentAvatarUrl: string | null;
+  groupName: string | null;
+  roommates: ParentRoommateInput[];
   agreementStatus: string | null;
-}
-
-/**
- * Validates whether a family share link is currently active.
- */
-export function isFamilyShareActive(
-  share: {
-    expiresAt: string | Date;
-    revokedAt?: string | Date | null;
-  },
-  now: Date = new Date(),
-): boolean {
-  if (share.revokedAt) return false;
-  const expiry = typeof share.expiresAt === "string" ? new Date(share.expiresAt) : share.expiresAt;
-  return expiry.getTime() > now.getTime();
-}
-
-/**
- * Builds sanitized, scope-enforced Parent View data.
- * Acceptance criteria:
- * 1. Roommate without consent appears strictly as "Your student's roommate".
- * 2. Roommate photos are null unless roommate explicitly consented.
- * 3. Never exposes chat messages, full names, emails, or dorm room numbers.
- */
-export function buildParentViewData(input: {
-  student: ParentViewProfile;
-  roommate?: ParentViewProfile | null;
-  roommateConsented?: boolean;
-  score?: number | null;
-  reasons?: string[] | null;
-  agreementStatus?: string | null;
-  scope?: FamilyShareScope;
-}): ParentMatchSummary {
-  const studentFirst = extractFirstName(input.student.firstName, "Student");
-
-  let roommateDisplayName = "Your student's roommate";
-  let roommateAvatarUrl: string | null = null;
-
-  if (input.roommate) {
-    if (input.roommateConsented) {
-      roommateDisplayName = extractFirstName(input.roommate.firstName, "Roommate");
-      if (input.scope?.include_photos) {
-        roommateAvatarUrl = input.roommate.avatarUrl || null;
-      }
-    }
-  }
-
-  const cleanScore = Math.max(0, Math.min(100, Math.round(input.score ?? 0)));
-
-  const cleanReasons = (input.reasons || [])
-    .filter((r): r is string => typeof r === "string" && !containsPii(r) && r.trim().length > 0)
-    .slice(0, 3);
-
-  const cleanAgreementStatus =
-    input.scope?.include_agreement !== false ? input.agreementStatus || null : null;
-
+  scope: FamilyShareScope;
+  expiresAt: string;
+}): ParentSummary {
+  const agreement = input.agreementStatus === "draft" || input.agreementStatus === "signed" || input.agreementStatus === "reopened" ? input.agreementStatus : null;
   return {
-    studentFirstName: studentFirst,
-    studentAvatarUrl: input.student.avatarUrl || null,
-    roommateDisplayName,
-    roommateAvatarUrl,
-    score: cleanScore,
-    reasons: cleanReasons,
-    agreementStatus: cleanAgreementStatus,
+    studentFirstName: extractFirstName(input.studentFirstName, "Your student"),
+    studentAvatarUrl: input.studentAvatarUrl,
+    groupName: input.groupName && !containsPii(input.groupName) ? input.groupName : null,
+    roommates: input.roommates.map((r) => ({
+      name: r.consented ? extractFirstName(r.firstName, "Roommate") : "Your student's roommate",
+      avatarUrl: r.consented ? r.avatarUrl : null,
+      score: r.score === null ? null : Math.max(0, Math.min(100, Math.round(r.score))),
+      reasons: reasonLabels(r.reasons).filter((t) => !containsPii(t)).slice(0, 3),
+    })),
+    agreementStatus: input.scope.include_agreement ? agreement : null,
+    expiresAt: input.expiresAt,
   };
+}
+
+/** Family links last until the next term starts (or 60 days without one), at most 180 days. */
+export function familyLinkExpiry(now: Date, nextTermStart: string | null): Date {
+  const cap = now.getTime() + 180 * 86_400_000;
+  if (nextTermStart) {
+    const start = Date.parse(`${nextTermStart}T00:00:00Z`);
+    if (start > now.getTime() + 86_400_000) return new Date(Math.min(start, cap));
+  }
+  return new Date(now.getTime() + 60 * 86_400_000);
 }

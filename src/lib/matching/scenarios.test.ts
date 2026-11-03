@@ -1,71 +1,67 @@
 import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_SCENARIOS,
-  evaluateScenarioMatch,
-} from "./scenarios";
+import { DEFAULT_SCENARIOS, MAX_SCENARIOS, activeQuestions, toScenarioAnswers, validChoices, type Question } from "./scenarios";
 
-describe("behavioral micro-questions & scenarios", () => {
-  it("provides 8 pre-seeded scenario questions covering key factors", () => {
-    expect(DEFAULT_SCENARIOS).toHaveLength(8);
-    for (const q of DEFAULT_SCENARIOS) {
-      expect(q.stem).toBeTruthy();
-      expect(q.choices.length).toBeGreaterThanOrEqual(4);
-    }
+const schoolQ = (key: string, kind: Question["kind"] = "scenario", version = 1): Question => ({
+  key,
+  version,
+  kind,
+  factor: "noise",
+  topic: "music",
+  stem: "A school question about music volume",
+  choices: [
+    { key: "loud", label: "Loud", value: 5, reason: "You both like it loud" },
+    { key: "soft", label: "Soft", value: 1, reason: "You both like it soft" },
+  ],
+  schoolId: "asu",
+});
+
+describe("default scenario set", () => {
+  it("has eight questions with valid, distinct choices", () => {
+    expect(DEFAULT_SCENARIOS).toHaveLength(MAX_SCENARIOS);
+    expect(new Set(DEFAULT_SCENARIOS.map((q) => q.key)).size).toBe(DEFAULT_SCENARIOS.length);
+    for (const q of DEFAULT_SCENARIOS) expect(validChoices(q.choices)).toBe(true);
   });
 
-  it("produces strong alignment reasons and capped bonus when answers match", () => {
-    const answersA = {
-      scen_dishes: "remind",
-      scen_partner_overnight: "talk_first",
-      scen_study_exam: "silent",
-      scen_room_temp: "cool",
-    };
+  it("includes the partner-stays-over question from the brief", () => {
+    expect(DEFAULT_SCENARIOS.find((q) => q.key === "partner_overnight")?.choices.map((c) => c.key)).toEqual(["fine", "talk_first", "too_often", "not_okay"]);
+  });
+});
 
-    const answersB = {
-      scen_dishes: "remind",
-      scen_partner_overnight: "talk_first",
-      scen_study_exam: "silent",
-      scen_room_temp: "cool",
-    };
-
-    const evalResult = evaluateScenarioMatch(answersA, answersB);
-
-    expect(evalResult.sharedAnsweredCount).toBe(4);
-    expect(evalResult.agreementRate).toBe(1.0);
-    expect(evalResult.bonusScore).toBe(3); // Capped at +3
-    expect(evalResult.reasons).toContain("Both prefer a quick heads-up before overnight guests");
-    expect(evalResult.watchouts).toHaveLength(0);
+describe("activeQuestions", () => {
+  it("puts school scenarios first and never exceeds the per-term cap", () => {
+    const active = activeQuestions([schoolQ("music_volume")]);
+    const scenarios = active.filter((q) => q.kind === "scenario");
+    expect(scenarios[0]?.key).toBe("music_volume");
+    expect(scenarios).toHaveLength(MAX_SCENARIOS);
   });
 
-  it("flags divergent watch-outs on sharp clashes (e.g. strict vs leave on dishes)", () => {
-    const answersA = {
-      scen_dishes: "strict",
-      scen_partner_overnight: "no",
-    };
-
-    const answersB = {
-      scen_dishes: "leave",
-      scen_partner_overnight: "fine",
-    };
-
-    const evalResult = evaluateScenarioMatch(answersA, answersB);
-
-    expect(evalResult.agreementRate).toBe(0);
-    expect(evalResult.bonusScore).toBe(0);
-    expect(evalResult.watchouts.length).toBeGreaterThanOrEqual(1);
-    expect(evalResult.watchouts[0]).toContain("discuss in roommate agreement");
+  it("keeps non-scenario school questions on top of the cap", () => {
+    expect(activeQuestions([schoolQ("quiet_hours", "scale")]).filter((q) => q.kind !== "scenario")).toHaveLength(1);
   });
+});
 
-  it("handles missing answers gracefully without altering scores", () => {
-    const answersA = {};
-    const answersB = { scen_dishes: "wash" };
+describe("toScenarioAnswers", () => {
+  it("maps answers to factor values and drops old versions and unknown choices", () => {
+    const qs = [schoolQ("music_volume", "scenario", 2), ...DEFAULT_SCENARIOS];
+    const out = toScenarioAnswers(
+      [
+        { question_key: "music_volume", question_version: 1, choice_key: "loud" },
+        { question_key: "dishes", question_version: 1, choice_key: "before_bed" },
+        { question_key: "dishes_typo", question_version: 1, choice_key: "x" },
+        { question_key: "early_alarm", question_version: 1, choice_key: "nope" },
+      ],
+      qs,
+    );
+    expect(Object.keys(out)).toEqual(["dishes@1"]);
+    expect(out["dishes@1"]).toMatchObject({ factor: "cleanliness", value: 5 });
+  });
+});
 
-    const evalResult = evaluateScenarioMatch(answersA, answersB);
-
-    expect(evalResult.sharedAnsweredCount).toBe(0);
-    expect(evalResult.agreementRate).toBe(0);
-    expect(evalResult.bonusScore).toBe(0);
-    expect(evalResult.reasons).toHaveLength(0);
-    expect(evalResult.watchouts).toHaveLength(0);
+describe("validChoices", () => {
+  it("rejects duplicate keys and out-of-range values", () => {
+    const base = schoolQ("q").choices;
+    expect(validChoices([...base, { ...base[0]! }])).toBe(false);
+    expect(validChoices([{ ...base[0]!, value: 6 }, base[1]!])).toBe(false);
+    expect(validChoices([base[0]!])).toBe(false);
   });
 });

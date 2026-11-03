@@ -41,3 +41,12 @@ describe("crisisSignal", () => {
     expect(crisisSignal("The noise is killing me")).toBe(false);
   });
 });
+
+describe("threatSignal", () => {
+  it("catches threats and fear for safety, not ordinary friction", async () => {
+    const { threatSignal } = await import("./risk");
+    expect(threatSignal("He said he'd bring a knife if I complained again")).toBe(true);
+    expect(threatSignal("I'm not safe in my room anymore")).toBe(true);
+    expect(threatSignal("They keep leaving dishes and it's annoying")).toBe(false);
+  });
+});

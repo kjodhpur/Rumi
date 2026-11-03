@@ -64,9 +64,16 @@ export function assessRisk(input: {
   return { level, reasons: hits.map((hit) => hit.text) };
 }
 
-/** Crisis language in a private note. Shown to the student only; never auto-shared with staff. */
-const CRISIS = /\b(suicid\w*|kill myself|self-harm|end my life|want to die|hurt myself)\b/i;
+/** Crisis language in a private note. Shows 988 to the student; never auto-shared with staff. */
+const CRISIS = /\b(suicid\w*|kill myself|self[- ]harm\w*|end my life|want to die|hurt myself|cutting myself|no reason to live)\b/i;
+
+/** Threat language (toward someone else). Shows 911 / campus police to the student. */
+const THREAT = /\b(kill (him|her|them|you)|hurt (him|her|them|you)|beat (him|her|them|you) up|bring a (gun|knife)|threaten(ed|ing)? me|he hit me|she hit me|they hit me|afraid for my safety|not safe in my room)\b/i;
 
 export function crisisSignal(note: string) {
   return CRISIS.test(note);
+}
+
+export function threatSignal(note: string) {
+  return THREAT.test(note);
 }

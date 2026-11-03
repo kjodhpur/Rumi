@@ -16,8 +16,8 @@ import type {
   Reason,
   SchoolRule,
 } from "./types";
-import { evaluateScenarioMatch } from "./scenarios";
 import { passesSchoolRules } from "./rules";
+import { accommodationConflict } from "./accommodations";
 
 /** Importance level → weight. "Must match" counts six times "nice to have". */
 export const IMPORTANCE_WEIGHTS: Record<Importance, number> = { 0: 0, 1: 1, 2: 3, 3: 6 };
@@ -104,48 +104,49 @@ function acceptsGender(owner: MatchProfile, other: MatchProfile) {
   return (owner.prefs.genderPref as string[]).includes(other.gender);
 }
 
-/** Null when the pair may be matched; otherwise the first rule that rules it out. */
-export function hardFilterFailure(
-  a: MatchProfile,
-  b: MatchProfile,
-  schoolRules?: SchoolRule[],
-): HardFilterFailure | null {
-  // 1. Pre-arrival pool separation (admitted non-enrolled students match only with pre-arrival students)
-  if (Boolean(a.preArrival) !== Boolean(b.preArrival)) {
-    return { kind: "pre_arrival_pool", who: a.preArrival ? "a" : "b" };
-  }
-  // 2. Track pool separation (e.g. transfer or grad cohorts match within their track by default)
-  if (a.track && b.track && a.track !== b.track) {
-    return { kind: "track_pool", who: "a" };
-  }
-  // 3. Accessibility & accommodation constraints (pure hard filters; zero medical disclosure)
-  if (a.accommodations?.includes("esa_approved") && b.prefs.dealbreakers.includes("pets")) {
-    return { kind: "accommodation", who: "a", constraintKey: "esa_approved" };
-  }
-  if (b.accommodations?.includes("esa_approved") && a.prefs.dealbreakers.includes("pets")) {
-    return { kind: "accommodation", who: "b", constraintKey: "esa_approved" };
-  }
-  if (a.accommodations?.includes("allergen_free") && b.prefs.smoking !== "never") {
-    return { kind: "accommodation", who: "a", constraintKey: "allergen_free" };
-  }
-  if (b.accommodations?.includes("allergen_free") && a.prefs.smoking !== "never") {
-    return { kind: "accommodation", who: "b", constraintKey: "allergen_free" };
-  }
+export interface PoolContext {
+  /** The school's active rules (LLC, college, residential college). */
+  schoolRules?: SchoolRule[];
+  /** The school merged track pools (first-year, returning, transfer, grad). */
+  mergeTrackPools?: boolean;
+}
 
-  // 4. Institutional school rules (e.g. LLC boundaries, academic college constraints)
-  if (schoolRules && schoolRules.length > 0) {
-    const ruleCheck = passesSchoolRules(a, b, schoolRules);
-    if (!ruleCheck.allowed && ruleCheck.blockingRule) {
-      return { kind: "school_rule", who: "a", ruleType: ruleCheck.blockingRule };
+const INCOMING_TRACKS = new Set(["freshman", "transfer"]);
+
+/** Pre-arrival students match each other (same admit term) and enrolled incoming students. */
+function poolsCompatible(a: MatchProfile, b: MatchProfile, ctx: PoolContext): HardFilterFailure | null {
+  if (a.preArrival && b.preArrival) {
+    if (a.admitTermId && b.admitTermId && a.admitTermId !== b.admitTermId) return { kind: "pre_arrival_pool", who: "a" };
+  } else if (a.preArrival || b.preArrival) {
+    const enrolled = a.preArrival ? b : a;
+    if (!enrolled.track || !INCOMING_TRACKS.has(enrolled.track)) {
+      return { kind: "pre_arrival_pool", who: a.preArrival ? "b" : "a" };
     }
   }
+  if (!ctx.mergeTrackPools && a.track && b.track && a.track !== b.track) {
+    // A pre-arrival first-year and an enrolled transfer are both "incoming".
+    const bothIncoming = (a.preArrival || b.preArrival) && INCOMING_TRACKS.has(a.track) && INCOMING_TRACKS.has(b.track);
+    if (!bothIncoming) return { kind: "track_pool", who: "a" };
+  }
+  return null;
+}
 
+/** Null when the pair may be matched; otherwise the first rule that rules it out. */
+export function hardFilterFailure(a: MatchProfile, b: MatchProfile, ctx: PoolContext = {}): HardFilterFailure | null {
   if (!acceptsGender(a, b)) return { kind: "gender", who: "a" };
   if (!acceptsGender(b, a)) return { kind: "gender", who: "b" };
   const aRule = brokenDealbreaker(a.prefs, b.prefs);
   if (aRule) return { kind: "dealbreaker", who: "a", dealbreaker: aRule };
   const bRule = brokenDealbreaker(b.prefs, a.prefs);
   if (bRule) return { kind: "dealbreaker", who: "b", dealbreaker: bRule };
+  const pool = poolsCompatible(a, b, ctx);
+  if (pool) return pool;
+  const accommodation = accommodationConflict(a, b);
+  if (accommodation) return accommodation;
+  if (ctx.schoolRules?.length) {
+    const rule = passesSchoolRules(a, b, ctx.schoolRules);
+    if (!rule.allowed && rule.blockingRule) return { kind: "school_rule", who: "a", ruleType: rule.blockingRule };
+  }
   return null;
 }
 
@@ -280,7 +281,39 @@ export function factorSimilarities(a: MatchProfile, b: MatchProfile): Partial<Re
   };
   const music = musicSimilarity(a, b);
   if (music !== null) sims.music = music;
+  const classes = classSimilarity(a, b);
+  if (classes !== null) sims.classes = classes;
+  // Scenario answers both students gave refine the factor they speak to.
+  for (const [factor, sim] of Object.entries(scenarioSimilarities(a, b)) as [FactorKey, number][]) {
+    const base = sims[factor];
+    sims[factor] = base === undefined ? sim : (base + sim) / 2;
+  }
   return sims;
+}
+
+/** Per-factor similarity from scenario questions both students answered (same version). */
+export function scenarioSimilarities(a: MatchProfile, b: MatchProfile): Partial<Record<FactorKey, number>> {
+  if (!a.scenarios || !b.scenarios) return {};
+  const totals = new Map<FactorKey, { sum: number; n: number }>();
+  for (const [key, mine] of Object.entries(a.scenarios)) {
+    const theirs = b.scenarios[key];
+    if (!theirs || theirs.factor !== mine.factor) continue;
+    const t = totals.get(mine.factor) ?? { sum: 0, n: 0 };
+    t.sum += scaleSimilarity(mine.value, theirs.value);
+    t.n += 1;
+    totals.set(mine.factor, t);
+  }
+  return Object.fromEntries([...totals].map(([factor, t]) => [factor, t.sum / t.n]));
+}
+
+/** Early classes vs. late nights: how close the two students' class days start and end. */
+export function classSimilarity(a: MatchProfile, b: MatchProfile): number | null {
+  if (!a.classDay || !b.classDay) return null;
+  const startGap = Math.abs(a.classDay.earliestStart - b.classDay.earliestStart);
+  const endGap = Math.abs(a.classDay.latestEnd - b.classDay.latestEnd);
+  // Within an hour reads as the same rhythm; four hours apart as opposite days.
+  const gap = (startGap + endGap) / 2;
+  return Math.max(0, Math.min(1, 1 - (gap - 60) / 180));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,53 +352,18 @@ export function satisfaction(owner: MatchPreferences, sims: Partial<Record<Facto
 export function evaluateMatch(
   a: MatchProfile,
   b: MatchProfile,
-  options: {
-    areaNames?: Record<string, string>;
-    hasVerifiedSocial?: boolean;
-    sharedConnectionsCount?: number;
-    scenarioAnswersA?: Record<string, string>;
-    scenarioAnswersB?: Record<string, string>;
-  } = {},
+  options: { areaNames?: Record<string, string> } & PoolContext = {},
 ): MatchEvaluation | null {
   if (a.id === b.id) return null;
-  if (hardFilterFailure(a, b)) return null;
+  if (hardFilterFailure(a, b, options)) return null;
 
   const sims = factorSimilarities(a, b);
   const sa = satisfaction(a.prefs, sims);
   const sb = satisfaction(b.prefs, sims);
-  let score = Math.round(100 * Math.sqrt(sa * sb));
-
-  // Small, capped trust bonus (max +5) for verified accounts or mutual connections.
-  const trustBonus = Math.min(
-    5,
-    (options.hasVerifiedSocial ? 2 : 0) +
-      (options.sharedConnectionsCount ? Math.min(3, options.sharedConnectionsCount) : 0),
-  );
-  if (trustBonus > 0 && score > 0) {
-    score = Math.min(100, score + trustBonus);
-  }
-
-  // Evaluate behavioral micro-question scenarios if answers exist
-  let scenarioReasons: string[] = [];
-  let scenarioWatchouts: string[] = [];
-  if (options.scenarioAnswersA && options.scenarioAnswersB) {
-    const sc = evaluateScenarioMatch(options.scenarioAnswersA, options.scenarioAnswersB);
-    if (sc.bonusScore > 0 && score > 0) {
-      score = Math.min(100, score + sc.bonusScore);
-    }
-    scenarioReasons = sc.reasons;
-    scenarioWatchouts = sc.watchouts;
-  }
+  const score = Math.round(100 * Math.sqrt(sa * sb));
 
   const sharedArtists = a.music && b.music ? sharedArtistList(a, b) : [];
-  const ctx: DescribeContext = {
-    areaNames: options.areaNames ?? {},
-    sharedArtists,
-    hasVerifiedSocial: Boolean(options.hasVerifiedSocial),
-    sharedConnectionsCount: options.sharedConnectionsCount ?? 0,
-    scenarioReasons,
-    scenarioWatchouts,
-  };
+  const ctx = { areaNames: options.areaNames ?? {}, sharedArtists };
 
   return {
     score: Math.max(0, Math.min(100, score)),
@@ -387,10 +385,6 @@ function sharedArtistList(a: MatchProfile, b: MatchProfile) {
 interface DescribeContext {
   areaNames: Record<string, string>;
   sharedArtists: { id: string; name: string }[];
-  hasVerifiedSocial?: boolean;
-  sharedConnectionsCount?: number;
-  scenarioReasons?: string[];
-  scenarioWatchouts?: string[];
 }
 
 function describe(
@@ -424,48 +418,18 @@ function describe(
   for (const c of [...candidates]
     .filter((c) => c.sim >= 0.75 && c.weight > 0)
     .sort((x, y) => rank(y) - rank(x) || y.sim - x.sim)) {
-    const label = reasonText(c.key, viewer, other, ctx);
+    const label = scenarioReason(c.key, viewer, other) ?? reasonText(c.key, viewer, other, ctx);
     if (label) reasons.push({ key: c.key, label });
     if (reasons.length === 3) break;
-  }
-
-  // If there is social trust verification, surface it in the top reasons
-  if (ctx.hasVerifiedSocial) {
-    if (reasons.length < 3) {
-      reasons.push({ key: "social", label: "Both have verified student accounts" });
-    } else {
-      reasons[2] = { key: "social", label: "Both have verified student accounts" };
-    }
-  } else if (ctx.sharedConnectionsCount && ctx.sharedConnectionsCount > 0) {
-    const label = `Shared campus connections (${ctx.sharedConnectionsCount})`;
-    if (reasons.length < 3) {
-      reasons.push({ key: "social", label });
-    } else {
-      reasons[2] = { key: "social", label };
-    }
-  }
-
-  // If there are aligned behavioral scenarios, surface in reasons
-  if (ctx.scenarioReasons && ctx.scenarioReasons.length > 0) {
-    if (reasons.length < 3) {
-      reasons.push({ key: "scenario", label: ctx.scenarioReasons[0] });
-    } else {
-      reasons[1] = { key: "scenario", label: ctx.scenarioReasons[0] };
-    }
   }
 
   const watchouts: Reason[] = [];
   for (const c of [...candidates]
     .filter((c) => c.sim <= 0.5 && IMPORTANCE_WEIGHTS[importanceOf(viewer.prefs, c.key)] > 0)
     .sort((x, y) => (1 - y.sim) * y.weight - (1 - x.sim) * x.weight)) {
-    const label = watchoutText(c.key, viewer, other);
+    const label = scenarioWatchout(c.key, viewer, other) ?? watchoutText(c.key, viewer, other);
     if (label) watchouts.push({ key: c.key, label });
     if (watchouts.length === 2) break;
-  }
-
-  // If there is a divergent behavioral scenario, surface in watchouts
-  if (ctx.scenarioWatchouts && ctx.scenarioWatchouts.length > 0 && watchouts.length < 2) {
-    watchouts.push({ key: "scenario", label: ctx.scenarioWatchouts[0] });
   }
 
   breakdown.sort((x, y) => y.importance - x.importance || y.similarity - x.similarity);
@@ -501,6 +465,26 @@ function salience(key: FactorKey, a: MatchPreferences, b: MatchPreferences, ctx:
     default:
       return 1;
   }
+}
+
+/** "Both say: …" when the two picked the same answer to a scenario on this factor. */
+function scenarioReason(key: FactorKey, viewer: MatchProfile, other: MatchProfile): string | null {
+  for (const [q, mine] of Object.entries(viewer.scenarios ?? {})) {
+    const theirs = other.scenarios?.[q];
+    if (mine.factor === key && theirs && theirs.value === mine.value && mine.reason) return mine.reason;
+  }
+  return null;
+}
+
+/** A scenario on this factor where the two answered far apart. */
+function scenarioWatchout(key: FactorKey, viewer: MatchProfile, other: MatchProfile): string | null {
+  for (const [q, mine] of Object.entries(viewer.scenarios ?? {})) {
+    const theirs = other.scenarios?.[q];
+    if (mine.factor === key && theirs && Math.abs(theirs.value - mine.value) >= 3) {
+      return `You'd handle ${mine.topic} differently`;
+    }
+  }
+  return null;
 }
 
 function formatUsd(n: number) {
@@ -589,6 +573,8 @@ export function reasonText(
       }
       return "Similar music taste";
     }
+    case "classes":
+      return "Your class days start and end around the same time";
   }
 }
 
@@ -637,5 +623,11 @@ export function watchoutText(key: FactorKey, viewer: MatchProfile, other: MatchP
       return "Different study habits at home";
     case "music":
       return null;
+    case "classes": {
+      const mine = viewer.classDay;
+      const theirs = other.classDay;
+      if (!mine || !theirs) return null;
+      return theirs.earliestStart < mine.earliestStart ? `${name}'s classes start a lot earlier` : `${name}'s classes run a lot later`;
+    }
   }
 }

@@ -2,8 +2,11 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database";
 import type { FactorKey, Importance } from "@/lib/options";
-import { evaluateMatch, STRONG_MATCH_THRESHOLD } from "./engine";
-import type { AccommodationConstraintKey, MatchEvaluation, MatchProfile } from "./types";
+import { evaluateMatch, STRONG_MATCH_THRESHOLD, type PoolContext } from "./engine";
+import { isAccommodationKey } from "./accommodations";
+import { loadActiveQuestions } from "./questions";
+import { toScenarioAnswers } from "./scenarios";
+import type { AccommodationConstraintKey, MatchEvaluation, MatchProfile, ScenarioAnswer, SchoolRuleType, Track } from "./types";
 
 type PrefsRow = Database["public"]["Tables"]["preferences"]["Row"];
 type MusicRow = Database["public"]["Tables"]["music_profiles"]["Row"];
@@ -13,25 +16,30 @@ interface PoolRow {
   id: string;
   first_name: string;
   gender: string | null;
-  track?: string | null;
-  pre_arrival?: boolean;
+  track: string | null;
+  pre_arrival: boolean;
+  admit_term_id: string | null;
+  academic_college: string | null;
+  residential_college: string | null;
+  llc: string | null;
+  is_hidden: boolean;
   preferences: PrefsRow | null;
   music_profiles: MusicRow | null;
 }
 
 const CHUNK = 400;
 
+export interface ProfileExtras {
+  accommodations?: AccommodationConstraintKey[];
+  scenarios?: Record<string, ScenarioAnswer>;
+  classDay?: MatchProfile["classDay"];
+}
+
 export function toMatchProfile(
-  profile: {
-    id: string;
-    first_name: string;
-    gender: string | null;
-    track?: string | null;
-    pre_arrival?: boolean;
-  },
+  profile: Omit<PoolRow, "preferences" | "music_profiles" | "is_hidden">,
   prefs: PrefsRow,
   music?: MusicRow | null,
-  accommodations?: AccommodationConstraintKey[],
+  extras: ProfileExtras = {},
 ): MatchProfile {
   const artists = Array.isArray(music?.top_artists)
     ? (music!.top_artists as { id: string; name: string }[]).map((a) => ({ id: a.id, name: a.name }))
@@ -40,9 +48,15 @@ export function toMatchProfile(
     id: profile.id,
     firstName: profile.first_name,
     gender: (profile.gender as MatchProfile["gender"]) ?? null,
-    track: (profile.track as MatchProfile["track"]) ?? null,
-    preArrival: Boolean(profile.pre_arrival),
-    accommodations: accommodations ?? [],
+    track: (profile.track as Track | null) ?? null,
+    preArrival: profile.pre_arrival,
+    admitTermId: profile.admit_term_id,
+    academicCollege: profile.academic_college,
+    residentialCollege: profile.residential_college,
+    llc: profile.llc,
+    accommodations: extras.accommodations ?? [],
+    scenarios: extras.scenarios ?? {},
+    classDay: extras.classDay ?? null,
     music: music && artists.length > 0 ? { artists, genres: music.top_genres ?? [] } : null,
     prefs: {
       budgetMin: prefs.budget_min,
@@ -66,71 +80,109 @@ export function toMatchProfile(
   };
 }
 
-/** Everyone at a school who can currently be matched. */
-export async function loadSchoolPool(schoolId: string) {
+/** Earliest start and latest end across weekday class blocks, in minutes. */
+export function classDayOf(blocks: unknown): MatchProfile["classDay"] {
+  if (!Array.isArray(blocks)) return null;
+  const minutes = (hhmm: unknown) => {
+    if (typeof hhmm !== "string" || !/^\d{2}:\d{2}$/.test(hhmm)) return null;
+    const [h, m] = hhmm.split(":").map(Number) as [number, number];
+    return h * 60 + m;
+  };
+  let earliestStart = Infinity;
+  let latestEnd = -Infinity;
+  for (const block of blocks as { day?: unknown; start?: unknown; end?: unknown }[]) {
+    if (typeof block.day !== "number" || block.day > 4) continue; // weekdays only
+    const start = minutes(block.start);
+    const end = minutes(block.end);
+    if (start === null || end === null || end <= start) continue;
+    earliestStart = Math.min(earliestStart, start);
+    latestEnd = Math.max(latestEnd, end);
+  }
+  return Number.isFinite(earliestStart) ? { earliestStart, latestEnd } : null;
+}
+
+export interface SchoolPool {
+  pool: MatchProfile[];
+  areaNames: Record<string, string>;
+  context: PoolContext;
+}
+
+/**
+ * Everyone at a school who can currently be matched, with what the engine needs: hard
+ * constraints (accommodations, school rules, pools), scenario answers and class days.
+ * Staff are never matched; a school can take demo profiles out; a live pilot limits the
+ * pool to its scope; withdrawn admits are hidden.
+ */
+export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
   const admin = createAdminClient();
-  const { data: school } = await admin.from("schools").select("hide_seed_profiles").eq("id", schoolId).maybeSingle();
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: school }, { data: pilot }] = await Promise.all([
+    admin.from("schools").select("hide_seed_profiles, merge_track_pools").eq("id", schoolId).maybeSingle(),
+    admin.from("pilot_configs").select("scope, starts_on, ends_on").eq("school_id", schoolId).maybeSingle(),
+  ]);
   let poolQuery = admin
     .from("profiles")
-    .select("id, first_name, gender, track, pre_arrival, preferences(*), music_profiles(*)")
+    .select(
+      "id, first_name, gender, track, pre_arrival, admit_term_id, academic_college, residential_college, llc, is_hidden, preferences(*), music_profiles(*)",
+    )
     .eq("school_id", schoolId)
     .not("onboarding_completed_at", "is", null)
     .is("banned_at", null)
-    // Staff are never matched, and a school can take its demo profiles out of the pool.
     .eq("is_staff", false);
   if (school?.hide_seed_profiles) poolQuery = poolQuery.eq("is_seed", false);
-  const today = new Date().toISOString().slice(0, 10);
-  const [people, areas, constraints, socialLinks, connections] = await Promise.all([
+  const scope = pilot && pilot.starts_on <= today && today <= pilot.ends_on ? pilotColleges(pilot.scope) : [];
+  if (scope.length) poolQuery = poolQuery.in("residential_college", scope);
+
+  const [people, areas, constraints, rules, questions] = await Promise.all([
     poolQuery.returns<PoolRow[]>(),
     admin.from("areas").select("slug, name").eq("school_id", schoolId),
-    admin
-      .from("accommodation_constraints")
-      .select("user_id, constraint_key, expires_on")
-      .eq("school_id", schoolId),
-    admin
-      .from("social_links")
-      .select("user_id")
-      .not("verified_at", "is", null),
-    admin
-      .from("connections")
-      .select("user_a, user_b")
-      .eq("status", "confirmed"),
+    admin.from("accommodation_constraints").select("user_id, constraint_key, expires_on").eq("school_id", schoolId),
+    admin.from("school_rules").select("rule_type, params, active").eq("school_id", schoolId).eq("active", true),
+    loadActiveQuestions(schoolId),
   ]);
   if (people.error) throw people.error;
+  const ids = (people.data ?? []).map((p) => p.id);
+  const [answers, schedules] = ids.length
+    ? await Promise.all([
+        admin.from("school_question_answers").select("user_id, question_key, question_version, choice_key").in("user_id", ids),
+        admin.from("class_schedules").select("user_id, blocks").in("user_id", ids),
+      ])
+    : [{ data: [] }, { data: [] }];
 
-  const userAccommodations = new Map<string, AccommodationConstraintKey[]>();
+  const accommodations = new Map<string, AccommodationConstraintKey[]>();
   for (const c of constraints.data ?? []) {
-    if (c.expires_on && c.expires_on < today) continue;
-    const existing = userAccommodations.get(c.user_id) ?? [];
-    existing.push(c.constraint_key as AccommodationConstraintKey);
-    userAccommodations.set(c.user_id, existing);
+    if ((c.expires_on && c.expires_on < today) || !isAccommodationKey(c.constraint_key)) continue;
+    accommodations.set(c.user_id, [...(accommodations.get(c.user_id) ?? []), c.constraint_key]);
   }
-
-  const verifiedUsers = new Set((socialLinks.data ?? []).map((s) => s.user_id));
-  const userConnections = new Map<string, Set<string>>();
-  for (const conn of connections.data ?? []) {
-    if (!userConnections.has(conn.user_a)) userConnections.set(conn.user_a, new Set());
-    if (!userConnections.has(conn.user_b)) userConnections.set(conn.user_b, new Set());
-    userConnections.get(conn.user_a)!.add(conn.user_b);
-    userConnections.get(conn.user_b)!.add(conn.user_a);
-  }
+  const answersByUser = new Map<string, { question_key: string; question_version: number; choice_key: string }[]>();
+  for (const a of answers.data ?? []) answersByUser.set(a.user_id, [...(answersByUser.get(a.user_id) ?? []), a]);
+  const classDays = new Map((schedules.data ?? []).map((s) => [s.user_id, classDayOf(s.blocks)]));
 
   const pool: MatchProfile[] = [];
   for (const person of people.data ?? []) {
-    if (person.preferences) {
-      pool.push(
-        toMatchProfile(
-          person,
-          person.preferences,
-          person.music_profiles,
-          userAccommodations.get(person.id),
-        ),
-      );
-    }
+    // Hidden profiles keep their existing matches but a withdrawn admit drops out entirely.
+    if (person.pre_arrival && person.is_hidden) continue;
+    if (!person.preferences) continue;
+    pool.push(
+      toMatchProfile(person, person.preferences, person.music_profiles, {
+        accommodations: accommodations.get(person.id),
+        scenarios: toScenarioAnswers(answersByUser.get(person.id) ?? [], questions),
+        classDay: classDays.get(person.id) ?? null,
+      }),
+    );
   }
   // "Tempe — near campus" reads better as "Tempe" inside a sentence.
   const areaNames = Object.fromEntries((areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]));
-  return { pool, areaNames, verifiedUsers, userConnections };
+  const context: PoolContext = {
+    mergeTrackPools: Boolean(school?.merge_track_pools),
+    schoolRules: (rules.data ?? []).map((r) => ({ type: r.rule_type as SchoolRuleType, active: r.active, params: (r.params ?? {}) as Record<string, unknown> })),
+  };
+  return { pool, areaNames, context };
+}
+
+function pilotColleges(scope: unknown): string[] {
+  const value = scope && typeof scope === "object" ? (scope as { residential_colleges?: unknown }).residential_colleges : null;
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
 function toRow(
@@ -177,7 +229,7 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
     return { matches: 0, strongNotified: 0 };
   }
 
-  const { pool, areaNames, verifiedUsers, userConnections } = await loadSchoolPool(me.school_id);
+  const { pool, areaNames, context } = await loadSchoolPool(me.school_id);
   const viewer = pool.find((p) => p.id === userId);
   if (!viewer) return { matches: 0, strongNotified: 0 };
 
@@ -193,25 +245,9 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
   const keep: string[] = [];
   const strong: { viewerId: string; score: number }[] = [];
 
-  const myConns = userConnections.get(userId);
-
   for (const other of pool) {
     if (other.id === userId) continue;
-
-    const hasVerifiedSocial = verifiedUsers.has(userId) && verifiedUsers.has(other.id);
-    const theirConns = userConnections.get(other.id);
-    let sharedConnectionsCount = 0;
-    if (myConns && theirConns) {
-      for (const id of myConns) {
-        if (theirConns.has(id)) sharedConnectionsCount++;
-      }
-    }
-
-    const result = evaluateMatch(viewer, other, {
-      areaNames,
-      hasVerifiedSocial,
-      sharedConnectionsCount,
-    });
+    const result = evaluateMatch(viewer, other, { areaNames, ...context });
     if (!result) continue;
     keep.push(other.id);
     rows.push(toRow(userId, other.id, result, "forA", now));

@@ -59,6 +59,22 @@ export interface SchoolRule {
   params?: Record<string, unknown>;
 }
 
+/** Factors a scenario or school question can inform (each on its 1–5 scale). */
+export type ScenarioFactor = "sleep" | "cleanliness" | "noise" | "guests" | "study";
+
+/** One answered scenario / school question, as a position on its factor's scale. */
+export interface ScenarioAnswer {
+  factor: ScenarioFactor;
+  /** 1–5 on the factor's scale. */
+  value: number;
+  /** Short shared-ground text when both picked the same answer. */
+  reason: string;
+  /** Short topic for a watch-out ("overnight guests"). */
+  topic: string;
+}
+
+export type Track = "freshman" | "returning" | "transfer" | "grad";
+
 export interface MatchProfile {
   id: string;
   firstName: string;
@@ -66,22 +82,25 @@ export interface MatchProfile {
   prefs: MatchPreferences;
   /** Null when Spotify isn't connected — the music factor is then skipped entirely. */
   music: MatchMusic | null;
-  /** Cohort track (freshman, returning, transfer, grad). */
-  track?: "freshman" | "returning" | "transfer" | "grad" | null;
-  /** Admitted pre-arrival pool status. */
+  /** Student track. Tracks are separate pools unless the school merges them. */
+  track?: Track | null;
+  /** Admitted, not yet enrolled: matched only inside the pre-arrival + incoming pool. */
   preArrival?: boolean;
-  /** Approved accessibility and housing accommodations. */
+  /** Admit term for pre-arrival students; pre-arrival pairs must share it. */
+  admitTermId?: string | null;
+  /** Approved accommodations (set by housing staff; never shown to other students). */
   accommodations?: AccommodationConstraintKey[];
-  /** Academic college (e.g. Fulton Engineering, W.P. Carey) */
   academicCollege?: string | null;
-  /** Residential college boundary (e.g. Barrett, Hassayampa) */
   residentialCollege?: string | null;
-  /** Living Learning Community cohort */
   llc?: string | null;
+  /** Scenario / school question answers keyed by "<key>@<version>". */
+  scenarios?: Record<string, ScenarioAnswer>;
+  /** Earliest weekday class start and latest class end, minutes after midnight. */
+  classDay?: { earliestStart: number; latestEnd: number } | null;
 }
 
 export interface Reason {
-  key: FactorKey | "social" | "scenario";
+  key: FactorKey;
   label: string;
 }
 

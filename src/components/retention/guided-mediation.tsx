@@ -2,104 +2,93 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Copy, Check, MessageSquare, ShieldAlert, FileText, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { Check, Copy, FileText, LifeBuoy, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { CheckinTag } from "@/lib/retention/risk";
 import { getGuidedMediationTips } from "@/lib/retention/mediation";
 
-interface GuidedMediationProps {
-  tags: CheckinTag[];
-  groupId?: string | null;
-  onAskRa?: () => void;
-}
+/**
+ * Shown after a medium or high check-in read: what your agreement says about it, one tip,
+ * and an opener you can edit and send to your roommates. Asking the RA is always one tap.
+ */
+export function GuidedMediation({
+  tags,
+  sections,
+  groupId,
+  conversationId,
+  onAskRa,
+  askingRa,
+}: {
+  tags: string[];
+  sections: Record<string, string>;
+  groupId: string | null;
+  conversationId: string | null;
+  onAskRa: () => void;
+  askingRa: boolean;
+}) {
+  const [copied, setCopied] = React.useState<string | null>(null);
+  const tips = getGuidedMediationTips(tags, sections);
 
-export function GuidedMediation({ tags, groupId, onAskRa }: GuidedMediationProps) {
-  const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
-  const tips = getGuidedMediationTips(tags);
-
-  function copyMessage(text: string, index: number) {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    toast.success("Opener copied to clipboard!");
-    setTimeout(() => setCopiedIndex(null), 2500);
+  async function copy(tag: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(tag);
+      window.setTimeout(() => setCopied(null), 2000);
+    } catch {
+      toast.error("Couldn't copy that.");
+    }
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs sm:p-6">
-      <div className="flex items-center gap-2 text-body-xs font-semibold uppercase tracking-wider text-accent">
-        <MessageSquare className="size-4" />
-        <span>Guided Self-Mediation</span>
-      </div>
-      <h3 className="mt-1 text-body-lg font-semibold text-ink">
-        Small friction catches early
-      </h3>
-      <p className="mt-1 text-body-sm text-ink-3">
-        Most roommate friction resolves quickly with a relaxed, low-pressure conversation based on your shared agreement.
-      </p>
-
-      <div className="mt-4 space-y-4">
-        {tips.map((tip, idx) => (
-          <div
-            key={tip.tag}
-            className="rounded-xl border border-line bg-surface-sunken p-4"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-body-sm font-semibold text-ink">{tip.title}</span>
-              <span className="text-caption-xs font-medium text-ink-3">
-                {tip.agreementSection}
-              </span>
-            </div>
-            <p className="mt-1.5 text-body-xs text-ink-2">{tip.advice}</p>
-
-            <div className="mt-3 rounded-lg border border-line bg-surface p-3">
-              <p className="text-caption-xs font-semibold uppercase tracking-wider text-ink-3">
-                Suggested message to send
-              </p>
-              <p className="mt-1 text-body-sm text-ink italic">&ldquo;{tip.suggestedMessage}&rdquo;</p>
-              <div className="mt-2.5 flex justify-end">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => copyMessage(tip.suggestedMessage, idx)}
-                  className="inline-flex items-center gap-1.5"
-                >
-                  {copiedIndex === idx ? (
-                    <Check className="size-3.5 text-accent" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                  <span>{copiedIndex === idx ? "Copied" : "Copy opener"}</span>
+    <section className="rounded-xl bg-surface p-5 ring-1 ring-line sm:p-6" aria-labelledby="mediation-title">
+      <h2 id="mediation-title" className="text-body font-semibold text-ink">
+        Talking it through
+      </h2>
+      <p className="mt-1 text-body-sm text-ink-2">Most rough patches settle with one honest conversation. Here&apos;s a place to start.</p>
+      <ul className="mt-5 flex flex-col gap-5">
+        {tips.map((tip) => (
+          <li key={tip.tag} className="flex flex-col gap-3">
+            <h3 className="text-body-sm font-medium text-ink">{tip.title}</h3>
+            {tip.agreementText ? (
+              <blockquote className="flex gap-2 rounded-md bg-surface-sunken p-3 text-caption text-ink-2">
+                <FileText className="mt-0.5 size-3.5 shrink-0 text-ink-3" aria-hidden />
+                <span>
+                  <span className="font-medium text-ink">Your agreement says: </span>
+                  {tip.agreementText}
+                </span>
+              </blockquote>
+            ) : null}
+            <p className="text-body-sm text-ink-2">{tip.advice}</p>
+            <div className="rounded-md p-3 ring-1 ring-line">
+              <p className="text-body-sm text-ink">&ldquo;{tip.suggestedMessage}&rdquo;</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {conversationId ? (
+                  <Button size="sm" asChild>
+                    <Link href={`/messages/${conversationId}?draft=${encodeURIComponent(tip.suggestedMessage)}`}>
+                      <MessageCircle aria-hidden /> Edit and send
+                    </Link>
+                  </Button>
+                ) : null}
+                <Button size="sm" variant="secondary" onClick={() => void copy(tip.tag, tip.suggestedMessage)}>
+                  {copied === tip.tag ? <Check aria-hidden /> : <Copy aria-hidden />} {copied === tip.tag ? "Copied" : "Copy"}
                 </Button>
               </div>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+      </ul>
+      <div className="mt-6 flex flex-wrap gap-2 border-t border-line pt-4">
         {groupId ? (
-          <Link
-            href={`/groups/${groupId}/agreement`}
-            className="inline-flex items-center gap-1.5 text-body-sm font-medium text-ink underline underline-offset-4 hover:text-accent"
-          >
-            <FileText className="size-4" />
-            <span>Open Roommate Agreement</span>
-          </Link>
-        ) : <div />}
-
-        {onAskRa ? (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onAskRa}
-            className="inline-flex items-center gap-1.5 text-rose-600 hover:text-rose-700"
-          >
-            <UserPlus className="size-3.5" />
-            <span>Ask RA to assist mediation</span>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/groups/${groupId}/agreement`}>
+              <FileText aria-hidden /> Open your agreement
+            </Link>
           </Button>
         ) : null}
+        <Button variant="ghost" size="sm" loading={askingRa} onClick={onAskRa}>
+          <LifeBuoy aria-hidden /> Ask my RA for help
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }

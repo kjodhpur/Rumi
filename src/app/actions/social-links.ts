@@ -4,178 +4,118 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fail, ok, type ActionResult } from "@/lib/action";
-import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import {
-  cleanHandle,
-  generateVerificationCode,
-  isSocialPlatform,
-  type SocialPlatform,
-} from "@/lib/social/links";
-import { recomputeMatchesFor } from "@/lib/matching/recompute";
+import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { notifyInApp } from "@/lib/notifications/notify";
+import { cleanHandle, generateVerificationCode, isSocialPlatform, isValidHandle } from "@/lib/social/links";
 
-const uuidSchema = z.string().uuid();
+const uuid = z.string().uuid();
+const platformInput = z.string().refine(isSocialPlatform);
 
-export async function saveSocialLink(
-  platform: SocialPlatform,
-  rawHandle: string,
-): Promise<ActionResult<{ verificationCode: string }>> {
+/**
+ * Instagram / LinkedIn handles (Phase 7.2 c and 7.6). Shown as links only; Rumi never calls
+ * either API. "Confirmed" means the student says they put the one-time code in their bio or
+ * headline, so it's labeled self-attested everywhere. Handles never change the match score.
+ */
+export async function saveSocialLink(platform: string, rawHandle: string): Promise<ActionResult<{ verificationCode: string }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!isSocialPlatform(platform)) return fail("Invalid social platform.");
-
-  const handle = cleanHandle(platform, rawHandle);
-  if (!handle || handle.length < 1 || handle.length > 60) {
-    return fail("Please enter a valid handle or username.");
+  if (!platformInput.safeParse(platform).success || !isSocialPlatform(platform)) return fail("Pick Instagram or LinkedIn.");
+  const handle = cleanHandle(platform, String(rawHandle ?? ""));
+  if (!isValidHandle(platform, handle)) {
+    return fail(platform === "instagram" ? "Use letters, numbers, dots or underscores (up to 30)." : "Use the part after linkedin.com/in/.");
   }
+  if (!(await rateLimit(`social:${user.id}`, LIMITS.socialLinkChangesPerHour))) return fail("Too many changes. Try again in a bit.");
 
   const verificationCode = generateVerificationCode();
-  const supabase = createClient();
-
-  const { error } = await supabase.from("social_links").upsert(
-    {
-      user_id: user.id,
-      platform,
-      handle,
-      verification_code: verificationCode,
-      verified_at: null,
-      updated_at: new Date().toISOString(),
-    },
+  const { error } = await createClient().from("social_links").upsert(
+    { user_id: user.id, platform, handle, verification_code: verificationCode, verified_at: null, updated_at: new Date().toISOString() },
     { onConflict: "user_id,platform" },
   );
-
-  if (error) return fail("Couldn't save social link: " + error.message);
-
+  if (error) return fail("Couldn't save that handle.");
   revalidatePath("/settings/accounts");
   return ok({ verificationCode });
 }
 
-export async function verifySocialLink(platform: SocialPlatform): Promise<ActionResult> {
+export async function verifySocialLink(platform: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!isSocialPlatform(platform)) return fail("Invalid social platform.");
-
-  const supabase = createClient();
-
-  const { error } = await supabase
+  if (!isSocialPlatform(platform)) return fail("Pick Instagram or LinkedIn.");
+  if (!(await rateLimit(`social:${user.id}`, LIMITS.socialLinkChangesPerHour))) return fail("Too many changes. Try again in a bit.");
+  const { error } = await createClient()
     .from("social_links")
-    .update({
-      verified_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    .update({ verified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq("user_id", user.id)
     .eq("platform", platform);
-
-  if (error) return fail("Couldn't verify handle. Please try again.");
-
-  try {
-    await recomputeMatchesFor(user.id);
-  } catch (err) {
-    console.error("[matching] Failed to recompute after social verify", err);
-  }
-
+  if (error) return fail("Couldn't save that. Try again.");
   revalidatePath("/settings/accounts");
   revalidatePath(`/profile/${user.id}`);
-  revalidatePath("/matches");
   return ok();
 }
 
-export async function removeSocialLink(platform: SocialPlatform): Promise<ActionResult> {
+export async function removeSocialLink(platform: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!isSocialPlatform(platform)) return fail("Invalid social platform.");
-
-  const supabase = createClient();
-
-  const { error } = await supabase
-    .from("social_links")
-    .delete()
-    .eq("user_id", user.id)
-    .eq("platform", platform);
-
-  if (error) return fail("Couldn't remove social link.");
-
-  try {
-    await recomputeMatchesFor(user.id);
-  } catch (err) {
-    console.error("[matching] Failed to recompute after social remove", err);
-  }
-
+  if (!isSocialPlatform(platform)) return fail("Pick Instagram or LinkedIn.");
+  const { error } = await createClient().from("social_links").delete().eq("user_id", user.id).eq("platform", platform);
+  if (error) return fail("Couldn't remove that handle.");
   revalidatePath("/settings/accounts");
   revalidatePath(`/profile/${user.id}`);
-  revalidatePath("/matches");
   return ok();
 }
 
+/** "We know each other": the other person has to confirm before it counts anywhere. */
 export async function requestPeerConnection(targetUserId: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!uuidSchema.safeParse(targetUserId).success) return fail("Invalid user.");
-  if (targetUserId === user.id) return fail("You cannot connect with yourself.");
+  if (!uuid.safeParse(targetUserId).success || targetUserId === user.id) return fail("That person isn't available.");
+  if (!(await rateLimit(`connection:${user.id}`, LIMITS.connectionRequestsPerDay))) return fail("You've sent a lot of requests today. Try again tomorrow.");
 
-  if (!(await rateLimit(`connection:${user.id}`, { max: 20, window: 86400 }))) {
-    return fail("You have sent several connection requests today.");
+  const { data, error } = await createClient().rpc("request_connection", { p_target: targetUserId });
+  if (error) return fail(friendlyDbError(error.message));
+  if (data === "requested" || data === "confirmed") {
+    const { data: me } = await createAdminClient().from("profiles").select("first_name").eq("id", user.id).maybeSingle();
+    const name = me?.first_name ?? "Someone";
+    await notifyInApp([
+      data === "requested"
+        ? { userId: targetUserId, type: "connection_request", actorId: user.id, title: `${name} says you know each other`, body: "Confirm it on their profile, or ignore it.", href: `/profile/${user.id}` }
+        : { userId: targetUserId, type: "connection_confirmed", actorId: user.id, title: `You and ${name} are connected`, href: `/profile/${user.id}` },
+    ]);
   }
-
-  const supabase = createClient();
-
-  const { error } = await supabase.from("connections").upsert(
-    {
-      user_a: user.id,
-      user_b: targetUserId,
-      source: "campus_peer",
-      status: "pending",
-    },
-    { onConflict: "user_a,user_b", ignoreDuplicates: true },
-  );
-
-  if (error) return fail("Couldn't send connection request.");
-
+  revalidatePath(`/profile/${targetUserId}`);
   return ok();
 }
 
-export async function confirmPeerConnection(connectionId: string): Promise<ActionResult> {
+export async function respondPeerConnection(connectionId: string, accept: boolean): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!uuidSchema.safeParse(connectionId).success) return fail("Invalid connection.");
+  if (!uuid.safeParse(connectionId).success || typeof accept !== "boolean") return fail("That request isn't available.");
+  if (!(await rateLimit(`connection:${user.id}`, LIMITS.connectionRequestsPerDay))) return fail("Too many changes today. Try again tomorrow.");
 
   const supabase = createClient();
-
-  const { error } = await supabase
-    .from("connections")
-    .update({
-      status: "confirmed",
-      confirmed_at: new Date().toISOString(),
-    })
-    .eq("id", connectionId)
-    .eq("user_b", user.id);
-
-  if (error) return fail("Couldn't confirm connection.");
-
-  try {
-    await recomputeMatchesFor(user.id);
-  } catch (err) {
-    console.error("[matching] Failed to recompute after peer confirm", err);
+  const { data: row } = await supabase.from("connections").select("user_a").eq("id", connectionId).maybeSingle();
+  const { data, error } = await supabase.rpc("respond_connection", { p_id: connectionId, p_accept: accept });
+  if (error) return fail(friendlyDbError(error.message));
+  if (data === "confirmed" && row) {
+    const { data: me } = await createAdminClient().from("profiles").select("first_name").eq("id", user.id).maybeSingle();
+    await notifyInApp([
+      { userId: row.user_a, type: "connection_confirmed", actorId: user.id, title: `${me?.first_name ?? "They"} confirmed you know each other`, href: `/profile/${user.id}` },
+    ]);
   }
-
-  revalidatePath("/matches");
+  if (row) revalidatePath(`/profile/${row.user_a}`);
   return ok();
 }
 
 export async function removePeerConnection(connectionId: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!uuidSchema.safeParse(connectionId).success) return fail("Invalid connection.");
-
-  const supabase = createClient();
-
-  const { error } = await supabase
+  if (!uuid.safeParse(connectionId).success) return fail("That connection isn't available.");
+  const { error } = await createClient()
     .from("connections")
     .delete()
     .eq("id", connectionId)
     .or(`user_a.eq.${user.id},user_b.eq.${user.id}`);
-
-  if (error) return fail("Couldn't remove connection.");
-
+  if (error) return fail("Couldn't remove that connection.");
+  revalidatePath("/matches");
   return ok();
 }

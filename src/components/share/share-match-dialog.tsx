@@ -1,276 +1,172 @@
 "use client";
 
 import * as React from "react";
-import { Share2, Check, Copy, Shield, Trash2, ExternalLink } from "lucide-react";
+import { Check, Copy, ExternalLink, Link2Off, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ScoreRing } from "@/components/ui/score-ring";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MatchCard } from "@/components/share/match-share-view";
 import {
-  createOrConsentMatchShare,
+  consentMatchShare,
   getMatchShareStatus,
   revokeMatchShare,
   type MatchShareStatus,
 } from "@/app/actions/match-share";
 
-interface ShareMatchDialogProps {
-  candidateId: string;
-  candidateFirstName: string;
-  score: number;
-  reasons: string[];
-}
-
+/**
+ * "Why we're a match" share card (Phase 7.7). Both students turn sharing on before the
+ * link works for anyone else; either can revoke it, which 404s the link at once.
+ */
 export function ShareMatchDialog({
   candidateId,
   candidateFirstName,
+  myFirstName,
   score,
   reasons,
-}: ShareMatchDialogProps) {
+}: {
+  candidateId: string;
+  candidateFirstName: string;
+  myFirstName: string;
+  score: number;
+  reasons: string[];
+}) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
   const [status, setStatus] = React.useState<MatchShareStatus | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
 
-  // Load status when dialog opens
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const res = await getMatchShareStatus(candidateId);
-        if (!cancelled && res.ok) {
-          setStatus(res.data.status);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
+    setLoading(true);
+    setError(null);
+    void getMatchShareStatus(candidateId).then((result) => {
+      if (cancelled) return;
+      setLoading(false);
+      if (result.ok) setStatus(result.data.status);
+      else setError(result.error);
+    });
     return () => {
       cancelled = true;
     };
   }, [open, candidateId]);
 
-  const shareUrl = status?.token
-    ? typeof window !== "undefined"
-      ? `${window.location.origin}/m/${status.token}`
-      : `/m/${status.token}`
-    : "";
+  const url = () => (status ? `${window.location.origin}${status.path}` : "");
 
-  async function handleCreateOrConsent() {
-    setLoading(true);
-    try {
-      const res = await createOrConsentMatchShare(candidateId);
-      if (res.ok) {
-        toast(res.data.isReady ? "Match card ready to share!" : "Consent recorded", {
-          description: res.data.isReady
-            ? "Both of you have consented. The public link is now active."
-            : `We'll make the link public once ${candidateFirstName} also consents.`,
-        });
-        // Reload status
-        const refresh = await getMatchShareStatus(candidateId);
-        if (refresh.ok) setStatus(refresh.data.status);
-      } else {
-        toast("Could not create share card", { description: res.error });
-      }
-    } finally {
-      setLoading(false);
-    }
+  async function turnOn() {
+    setPending(true);
+    const result = await consentMatchShare(candidateId);
+    setPending(false);
+    if (!result.ok) return void toast.error(result.error);
+    setStatus(result.data.status);
+    toast.success(result.data.status.ready ? "Your card is ready to share" : `We asked ${candidateFirstName} to turn it on too`);
   }
 
-  async function handleRevoke() {
-    setLoading(true);
-    try {
-      const res = await revokeMatchShare(candidateId);
-      if (res.ok) {
-        toast("Share link revoked", {
-          description: "The link now immediately 404s for anyone who visits.",
-        });
-        setStatus(null);
-      } else {
-        toast("Could not revoke share card", { description: res.error });
-      }
-    } finally {
-      setLoading(false);
-    }
+  async function revoke() {
+    setPending(true);
+    const result = await revokeMatchShare(candidateId);
+    setPending(false);
+    if (!result.ok) return void toast.error(result.error);
+    setStatus(null);
+    toast.success("Link turned off. It no longer opens for anyone.");
   }
 
-  async function handleCopy() {
-    if (!shareUrl) return;
+  async function copy() {
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(url());
       setCopied(true);
-      toast("Link copied to clipboard");
-      setTimeout(() => setCopied(false), 2500);
+      window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast("Could not copy link");
+      toast.error("Couldn't copy the link.");
     }
   }
 
-  async function handleNativeShare() {
-    if (!shareUrl) return;
-    if (typeof navigator !== "undefined" && navigator.share) {
+  async function share() {
+    if (navigator.share) {
       try {
-        await navigator.share({
-          title: `Match with ${candidateFirstName} on Rumi`,
-          text: `Check out our ${Math.round(score)}% roommate compatibility on Rumi!`,
-          url: shareUrl,
-        });
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          handleCopy();
-        }
+        await navigator.share({ title: `${myFirstName} & ${candidateFirstName} on Rumi`, url: url() });
+        return;
+      } catch (shareError) {
+        if ((shareError as Error).name === "AbortError") return;
       }
-    } else {
-      handleCopy();
     }
+    await copy();
   }
 
-  const topReasons = reasons.slice(0, 3);
+  const card = {
+    firstNames: [myFirstName, candidateFirstName] as [string, string],
+    initials: [myFirstName.charAt(0).toUpperCase(), candidateFirstName.charAt(0).toUpperCase()] as [string, string],
+    score,
+    reasons: reasons.slice(0, 3),
+  };
 
   return (
     <>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5"
-      >
-        <Share2 className="size-3.5 text-accent" />
-        <span>Share match card</span>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+        <Share2 aria-hidden /> Share
       </Button>
-
       <Sheet
         open={open}
         onOpenChange={setOpen}
-        title="Why we're a match"
-        description="Share a private, expiring compatibility card with friends or family."
+        title="Share your match card"
+        description="First names, your score and up to three reasons. Never last names, photos, emails or where you live."
         size="md"
       >
-        <div className="space-y-5 py-2">
-          {/* Card Preview */}
-          <div className="rounded-2xl border border-line bg-surface p-5 shadow-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-body-xs font-semibold uppercase tracking-wider text-accent">
-                  Roommate Compatibility
-                </p>
-                <h4 className="mt-1 font-display text-lg font-bold text-ink">
-                  You & {candidateFirstName}
-                </h4>
-              </div>
-              <ScoreRing score={score} size={54} variant="hero" />
-            </div>
-
-            {topReasons.length > 0 ? (
-              <div className="mt-4 space-y-1.5 border-t border-line pt-3">
-                {topReasons.map((r, i) => (
-                  <p key={i} className="flex items-start gap-2 text-caption text-ink-2">
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />
-                    <span>{r}</span>
-                  </p>
-                ))}
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex items-center gap-1.5 text-caption-xs text-ink-3">
-              <Shield className="size-3.5 text-accent" />
-              <span>Zero PII: no last names, email addresses, or dorm buildings are shared.</span>
-            </div>
-          </div>
-
-          {/* Mutual Consent Status */}
-          {status ? (
-            <div className="rounded-xl border border-line bg-surface-sunken p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-body-sm font-medium text-ink">Sharing status</span>
-                {status.isReady ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-caption font-semibold text-emerald-600">
-                    <Check className="size-3" strokeWidth={3} /> Active & Public
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 text-caption font-semibold text-amber-600">
-                    Awaiting {candidateFirstName}&apos;s consent
-                  </span>
-                )}
-              </div>
-
-              {!status.isReady ? (
-                <p className="text-caption text-ink-2">
-                  You have consented to share this card. For safety and privacy, the public link will only activate once {candidateFirstName} visits and also consents.
-                </p>
-              ) : (
-                <p className="text-caption text-ink-2">
-                  Both students have agreed to share this card. This link expires in 14 days or immediately upon revocation.
-                </p>
-              )}
-
-              {/* Actions when token exists */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <Button
-                  size="sm"
-                  className="bg-accent text-white hover:opacity-90"
-                  onClick={handleNativeShare}
-                  disabled={loading}
-                >
-                  <Share2 className="mr-1.5 size-3.5" />
-                  Share card
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleCopy}
-                  disabled={loading}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="mr-1.5 size-3.5 text-emerald-500" /> Copied
-                    </>
+        <div className="flex flex-col gap-5">
+          <MatchCard card={card} />
+          <div aria-live="polite">
+            {loading ? (
+              <Skeleton className="h-24 w-full rounded-xl" />
+            ) : error ? (
+              <p className="text-body-sm text-danger">{error}</p>
+            ) : status ? (
+              <div className="flex flex-col gap-3 rounded-xl bg-surface-sunken p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-body-sm font-medium text-ink">Link</span>
+                  {status.ready ? (
+                    <Badge variant="success">
+                      <Check className="size-3" strokeWidth={2.5} aria-hidden /> Live
+                    </Badge>
                   ) : (
-                    <>
-                      <Copy className="mr-1.5 size-3.5" /> Copy link
-                    </>
+                    <Badge variant="warning">Waiting for {candidateFirstName}</Badge>
                   )}
-                </Button>
-                <a
-                  href={`/m/${status.token}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-caption font-medium text-ink hover:bg-surface-sunken"
-                >
-                  <ExternalLink className="size-3.5" /> View card
-                </a>
+                </div>
+                <p className="text-caption text-ink-2">
+                  {status.ready
+                    ? `Anyone with the link can see the card until ${new Date(status.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
+                    : `It opens for others once ${candidateFirstName} turns sharing on. We sent them a notification.`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {status.ready ? (
+                    <>
+                      <Button size="sm" onClick={() => void share()}>
+                        <Share2 aria-hidden /> Share
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => void copy()}>
+                        {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? "Copied" : "Copy link"}
+                      </Button>
+                      <Button size="sm" variant="ghost" asChild>
+                        <a href={status.path} target="_blank" rel="noopener">
+                          <ExternalLink aria-hidden /> Open
+                        </a>
+                      </Button>
+                    </>
+                  ) : null}
+                  <Button size="sm" variant="danger-ghost" loading={pending} onClick={() => void revoke()}>
+                    <Link2Off aria-hidden /> Turn off
+                  </Button>
+                </div>
               </div>
-
-              <div className="border-t border-line pt-2 text-right">
-                <button
-                  type="button"
-                  onClick={handleRevoke}
-                  disabled={loading}
-                  className="inline-flex items-center gap-1 text-caption-xs font-medium text-rose-600 hover:underline"
-                >
-                  <Trash2 className="size-3" /> Revoke link immediately
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-body-sm text-ink-2">
-                Create a shareable link to show friends, roommates, or family why you and {candidateFirstName} make great roommates.
-              </p>
-              <Button
-                className="w-full bg-accent text-white hover:opacity-90"
-                onClick={handleCreateOrConsent}
-                disabled={loading}
-              >
-                <Share2 className="mr-2 size-4" />
-                {loading ? "Generating..." : "Create share card & consent"}
+            ) : (
+              <Button block loading={pending} onClick={() => void turnOn()}>
+                <Share2 aria-hidden /> Turn on sharing
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </Sheet>
     </>

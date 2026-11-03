@@ -16,12 +16,7 @@ import {
   Send,
   ShieldOff,
   X,
-  ExternalLink,
-  Check,
 } from "lucide-react";
-import { InstagramMark } from "@/components/brand/instagram-mark";
-import { LinkedinMark } from "@/components/brand/linkedin-mark";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +40,7 @@ import { PhotoCarousel, type CarouselHandle } from "./photo-carousel";
 import { IntroSheet } from "./intro-sheet";
 import { ShareMatchDialog } from "@/components/share/share-match-dialog";
 import { ProfileMediaIntro, MediaUploader } from "@/components/profile/media-intro";
+import { ProfileTrust } from "@/components/profile/profile-trust";
 import {
   Breakdown,
   HousingFacts,
@@ -295,73 +291,16 @@ export function ProfileView({
           <ProfileMediaIntro media={detail.media} isSelf={isSelf} />
         </div>
       ) : isSelf ? (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-line bg-surface p-4">
-          <div className="text-body-xs text-ink-2">
-            <p className="font-semibold text-ink">Add a 30s video or voice intro</p>
-            <p className="text-caption-xs text-ink-3">Introduce yourself to prospective roommates with audio or video.</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
+          <div className="min-w-0">
+            <p className="text-body-sm font-medium text-ink">Add a short video or voice intro</p>
+            <p className="text-caption text-ink-3">Up to 30 seconds, with a transcript. Optional.</p>
           </div>
           <MediaUploader />
         </div>
       ) : null}
 
-      {/* Verified Social Links */}
-      {detail?.socialLinks && detail.socialLinks.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2.5">
-          {detail.socialLinks.map((s) => (
-            <a
-              key={s.platform}
-              href={s.url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-caption font-medium text-ink transition-colors hover:border-ink-3"
-            >
-              {s.platform === "instagram" ? (
-                <InstagramMark className="size-3.5 text-ink" />
-              ) : (
-                <LinkedinMark className="size-3.5 text-ink" />
-              )}
-              <span>@{s.handle}</span>
-              {s.verified ? (
-                <Check className="size-3 text-accent" strokeWidth={2.5} />
-              ) : null}
-              <ExternalLink className="size-3 text-ink-3" />
-            </a>
-          ))}
-        </div>
-      ) : null}
-
-      {/* Mutual Connections & Points of Contact */}
-      {!isSelf && detail?.mutualCount ? (
-        <div className="mt-5 rounded-xl border border-line bg-surface p-4 shadow-xs">
-          <p className="text-body-sm font-semibold text-ink">
-            {detail.mutualCount} mutual {detail.mutualCount === 1 ? "connection" : "connections"}
-          </p>
-          {detail.mutualContacts && detail.mutualContacts.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {detail.mutualContacts.map((contact) => (
-                <div
-                  key={contact.userId}
-                  className="inline-flex items-center gap-2 rounded-full border border-line bg-card py-1 pr-2.5 pl-1 text-caption text-ink"
-                >
-                  <Avatar
-                    src={contact.avatarUrl}
-                    firstName={contact.firstName}
-                    lastInitial={contact.lastInitial}
-                    size={22}
-                  />
-                  <span>
-                    {contact.firstName} {contact.lastInitial}.
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-1 text-caption text-ink-3">
-              People you both know through shared groups or accepted intros.
-            </p>
-          )}
-        </div>
-      ) : null}
+      {detail ? <ProfileTrust detail={detail} isSelf={isSelf} /> : null}
 
       {!isSelf && (reasons.length > 0 || watchouts.length > 0) ? (
         <section className="mt-8" aria-labelledby={`why-${id}`}>
@@ -369,10 +308,11 @@ export function ProfileView({
             <SectionTitle>
               <span id={`why-${id}`}>Why you match</span>
             </SectionTitle>
-            {score !== null ? (
+            {score !== null && detail?.viewerFirstName ? (
               <ShareMatchDialog
                 candidateId={id}
                 candidateFirstName={firstName}
+                myFirstName={detail?.viewerFirstName ?? ""}
                 score={score}
                 reasons={reasons}
               />

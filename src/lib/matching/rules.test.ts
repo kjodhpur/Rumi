@@ -44,14 +44,14 @@ describe("Phase 1 Constraints: School Rules", () => {
 
     // Same college passes
     expect(passesSchoolRules(engineer1, engineer2, rules).allowed).toBe(true);
-    expect(hardFilterFailure(engineer1, engineer2, rules)).toBeNull();
+    expect(hardFilterFailure(engineer1, engineer2, { schoolRules: rules })).toBeNull();
 
     // Different college blocked
     const checkDiff = passesSchoolRules(engineer1, businessStudent, rules);
     expect(checkDiff.allowed).toBe(false);
     expect(checkDiff.blockingRule).toBe("same_academic_college");
 
-    const failure = hardFilterFailure(engineer1, businessStudent, rules);
+    const failure = hardFilterFailure(engineer1, businessStudent, { schoolRules: rules });
     expect(failure).toEqual({
       kind: "school_rule",
       who: "a",
@@ -103,6 +103,6 @@ describe("Phase 1 Constraints: School Rules", () => {
     const businessStudent = mockProfile({ id: "b1", academicCollege: "Business" });
 
     expect(passesSchoolRules(engineer, businessStudent, inactiveRules).allowed).toBe(true);
-    expect(hardFilterFailure(engineer, businessStudent, inactiveRules)).toBeNull();
+    expect(hardFilterFailure(engineer, businessStudent, { schoolRules: inactiveRules })).toBeNull();
   });
 });

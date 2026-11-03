@@ -3,121 +3,109 @@ import {
   buildSafeMatchShareCard,
   calculateTokenExpiry,
   containsPii,
+  deriveShareToken,
   extractFirstName,
-  generateRawShareToken,
   hashShareToken,
   isShareTokenValid,
+  isTokenShaped,
+  reasonLabels,
+  tokenMatches,
 } from "./token";
 
-describe("share token logic", () => {
-  it("generates unique 64-char hex tokens and correct hashes", () => {
-    const token1 = generateRawShareToken();
-    const token2 = generateRawShareToken();
-    expect(token1).toHaveLength(64);
-    expect(token2).toHaveLength(64);
-    expect(token1).not.toBe(token2);
+const KEY = "a".repeat(64);
+const OTHER_KEY = "b".repeat(64);
+const ID = "4f1c2a8e-1d1b-4c5e-9b8f-7e6d5c4b3a21";
 
-    const hash = hashShareToken(token1);
-    expect(hash).toHaveLength(64);
-    expect(hash).toBe(hashShareToken(token1));
+describe("derived share tokens", () => {
+  it("are stable per row and kind, and differ across kinds, rows and keys", () => {
+    const t = deriveShareToken(KEY, "match", ID);
+    expect(t).toBe(deriveShareToken(KEY, "match", ID));
+    expect(isTokenShaped(t)).toBe(true);
+    expect(t).not.toBe(deriveShareToken(KEY, "family", ID));
+    expect(t).not.toBe(deriveShareToken(KEY, "match", ID.replace("a21", "a22")));
+    expect(t).not.toBe(deriveShareToken(OTHER_KEY, "match", ID));
   });
 
-  it("calculates 14-day expiry", () => {
-    const base = new Date("2026-11-03T00:00:00Z");
-    const expiry = calculateTokenExpiry(base);
-    expect(expiry.toISOString()).toBe("2026-11-17T00:00:00.000Z");
+  it("stores only a SHA-256 of the token", () => {
+    const t = deriveShareToken(KEY, "calendar", ID);
+    const hash = hashShareToken(t);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(hash).not.toContain(t);
   });
 
-  it("requires mutual consent from both students", () => {
+  it("checks ownership in constant time and rejects junk", () => {
+    const t = deriveShareToken(KEY, "match", ID);
+    expect(tokenMatches(KEY, "match", ID, t)).toBe(true);
+    expect(tokenMatches(KEY, "match", ID, t.slice(0, -1) + (t.endsWith("A") ? "B" : "A"))).toBe(false);
+    expect(isTokenShaped("../../etc/passwd")).toBe(false);
+    expect(isTokenShaped(undefined)).toBe(false);
+  });
+
+  it("refuses a malformed key", () => {
+    expect(() => deriveShareToken("short", "match", ID)).toThrow();
+  });
+});
+
+describe("expiry and validity", () => {
+  it("expires after 14 days", () => {
+    expect(calculateTokenExpiry(new Date("2026-11-03T00:00:00Z")).toISOString()).toBe("2026-11-17T00:00:00.000Z");
+  });
+
+  it("needs both students' consent, no revocation, and an unexpired link", () => {
     const now = new Date("2026-11-03T00:00:00Z");
-    const expiresAt = new Date("2026-11-17T00:00:00Z");
-
-    // Both consented -> valid
-    expect(
-      isShareTokenValid(
-        { userAConsented: true, userBConsented: true, expiresAt, revokedAt: null },
-        now,
-      ),
-    ).toBe(true);
-
-    // Only one consented -> invalid
-    expect(
-      isShareTokenValid(
-        { userAConsented: true, userBConsented: false, expiresAt, revokedAt: null },
-        now,
-      ),
-    ).toBe(false);
-
-    expect(
-      isShareTokenValid(
-        { userAConsented: false, userBConsented: true, expiresAt, revokedAt: null },
-        now,
-      ),
-    ).toBe(false);
+    const live = { userAConsented: true, userBConsented: true, expiresAt: "2026-11-17T00:00:00Z", revokedAt: null };
+    expect(isShareTokenValid(live, now)).toBe(true);
+    expect(isShareTokenValid({ ...live, userBConsented: false }, now)).toBe(false);
+    expect(isShareTokenValid({ ...live, revokedAt: "2026-11-02T00:00:00Z" }, now)).toBe(false);
+    expect(isShareTokenValid({ ...live, expiresAt: "2026-11-02T00:00:00Z" }, now)).toBe(false);
   });
+});
 
-  it("invalidates expired tokens", () => {
-    const now = new Date("2026-11-20T00:00:00Z");
-    const expiresAt = new Date("2026-11-17T00:00:00Z");
-    expect(
-      isShareTokenValid(
-        { userAConsented: true, userBConsented: true, expiresAt, revokedAt: null },
-        now,
-      ),
-    ).toBe(false);
-  });
-
-  it("invalidates revoked tokens immediately", () => {
-    const now = new Date("2026-11-05T00:00:00Z");
-    const expiresAt = new Date("2026-11-17T00:00:00Z");
-    expect(
-      isShareTokenValid(
-        {
-          userAConsented: true,
-          userBConsented: true,
-          expiresAt,
-          revokedAt: new Date("2026-11-04T00:00:00Z"),
-        },
-        now,
-      ),
-    ).toBe(false);
-  });
-
-  it("detects emails and phone numbers in PII check", () => {
-    expect(containsPii("Reach me at alex@asu.edu")).toBe(true);
-    expect(containsPii("Call 480-965-0000 anytime")).toBe(true);
-    expect(containsPii("Both early risers who value quiet study time")).toBe(false);
-  });
-
-  it("extracts first names safely without email domains or full names", () => {
-    expect(extractFirstName("Jordan Smith")).toBe("Jordan");
-    expect(extractFirstName("alex@asu.edu")).toBe("alex");
-    expect(extractFirstName(null, "Roommate")).toBe("Roommate");
-  });
-
-  it("builds safe match share card without PII and caps at 3 clean reasons", () => {
+describe("the share card never carries PII", () => {
+  it("keeps first names only and up to three reason labels", () => {
     const card = buildSafeMatchShareCard({
-      nameA: "Taylor Swift",
-      nameB: "Sammy Student",
-      score: 94.8,
+      nameA: "Maria Gonzalez",
+      nameB: "sam@asu.edu",
+      score: 91.6,
       reasons: [
-        "Both wake up around 7:00 AM",
-        "Email me at secret@asu.edu",
-        "Both study quietly in the evenings",
-        "Shared interest in Indie music",
-        "Call 555-123-4567 for dorm tour",
-        "Prefer clean dishes before bed",
+        { key: "sleep", label: "You're both night owls" },
+        { key: "areas", label: "Call me at 480-555-1234" },
+        { key: "budget", label: "Budgets overlap by $200" },
+        { key: "noise", label: "You both like a quiet place" },
+        { key: "music", label: "You both listen to Phoebe Bridgers" },
       ],
     });
+    expect(card).toMatchInlineSnapshot(`
+      {
+        "firstNames": [
+          "Maria",
+          "sam",
+        ],
+        "initials": [
+          "M",
+          "S",
+        ],
+        "reasons": [
+          "You're both night owls",
+          "Budgets overlap by $200",
+          "You both like a quiet place",
+        ],
+        "score": 92,
+      }
+    `);
+    const text = JSON.stringify(card);
+    expect(text).not.toMatch(/Gonzalez|@|555/);
+  });
 
-    expect(card.firstNames).toEqual(["Taylor", "Sammy"]);
-    expect(card.initials).toEqual(["T", "S"]);
-    expect(card.score).toBe(95);
-    // Notice the 2 reasons with PII were stripped!
-    expect(card.reasons).toEqual([
-      "Both wake up around 7:00 AM",
-      "Both study quietly in the evenings",
-      "Shared interest in Indie music",
-    ]);
+  it("ignores anything that isn't a reason label", () => {
+    expect(reasonLabels([{ key: "x", label: "ok" }, "plain string", null, { label: 3 }])).toEqual(["ok"]);
+    expect(reasonLabels("nope")).toEqual([]);
+  });
+
+  it("detects emails and phone numbers", () => {
+    expect(containsPii("write me at a.b@example.com")).toBe(true);
+    expect(containsPii("(480) 555-1234")).toBe(true);
+    expect(containsPii("You both like a quiet place")).toBe(false);
+    expect(extractFirstName("  ", "Student")).toBe("Student");
   });
 });

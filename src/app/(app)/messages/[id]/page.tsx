@@ -9,7 +9,7 @@ import { ChatThread } from "@/components/chat/chat-thread";
 export const metadata: Metadata = { title: "Chat" };
 export const dynamic = "force-dynamic";
 
-export default async function ThreadPage({ params }: { params: { id: string } }) {
+export default async function ThreadPage({ params, searchParams }: { params: { id: string }; searchParams: { draft?: string } }) {
   if (!z.string().uuid().safeParse(params.id).success) notFound();
   const user = await getUser();
   const supabase = createClient();
@@ -18,5 +18,7 @@ export default async function ThreadPage({ params }: { params: { id: string } })
   const others = thread.members.filter((m) => m.id !== user!.id);
   // Starters fit one-to-one conversations: direct chats and two-person groups (housing pairs).
   const starters = others.length === 1 && !thread.blocked ? await loadStarters(supabase, user!.id, others[0].id) : [];
-  return <ChatThread userId={user!.id} thread={thread} starters={starters} />;
+  // A prefilled, editable draft (e.g. a mediation opener). Never sent without the student.
+  const draft = typeof searchParams.draft === "string" ? searchParams.draft.slice(0, 500) : "";
+  return <ChatThread userId={user!.id} thread={thread} starters={starters} initialDraft={draft} />;
 }

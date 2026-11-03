@@ -33,6 +33,18 @@ export function friendlyDbError(message: string | undefined): string {
     missing_areas: "Pick at least one neighborhood.",
     missing_move_in: "Pick a move-in date.",
     school_email_required: "Use your school email address.",
+    not_a_match: "You can only share a card with one of your matches.",
+    invalid_token: "That link isn't valid anymore.",
+    not_signed_in: "Please sign in again.",
+    splits_must_sum: "The split has to add up to the full amount.",
+    invalid_splits: "Check how the expense is split.",
+    too_many: "That's the limit for this room.",
+    no_request: "Ask for a room change first.",
+    no_assignment: "Tell us where you live first.",
+    track_locked: "Your housing office set your track.",
+    invalid_option: "Pick one of the listed options.",
+    invalid_dimension: "That isn't a segment we track.",
+    invalid_metric: "That isn't a metric we track.",
   };
   if (!message) return "Something went wrong. Please try again.";
   for (const [key, value] of Object.entries(map)) {

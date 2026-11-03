@@ -3,7 +3,25 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bell, Building2, CheckCheck, Heart, MessageCircle, Send, Sparkles, Users } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Bell,
+  Building2,
+  CalendarClock,
+  CheckCheck,
+  ClipboardCheck,
+  FileSignature,
+  Heart,
+  Link2,
+  ListChecks,
+  MessageCircle,
+  Send,
+  ShieldAlert,
+  Sparkles,
+  UserCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -14,19 +32,11 @@ import { markAllNotificationsRead, markNotificationRead } from "@/app/actions/no
 import { cn } from "@/lib/utils";
 import { revealDelay } from "@/lib/motion";
 import { useEntrance } from "@/hooks/use-entrance";
+import type { NotificationType } from "@/lib/notifications/types";
 
 export interface NotificationItem {
   id: string;
-  type:
-    | "intro_received"
-    | "intro_accepted"
-    | "message"
-    | "strong_match"
-    | "group_invite"
-    | "group_request"
-    | "group_joined"
-    | "housing_suggestion"
-    | "housing_nudge";
+  type: NotificationType;
   title: string;
   body: string;
   href: string | null;
@@ -35,7 +45,7 @@ export interface NotificationItem {
   actor: { firstName: string; lastInitial: string; avatarUrl: string | null } | null;
 }
 
-const TYPE_ICON = {
+const TYPE_ICON: Record<NotificationType, LucideIcon> = {
   intro_received: Send,
   intro_accepted: Heart,
   message: MessageCircle,
@@ -45,7 +55,20 @@ const TYPE_ICON = {
   group_joined: Users,
   housing_suggestion: Building2,
   housing_nudge: Building2,
-} as const;
+  deadline_nudge: CalendarClock,
+  safety_notice: ShieldAlert,
+  share_request: Link2,
+  connection_request: UserCheck,
+  connection_confirmed: UserCheck,
+  checkin_due: ClipboardCheck,
+  ra_followup: ClipboardCheck,
+  swap_proposal: ArrowLeftRight,
+  survey: ClipboardCheck,
+  carry_forward: Users,
+  chore_due: ListChecks,
+  agreement_reminder: FileSignature,
+  imported_answers: Building2,
+};
 
 export function NotificationList({ items: initial }: { items: NotificationItem[] }) {
   const entrance = useEntrance(initial.map((item) => item.id));

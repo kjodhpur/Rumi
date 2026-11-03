@@ -1,67 +1,63 @@
 import type { CheckinTag } from "./risk";
 
+/**
+ * Guided self-mediation (Phase 5). Pure: for each check-in tag, the agreement section it
+ * maps to, what that section says (if the room has one), one piece of advice and an
+ * editable opener to send the roommates.
+ */
+
 export interface MediationPrompt {
   tag: CheckinTag;
   title: string;
-  agreementSection: string;
+  /** Agreement section key (lib/agreements/template.ts). */
+  sectionKey: string;
+  /** The room's own words for that section, when there is an agreement. */
+  agreementText: string | null;
   advice: string;
   suggestedMessage: string;
 }
 
-const MEDIATION_DATA: Record<CheckinTag, { title: string; agreementSection: string; advice: string; suggestedMessage: string }> = {
+const DATA: Record<CheckinTag, Omit<MediationPrompt, "tag" | "agreementText">> = {
   noise: {
-    title: "Noise & Quiet Hours",
-    agreementSection: "Quiet Hours & Study Time",
-    advice: "Check your agreement's quiet hours section. Reconnecting around specific hours (like 11 PM weeknights) works better than general complaints.",
-    suggestedMessage: "Hey, are you free for a quick chat today about weeknight noise? Just wanted to make sure we're on the same page with quiet hours.",
+    title: "Noise",
+    sectionKey: "noise",
+    advice: "Talk about specific times (\"after 11 on weeknights\") rather than noise in general.",
+    suggestedMessage: "Hey, got a few minutes today? I'd like to check we're still on the same page about noise on weeknights.",
   },
   cleanliness: {
-    title: "Cleanliness & Chores",
-    agreementSection: "Cleanliness & Shared Items",
-    advice: "Check your agreement's chore rotation. Frame adjustments around a shared schedule (like resetting the kitchen before bed) rather than fault.",
-    suggestedMessage: "Hey! Could we spend 10 mins this evening resetting the kitchen together? Want to make sure we keep up with our chore agreement.",
+    title: "Cleaning and chores",
+    sectionKey: "cleaning",
+    advice: "Point to the rotation, not the person. Offering to reset a space together takes the edge off.",
+    suggestedMessage: "Could we spend ten minutes tonight resetting the kitchen together and look at the chore rotation again?",
   },
   guests: {
-    title: "Guest Limits & Overnight Visits",
-    agreementSection: "Guests & Overnight Policy",
-    advice: "Check your agreement's guest policy. Establishing an automatic 2-hour text heads-up helps both roommates plan their morning routines.",
-    suggestedMessage: "Hey, could we give each other a quick heads up before having friends stay over? Just helps me plan my mornings.",
+    title: "Guests and overnights",
+    sectionKey: "guests",
+    advice: "Agree on a heads-up habit, like a text a few hours before, so nobody's surprised.",
+    suggestedMessage: "Can we agree to text each other a heads-up before someone stays over? It'd help me plan my mornings.",
   },
   schedule: {
-    title: "Sleep & Daily Schedule",
-    agreementSection: "Sleep Schedule & Lighting",
-    advice: "Check your sleep schedule section. Simple changes like using a desk lamp and headphones after midnight prevent sleep disruption.",
-    suggestedMessage: "Hey, I have early 8 AM classes this term. Would you mind using headphones or desk lamp after midnight on weeknights?",
+    title: "Sleep and schedules",
+    sectionKey: "sleep",
+    advice: "Small changes help most: a desk lamp, headphones, a set lights-out time on weeknights.",
+    suggestedMessage: "I've got early classes this term. Would headphones and a lamp after midnight on weeknights work for you?",
   },
   communication: {
-    title: "Direct & Respectful Communication",
-    agreementSection: "Conflict Resolution Preference",
-    advice: "Addressing tension early in person or over coffee prevents minor misunderstandings from festering into roommate burnout.",
-    suggestedMessage: "Hey! Do you have 10 minutes to grab coffee or sit in the lounge? Wanted to check in on how our room rhythm is feeling.",
+    title: "Talking it through",
+    sectionKey: "conflict",
+    advice: "Bring it up early and in person. Ask how it's going for them before saying how it's going for you.",
+    suggestedMessage: "Do you have ten minutes to sit down this week? I'd like to check in on how the room's feeling for both of us.",
   },
   other: {
-    title: "Shared Living Expectations",
-    agreementSection: "General Roommate Expectations",
-    advice: "Revisit your signed Roommate Agreement to discuss which shared expectations need a refresher.",
-    suggestedMessage: "Hey, could we take 5 minutes to review our roommate agreement? Just want to check in on how things are going.",
+    title: "Living together",
+    sectionKey: "talk",
+    advice: "Go back to your agreement together and pick the one thing that most needs a refresh.",
+    suggestedMessage: "Could we take a few minutes to look at our roommate agreement again and see what needs updating?",
   },
 };
 
-/**
- * Pure function: generates structured mediation guidance tailored to the friction tags.
- */
-export function getGuidedMediationTips(tags: CheckinTag[]): MediationPrompt[] {
-  if (tags.length === 0) {
-    return [
-      {
-        tag: "communication",
-        ...MEDIATION_DATA.communication,
-      },
-    ];
-  }
-
-  return tags.map((tag) => ({
-    tag,
-    ...MEDIATION_DATA[tag],
-  }));
+export function getGuidedMediationTips(tags: string[], sections: Record<string, string> = {}): MediationPrompt[] {
+  const known = [...new Set(tags)].filter((t): t is CheckinTag => t in DATA);
+  const list = known.length ? known : (["communication"] as CheckinTag[]);
+  return list.map((tag) => ({ tag, ...DATA[tag], agreementText: sections[DATA[tag].sectionKey] ?? null }));
 }

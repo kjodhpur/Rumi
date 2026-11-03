@@ -1,27 +1,36 @@
 import { describe, expect, it } from "vitest";
-import {
-  calculateNextDueDate,
-  getNextAssignee,
-} from "./rotation";
+import { DEFAULT_CHORE_TEMPLATES, choresFromAgreement, firstDueDate, nextInRotation } from "./rotation";
 
-describe("chore rotation scheduler", () => {
-  it("cycles assignees in order and loops back to beginning", () => {
-    const rotation = ["user-1", "user-2", "user-3"];
-
-    expect(getNextAssignee(rotation, null)).toBe("user-1");
-    expect(getNextAssignee(rotation, "user-1")).toBe("user-2");
-    expect(getNextAssignee(rotation, "user-2")).toBe("user-3");
-    expect(getNextAssignee(rotation, "user-3")).toBe("user-1"); // wraps around
+describe("chore rotation", () => {
+  it("cycles through the rotation and wraps around", () => {
+    const rotation = ["u1", "u2", "u3"];
+    expect(nextInRotation(rotation, null)).toBe("u1");
+    expect(nextInRotation(rotation, "u1")).toBe("u2");
+    expect(nextInRotation(rotation, "u3")).toBe("u1");
+    expect(nextInRotation(rotation, "someone-who-left")).toBe("u1");
+    expect(nextInRotation([], "u1")).toBeNull();
   });
 
-  it("handles empty or missing rotation gracefully", () => {
-    expect(getNextAssignee([], "user-1")).toBeNull();
+  it("starts daily chores today and the rest on the coming Sunday", () => {
+    expect(firstDueDate("2026-11-03", "daily")).toBe("2026-11-03"); // Tuesday
+    expect(firstDueDate("2026-11-03", "weekly")).toBe("2026-11-08");
+    expect(firstDueDate("2026-11-08", "weekly")).toBe("2026-11-08");
+  });
+});
+
+describe("chores from the agreement", () => {
+  it("reads the agreement's cleaning section", () => {
+    expect(choresFromAgreement("Dishes are washed within a day. We rotate bathroom, kitchen and trash weekly.").map((c) => c.title)).toEqual([
+      "Bathroom",
+      "Kitchen and counters",
+      "Trash and recycling",
+    ]);
+    const tidy = choresFromAgreement("Shared spaces get a quick tidy every day and dishes are washed the same day. We rotate bathroom, kitchen and trash weekly.");
+    expect(tidy.find((c) => c.cadence === "daily")?.title).toBe("Quick tidy of shared spaces");
   });
 
-  it("calculates correct future due dates", () => {
-    const base = new Date("2026-11-03T12:00:00Z");
-    expect(calculateNextDueDate(base, "daily")).toBe("2026-11-04");
-    expect(calculateNextDueDate(base, "weekly")).toBe("2026-11-10");
-    expect(calculateNextDueDate(base, "biweekly")).toBe("2026-11-17");
+  it("falls back to sensible defaults", () => {
+    expect(choresFromAgreement(null)).toEqual(DEFAULT_CHORE_TEMPLATES);
+    expect(choresFromAgreement("We keep it clean.")).toEqual(DEFAULT_CHORE_TEMPLATES);
   });
 });

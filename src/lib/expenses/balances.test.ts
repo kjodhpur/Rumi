@@ -98,4 +98,38 @@ describe("expenses and balance math", () => {
     expect(balances.u1.netCents).toBe(0);
     expect(balances.u2.netCents).toBe(0);
   });
+
+  it("property: for 500 random rooms, balances sum to zero and the suggested settle-ups clear them", () => {
+    // Deterministic PRNG (mulberry32) so a failure is reproducible.
+    let seed = 0x5eed;
+    const rand = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const pick = <T,>(list: T[]) => list[Math.floor(rand() * list.length)]!;
+    for (let run = 0; run < 500; run++) {
+      const members = ["a", "b", "c", "d"].slice(0, 2 + Math.floor(rand() * 3));
+      const everyone = [...members, "left"]; // someone who has since left the room
+      const expenses: ExpenseItem[] = Array.from({ length: Math.floor(rand() * 8) }, (_, i) => {
+        const amount = 1 + Math.floor(rand() * 50_000);
+        const payer = pick(everyone);
+        return { id: `e${i}`, payerId: payer, amountCents: amount, description: "x", deletedAt: rand() < 0.1 ? "2026-11-01T00:00:00Z" : null, splits: calculateEqualSplits(amount, everyone, payer) };
+      });
+      const settlements: SettlementItem[] = Array.from({ length: Math.floor(rand() * 4) }, (_, i) => {
+        const payer = pick(everyone);
+        const receiver = pick(everyone.filter((m) => m !== payer));
+        return { id: `s${i}`, payerId: payer, receiverId: receiver, amountCents: 1 + Math.floor(rand() * 10_000) };
+      });
+      const { balances, netSum, suggestedSettlements } = computeGroupBalances(members, expenses, settlements);
+      expect(netSum).toBe(0);
+      const after = Object.fromEntries(Object.values(balances).map((b) => [b.userId, b.netCents]));
+      for (const s of suggestedSettlements) {
+        after[s.fromUserId]! += s.amountCents;
+        after[s.toUserId]! -= s.amountCents;
+      }
+      expect(Object.values(after).every((v) => v === 0)).toBe(true);
+    }
+  });
 });

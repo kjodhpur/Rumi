@@ -3,155 +3,102 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient, getUser } from "@/lib/supabase/server";
-import { fail, ok, type ActionResult } from "@/lib/action";
-import {
-  calculateTokenExpiry,
-  generateRawShareToken,
-  hashShareToken,
-} from "@/lib/share/token";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { newShareRow, shareTokenFor } from "@/lib/share/server";
+import { notifyInApp } from "@/lib/notifications/notify";
 
-const uuidSchema = z.string().uuid();
+const uuid = z.string().uuid();
 
 export interface MatchShareStatus {
-  id: string;
-  token: string;
-  userAConsented: boolean;
-  userBConsented: boolean;
-  isReady: boolean;
-  isCallerConsented: boolean;
-  isCandidateConsented: boolean;
-  revokedAt: string | null;
+  /** Path of the share page (/m/<token>), only while the link is live for this pair. */
+  path: string;
+  ready: boolean;
+  youConsented: boolean;
+  theyConsented: boolean;
   expiresAt: string;
 }
 
-export async function getMatchShareStatus(
-  candidateId: string,
-): Promise<ActionResult<{ status: MatchShareStatus | null }>> {
-  const user = await getUser();
-  if (!user) return fail("Please sign in.");
-  if (!uuidSchema.safeParse(candidateId).success) return fail("Invalid candidate ID.");
-
-  const supabase = createClient();
-  const { data, error } = await supabase
+async function liveRow(me: string, other: string) {
+  const [a, b] = me < other ? [me, other] : [other, me];
+  const { data } = await createClient()
     .from("match_share_tokens")
-    .select("*")
-    .or(
-      `and(user_a.eq.${user.id},user_b.eq.${candidateId}),and(user_a.eq.${candidateId},user_b.eq.${user.id})`,
-    )
+    .select("id, user_a, user_b, user_a_consented, user_b_consented, expires_at")
+    .eq("user_a", a)
+    .eq("user_b", b)
     .is("revoked_at", null)
     .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1)
     .maybeSingle();
-
-  if (error) return fail(error.message);
-  if (!data) return ok({ status: null });
-
-  const isUserA = data.user_a === user.id;
-  const isCallerConsented = isUserA ? data.user_a_consented : data.user_b_consented;
-  const isCandidateConsented = isUserA ? data.user_b_consented : data.user_a_consented;
-  const isReady = data.user_a_consented && data.user_b_consented;
-
-  return ok({
-    status: {
-      id: data.id,
-      token: data.token,
-      userAConsented: data.user_a_consented,
-      userBConsented: data.user_b_consented,
-      isReady,
-      isCallerConsented,
-      isCandidateConsented,
-      revokedAt: data.revoked_at,
-      expiresAt: data.expires_at,
-    },
-  });
+  return data;
 }
 
-export async function createOrConsentMatchShare(
-  candidateId: string,
-): Promise<ActionResult<{ token: string; isReady: boolean }>> {
+function toStatus(me: string, row: NonNullable<Awaited<ReturnType<typeof liveRow>>>): MatchShareStatus {
+  const youAreA = row.user_a === me;
+  const youConsented = youAreA ? row.user_a_consented : row.user_b_consented;
+  const theyConsented = youAreA ? row.user_b_consented : row.user_a_consented;
+  return {
+    path: `/m/${shareTokenFor("match", row.id)}`,
+    ready: youConsented && theyConsented,
+    youConsented,
+    theyConsented,
+    expiresAt: row.expires_at,
+  };
+}
+
+export async function getMatchShareStatus(candidateId: string): Promise<ActionResult<{ status: MatchShareStatus | null }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!uuidSchema.safeParse(candidateId).success) return fail("Invalid candidate ID.");
-  if (user.id === candidateId) return fail("Cannot share a match with yourself.");
+  if (!uuid.safeParse(candidateId).success) return fail("That match isn't available.");
+  const row = await liveRow(user.id, candidateId);
+  return ok({ status: row ? toStatus(user.id, row) : null });
+}
 
-  const supabase = createClient();
+/** Turn on my side of the card. The link works for others only once both of us have. */
+export async function consentMatchShare(candidateId: string): Promise<ActionResult<{ status: MatchShareStatus }>> {
+  const user = await getUser();
+  if (!user) return fail("Please sign in.");
+  if (!uuid.safeParse(candidateId).success || candidateId === user.id) return fail("That match isn't available.");
+  if (!(await rateLimit(`share:${user.id}`, LIMITS.shareLinksPerHour))) return fail("Too many share changes. Try again in a bit.");
 
-  // Check for active token
-  const { data: existing } = await supabase
-    .from("match_share_tokens")
-    .select("*")
-    .or(
-      `and(user_a.eq.${user.id},user_b.eq.${candidateId}),and(user_a.eq.${candidateId},user_b.eq.${user.id})`,
-    )
-    .is("revoked_at", null)
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const fresh = newShareRow("match");
+  const { data, error } = await createClient().rpc("consent_match_share", {
+    p_other: candidateId,
+    p_id: fresh.id,
+    p_token_hash: fresh.tokenHash,
+  });
+  if (error) return fail(friendlyDbError(error.message));
+  const result = data?.[0];
+  const row = await liveRow(user.id, candidateId);
+  if (!result || !row) return fail("Couldn't create the share card.");
 
-  if (existing) {
-    const isUserA = existing.user_a === user.id;
-    const updatePayload = isUserA
-      ? { user_a_consented: true }
-      : { user_b_consented: true };
-
-    const { error: updateError } = await supabase
-      .from("match_share_tokens")
-      .update(updatePayload)
-      .eq("id", existing.id);
-
-    if (updateError) return fail(updateError.message);
-
-    const isReady = isUserA
-      ? existing.user_b_consented
-      : existing.user_a_consented;
-
-    revalidatePath(`/profile/${candidateId}`);
-    return ok({ token: existing.token, isReady });
+  const status = toStatus(user.id, row);
+  if (!status.theyConsented) {
+    const { data: me } = await createAdminClient().from("profiles").select("first_name").eq("id", user.id).maybeSingle();
+    await notifyInApp([
+      {
+        userId: candidateId,
+        type: "share_request",
+        actorId: user.id,
+        entityId: row.id,
+        title: `${me?.first_name ?? "Your match"} wants to share your match card`,
+        body: "It shows only first names, your score and why you match. Nothing is shared until you turn it on too.",
+        href: status.path,
+      },
+    ]);
   }
-
-  // Create fresh token
-  const rawToken = generateRawShareToken();
-  const tokenHash = hashShareToken(rawToken);
-  const expiresAt = calculateTokenExpiry().toISOString();
-
-  const { error: insertError } = await supabase.from("match_share_tokens").insert({
-    user_a: user.id,
-    user_b: candidateId,
-    token: rawToken,
-    token_hash: tokenHash,
-    user_a_consented: true,
-    user_b_consented: false,
-    expires_at: expiresAt,
-  });
-
-  if (insertError) return fail(insertError.message);
-
   revalidatePath(`/profile/${candidateId}`);
-  return ok({ token: rawToken, isReady: false });
+  return ok({ status });
 }
 
-export async function revokeMatchShare(
-  candidateId: string,
-): Promise<ActionResult> {
+/** Either student can revoke; the link 404s on the next request. */
+export async function revokeMatchShare(candidateId: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!uuidSchema.safeParse(candidateId).success) return fail("Invalid candidate ID.");
-
-  const supabase = createClient();
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from("match_share_tokens")
-    .update({ revoked_at: now })
-    .or(
-      `and(user_a.eq.${user.id},user_b.eq.${candidateId}),and(user_a.eq.${candidateId},user_b.eq.${user.id})`,
-    )
-    .is("revoked_at", null);
-
-  if (error) return fail(error.message);
-
+  if (!uuid.safeParse(candidateId).success) return fail("That match isn't available.");
+  if (!(await rateLimit(`share:${user.id}`, LIMITS.shareLinksPerHour))) return fail("Too many share changes. Try again in a bit.");
+  const { error } = await createClient().rpc("revoke_match_share", { p_other: candidateId });
+  if (error) return fail(friendlyDbError(error.message));
   revalidatePath(`/profile/${candidateId}`);
   return ok();
 }

@@ -130,6 +130,11 @@ export function startersFor(key: FactorKey, me: StarterPrefs, them: StarterPrefs
         "Our music taste is pretty different. What are you listening to lately?",
         "Headphones in shared spaces, speakers in our rooms?",
       ];
+    case "classes":
+      return [
+        "Our class schedules look pretty different. When do your earliest classes start?",
+        "If one of us has 8am classes, how should we handle alarms and getting ready?",
+      ];
   }
 }
 

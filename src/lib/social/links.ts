@@ -1,4 +1,16 @@
+import { randomInt } from "node:crypto";
+
 export type SocialPlatform = "instagram" | "linkedin";
+
+/** Instagram: letters, digits, dot, underscore (≤30). LinkedIn vanity URLs: letters, digits, hyphen. */
+const HANDLE_PATTERN: Record<SocialPlatform, RegExp> = {
+  instagram: /^[A-Za-z0-9._]{1,30}$/,
+  linkedin: /^[A-Za-z0-9-]{3,60}$/,
+};
+
+export function isValidHandle(platform: SocialPlatform, handle: string): boolean {
+  return HANDLE_PATTERN[platform].test(handle);
+}
 
 export interface SocialLink {
   id: string;
@@ -45,14 +57,14 @@ export function buildSocialUrl(platform: SocialPlatform, handle: string): string
 }
 
 /**
- * Generates an uppercase verification code to paste in bio/headline.
+ * Generates an uppercase code to paste in a bio or headline.
  * e.g. "RUMI-7K3B"
  */
 export function generateVerificationCode(): string {
   const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // No confusing 0/O or 1/I
   let code = "";
   for (let i = 0; i < 4; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(randomInt(chars.length));
   }
   return `RUMI-${code}`;
 }

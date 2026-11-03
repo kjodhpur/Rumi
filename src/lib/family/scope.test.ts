@@ -1,94 +1,55 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildParentViewData,
-  isFamilyShareActive,
-} from "./scope";
+import { buildParentSummary, familyLinkExpiry, parseScope } from "./scope";
 
-describe("parent view scope and consent enforcement", () => {
-  const student = {
-    id: "student-1",
-    firstName: "Alex Miller",
-    avatarUrl: "https://example.com/alex.jpg",
-  };
+const base = {
+  studentFirstName: "Maria Gonzalez",
+  studentAvatarUrl: "https://example.test/maria.webp",
+  groupName: "302 crew",
+  agreementStatus: "signed",
+  scope: { include_agreement: true },
+  expiresAt: "2027-01-12T00:00:00.000Z",
+};
 
-  const roommate = {
-    id: "roommate-1",
-    firstName: "Jordan Hayes",
-    avatarUrl: "https://example.com/jordan.jpg",
-  };
-
-  it("acceptance: roommate without consent appears strictly as 'Your student's roommate' only", () => {
-    const summary = buildParentViewData({
-      student,
-      roommate,
-      roommateConsented: false, // NOT consented
-      score: 93.4,
-      reasons: ["Both wake up early", "Value quiet study hours"],
-      agreementStatus: "signed",
+describe("parent view", () => {
+  it("shows a roommate who didn't consent only as 'Your student's roommate', with no photo", () => {
+    const view = buildParentSummary({
+      ...base,
+      roommates: [{ firstName: "Sam Lee", avatarUrl: "https://example.test/sam.webp", consented: false, score: 88, reasons: [{ key: "sleep", label: "You're both night owls" }] }],
     });
-
-    expect(summary.studentFirstName).toBe("Alex");
-    expect(summary.roommateDisplayName).toBe("Your student's roommate");
-    expect(summary.roommateAvatarUrl).toBeNull(); // Photos strictly blocked without consent
-    expect(summary.score).toBe(93);
-    expect(summary.agreementStatus).toBe("signed");
+    expect(view.roommates[0]).toEqual({ name: "Your student's roommate", avatarUrl: null, score: 88, reasons: ["You're both night owls"] });
   });
 
-  it("shows roommate first name when roommate explicitly consented", () => {
-    const summary = buildParentViewData({
-      student,
-      roommate,
-      roommateConsented: true, // Consented!
-      score: 93.4,
-      reasons: ["Both wake up early"],
-      scope: { include_photos: true, include_agreement: true },
-    });
-
-    expect(summary.roommateDisplayName).toBe("Jordan");
-    expect(summary.roommateAvatarUrl).toBe("https://example.com/jordan.jpg");
+  it("shows first name and photo when the roommate consented", () => {
+    const view = buildParentSummary({ ...base, roommates: [{ firstName: "Sam Lee", avatarUrl: "https://example.test/sam.webp", consented: true, score: 91.4, reasons: [] }] });
+    expect(view.roommates[0]).toMatchObject({ name: "Sam", avatarUrl: "https://example.test/sam.webp", score: 91 });
   });
 
-  it("omits agreement status when scope disables it", () => {
-    const summary = buildParentViewData({
-      student,
-      roommate,
-      roommateConsented: true,
-      score: 90,
-      agreementStatus: "signed",
-      scope: { include_agreement: false },
+  it("never carries last names, emails or phone numbers", () => {
+    const view = buildParentSummary({
+      ...base,
+      groupName: "call 480-555-1234",
+      roommates: [{ firstName: "sam@asu.edu", avatarUrl: null, consented: true, score: 70, reasons: [{ key: "x", label: "email me a@b.co" }] }],
     });
-
-    expect(summary.agreementStatus).toBeNull();
+    const text = JSON.stringify(view);
+    expect(text).not.toMatch(/Gonzalez|@|555/);
+    expect(view.groupName).toBeNull();
   });
 
-  it("validates expiration and revocation", () => {
-    const now = new Date("2026-11-03T12:00:00Z");
+  it("hides the agreement status when the student left it out", () => {
+    expect(buildParentSummary({ ...base, scope: parseScope({ include_agreement: false }), roommates: [] }).agreementStatus).toBeNull();
+    expect(buildParentSummary({ ...base, agreementStatus: "void", roommates: [] }).agreementStatus).toBeNull();
+    expect(parseScope(null)).toEqual({ include_agreement: true });
+  });
+});
 
-    // Valid active
-    expect(
-      isFamilyShareActive(
-        { expiresAt: "2026-12-01T00:00:00Z", revokedAt: null },
-        now,
-      ),
-    ).toBe(true);
-
-    // Expired
-    expect(
-      isFamilyShareActive(
-        { expiresAt: "2026-10-01T00:00:00Z", revokedAt: null },
-        now,
-      ),
-    ).toBe(false);
-
-    // Revoked
-    expect(
-      isFamilyShareActive(
-        {
-          expiresAt: "2026-12-01T00:00:00Z",
-          revokedAt: "2026-11-02T00:00:00Z",
-        },
-        now,
-      ),
-    ).toBe(false);
+describe("family link expiry", () => {
+  const now = new Date("2026-11-03T00:00:00Z");
+  it("expires when the next term starts", () => {
+    expect(familyLinkExpiry(now, "2027-01-12").toISOString()).toBe("2027-01-12T00:00:00.000Z");
+  });
+  it("falls back to 60 days and never runs past 180", () => {
+    expect(familyLinkExpiry(now, null).toISOString()).toBe("2027-01-02T00:00:00.000Z");
+    expect(familyLinkExpiry(now, "2026-11-03").toISOString()).toBe("2027-01-02T00:00:00.000Z");
+    expect(familyLinkExpiry(now, "2028-01-01").toISOString()).toBe("2027-05-02T00:00:00.000Z");
   });
 });

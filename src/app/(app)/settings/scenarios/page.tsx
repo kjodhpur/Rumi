@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { loadActiveQuestions } from "@/lib/matching/questions";
 import { ScenarioQuestions } from "@/components/matching/scenario-questions";
+import { SettingsBack } from "@/components/settings/settings-ui";
+import { ErrorState } from "@/components/ui/error-state";
 
-export const metadata: Metadata = { title: "Roommate Scenarios" };
+export const metadata: Metadata = { title: "Roommate scenarios" };
 export const dynamic = "force-dynamic";
 
 export default async function ScenariosSettingsPage() {
@@ -13,35 +14,42 @@ export default async function ScenariosSettingsPage() {
   if (!user) redirect("/login?next=/settings/scenarios");
 
   const supabase = createClient();
-  const { data } = await supabase
-    .from("school_question_answers")
-    .select("question_id, choice_key")
-    .eq("user_id", user.id);
+  const [{ data: me }, { data: rows, error }] = await Promise.all([
+    supabase.from("profiles").select("school_id").eq("id", user.id).maybeSingle(),
+    supabase.from("school_question_answers").select("question_key, question_version, choice_key").eq("user_id", user.id),
+  ]);
+  if (!me) redirect("/onboarding");
+  const questions = await loadActiveQuestions(me.school_id);
 
-  const initialAnswers: Record<string, string> = {};
-  for (const row of data || []) {
-    initialAnswers[row.question_id] = row.choice_key;
+  // Only answers to the current version count; older ones show as "answer again".
+  const answers: Record<string, string> = {};
+  const outdated = new Set<string>();
+  for (const row of rows ?? []) {
+    const q = questions.find((x) => x.key === row.question_key);
+    if (!q) continue;
+    if (q.version === row.question_version) answers[q.key] = row.choice_key;
+    else outdated.add(q.key);
   }
 
   return (
-    <div className="mx-auto max-w-[680px] space-y-6">
-      <div className="flex items-center justify-between">
-        <Link
-          href="/settings"
-          className="inline-flex items-center gap-1 text-body-sm font-medium text-ink-2 hover:text-ink"
-        >
-          <ChevronLeft className="size-4" /> Back to settings
-        </Link>
-      </div>
-
-      <div>
-        <h1 className="font-display text-display-md text-ink">Roommate Scenarios</h1>
-        <p className="mt-1 text-body-sm text-ink-2">
-          Answer concrete situations about dishes, noise, guests, and study habits. Your answers help us find roommates who handle everyday situations the same way you do.
-        </p>
-      </div>
-
-      <ScenarioQuestions initialAnswers={initialAnswers} />
+    <div className="mx-auto flex max-w-[680px] flex-col gap-8">
+      <SettingsBack
+        title="Roommate scenarios"
+        description="Everyday situations, from dishes to overnight guests. Your answers sharpen the matching factor they speak to and can show up in “why you match”."
+      />
+      {error ? (
+        <ErrorState title="Couldn't load your answers" description="Refresh the page to try again." />
+      ) : (
+        <ScenarioQuestions
+          initialAnswers={answers}
+          questions={questions.map((q) => ({
+            key: q.key,
+            stem: q.stem,
+            outdated: outdated.has(q.key),
+            choices: q.choices.map((c) => ({ key: c.key, label: c.label })),
+          }))}
+        />
+      )}
     </div>
   );
 }

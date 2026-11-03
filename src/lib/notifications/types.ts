@@ -1,0 +1,26 @@
+/** Every in-app notification type. Mirrors notifications_type_check in the database. */
+export const NOTIFICATION_TYPES = [
+  "intro_received",
+  "intro_accepted",
+  "message",
+  "strong_match",
+  "group_invite",
+  "group_request",
+  "group_joined",
+  "housing_suggestion",
+  "housing_nudge",
+  "deadline_nudge",
+  "safety_notice",
+  "share_request",
+  "connection_request",
+  "connection_confirmed",
+  "checkin_due",
+  "ra_followup",
+  "swap_proposal",
+  "survey",
+  "carry_forward",
+  "chore_due",
+  "agreement_reminder",
+  "imported_answers",
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

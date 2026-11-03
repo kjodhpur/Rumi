@@ -142,6 +142,7 @@ export const FACTORS = [
   "pets",
   "study",
   "music",
+  "classes",
 ] as const;
 export type FactorKey = (typeof FACTORS)[number];
 
@@ -160,6 +161,7 @@ export const FACTOR_LABELS: Record<FactorKey, string> = {
   pets: "Pets",
   study: "Study habits",
   music: "Music taste",
+  classes: "Class schedule",
 };
 
 /** Importance levels for each factor. Index = stored value. */
@@ -186,6 +188,8 @@ export const DEFAULT_IMPORTANCE: Record<FactorKey, Importance> = {
   pets: 1,
   study: 1,
   music: 1,
+  // Optional and deliberately light: only counts when both students added a schedule.
+  classes: 1,
 };
 
 /** Factors shown on the priorities step (music only appears once Spotify is connected). */

@@ -8,6 +8,7 @@ export const CONSENT_KINDS = [
   "sms",
   "calendar",
   "social_verification",
+  "family_view",
 ] as const;
 export type ConsentKind = (typeof CONSENT_KINDS)[number];
 
@@ -51,10 +52,23 @@ export const CONSENT_COPY: Record<ConsentKind, ConsentCopy> = {
     shares: "People you've both confirmed you know, shown as \"mutual connections\" to students who also turned this on.",
     needsOffice: false,
   },
+  family_view: {
+    title: "Roommates' families can see my name",
+    shares: "If a roommate shares a family link, it shows your first name and photo. Without this you appear as \"Your student's roommate\".",
+    needsOffice: false,
+  },
 };
 
 /** Consents whose features exist today. Others appear here as their phases ship. */
-export const LIVE_CONSENTS: ConsentKind[] = ["share_with_housing", "checkins", "social_verification"];
+export const LIVE_CONSENTS: ConsentKind[] = [
+  "share_with_housing",
+  "checkins",
+  "research_outcomes",
+  "social_verification",
+  "family_view",
+  "sms",
+  "calendar",
+];
 
 export function consentTitle(kind: ConsentKind, office: string | null) {
   return CONSENT_COPY[kind].title.replace("{office}", office ?? "your housing office");
