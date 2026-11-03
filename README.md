@@ -315,6 +315,7 @@ Housing offices get their own workspace at `/staff`, separate from the student a
 - **Auto-pair.** Proposes roommates for sharing students still looking: as many pairs as possible, then the highest total score, never across a dealbreaker (Edmonds' blossom matching, `src/lib/matching/blossom.ts`). Staff approve and send. Each student sees the suggestion at `/suggestions/[id]`, and a two-person group with a chat forms only if both say yes.
 - **Term.** The term's dates and deadlines; the next deadline shows on the overview.
 - **StarRez export.** Approved pairings whose members all share, as a roommate-group CSV with school-configurable columns (default `EntryID, Email, GroupName, GroupLeader, GroupSize, Term`). Students can add an optional, encrypted student ID in Settings → Privacy. Cells are quoted and defused against spreadsheet formulas, and every export is audited.
+- **Check-ins.** After a student says they've moved in, pulses at week 2, 4 and 8 ask for a 1–5 score, up to two tags and an optional note. A transparent risk score flags drops, repeated low scores and roommate mismatches. RAs at `/staff/ra` see medium and high risk only when the student shared the check-in or asked for help, and only for buildings in their scope. The note stays hidden unless it was shared. Crisis language shows 988 to the student and is not copied to staff unless they shared the note.
 
 To give a school its first housing admin, sign in as a platform admin, open `/staff`, pick the school and send an invite from **Team**.
 

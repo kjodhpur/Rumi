@@ -123,6 +123,84 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"assignments": {
+                  Row: {
+                    "building": string,"closed_at": string | null,"created_at": string,"id": string,"moved_in_at": string,"room": string | null,"school_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "building": string,"closed_at"?: string | null,"created_at"?: string,"id"?: string,"moved_in_at": string,"room"?: string | null,"school_id": string,"user_id": string
+                  }
+                  Update: {
+                    "building"?: string,"closed_at"?: string | null,"created_at"?: string,"id"?: string,"moved_in_at"?: string,"room"?: string | null,"school_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "assignments_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "assignments_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"checkins": {
+                  Row: {
+                    "ask_ra": boolean,"assignment_id": string,"created_at": string,"crisis": boolean,"due_on": string,"id": string,"note": string | null,"score": number | null,"share_with_ra": boolean,"submitted_at": string | null,"tags": (string)[],"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "ask_ra"?: boolean,"assignment_id": string,"created_at"?: string,"crisis"?: boolean,"due_on": string,"id"?: string,"note"?: string | null,"score"?: number | null,"share_with_ra"?: boolean,"submitted_at"?: string | null,"tags"?: (string)[],"user_id": string
+                  }
+                  Update: {
+                    "ask_ra"?: boolean,"assignment_id"?: string,"created_at"?: string,"crisis"?: boolean,"due_on"?: string,"id"?: string,"note"?: string | null,"score"?: number | null,"share_with_ra"?: boolean,"submitted_at"?: string | null,"tags"?: (string)[],"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "checkins_assignment_id_fkey"
+      columns: ["assignment_id"]
+isOneToOne: false
+      referencedRelation: "assignments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "checkins_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"risk_events": {
+                  Row: {
+                    "assignment_id": string,"created_at": string,"id": string,"level": string,"reasons": (string)[],"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assignment_id": string,"created_at"?: string,"id"?: string,"level": string,"reasons"?: (string)[],"user_id": string
+                  }
+                  Update: {
+                    "assignment_id"?: string,"created_at"?: string,"id"?: string,"level"?: string,"reasons"?: (string)[],"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "risk_events_assignment_id_fkey"
+      columns: ["assignment_id"]
+isOneToOne: false
+      referencedRelation: "assignments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "risk_events_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"areas": {
                   Row: {
                     "description": string,"id": string,"name": string,"school_id": string,"slug": string,"sort_order": number
@@ -1153,6 +1231,11 @@ isOneToOne: true
                            },
 "staff_overview":
 { Args: { "p_school": string,"p_weeks"?: number }; Returns: Json
+                           },
+"ra_risk_list":
+{ Args: { "p_school": string }; Returns: {
+              "ask_ra": boolean,"building": string,"first_name": string,"level": string,"note": string,"reasons": (string)[],"room": string,"score": number,"submitted_at": string,"tags": (string)[],"user_id": string
+            }[]
                            },
 "staff_pairings":
 { Args: { "p_school": string }; Returns: {

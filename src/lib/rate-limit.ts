@@ -20,6 +20,7 @@ export const LIMITS = {
   staffExportsPerHour: { max: 30, window: 3600 },
   studentIdChangesPerHour: { max: 10, window: 3600 },
   agreementEditsPerHour: { max: 120, window: 3600 },
+  checkinsPerDay: { max: 10, window: 86400 },
 } as const;
 
 /**

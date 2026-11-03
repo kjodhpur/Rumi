@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Bell, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight } from "lucide-react";
+import { Bell, ClipboardCheck, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -47,6 +47,7 @@ export function SettingsIndex({
       <SettingsSection title="Preferences">
         <SettingsLinkRow href="/settings/notifications" icon={<Bell />} label="Notifications" />
         <SettingsLinkRow href="/settings/privacy" icon={<ShieldCheck />} label="Privacy & safety" />
+        <SettingsLinkRow href="/check-in" icon={<ClipboardCheck />} label="Move-in check-in" detail="Week 2, 4 and 8" />
         <SettingsLinkRow href="/settings/accounts" icon={<Link2 />} label="Connected accounts" />
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-body-sm font-medium text-ink">Appearance</span>
