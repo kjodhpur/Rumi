@@ -6,6 +6,7 @@ import {
   type ContentBlock,
 } from "@aws-sdk/client-bedrock-runtime";
 import {
+  BEDROCK_EFFORT,
   buildWhyYouMatchPrompt,
   readBedrockConfig,
   redactSecret,
@@ -16,18 +17,15 @@ import {
 
 export type { WhyYouMatchInput, WhyYouMatchResult };
 
-const TIMEOUT_MS = 8_000;
+/** Max effort thinks before the three sentences, so this waits longer than a short reply. */
+const TIMEOUT_MS = 60_000;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX = 100;
-
 /**
- * Claude Sonnet 5.5 thinks before answering unless told otherwise, and it
- * rejects thinking.type "disabled". `between_tools` is the lowest setting and
- * skips up-front thinking when the request has no tools. Effort stays at low
- * so a three-sentence blurb does not spend a long reasoning budget.
- * https://platform.claude.com/docs/en/build-with-claude/thinking
+ * Thinking tokens count toward maxTokens. Opus 5.5 cannot turn thinking off.
+ * Stay under 21,333 so non-streaming Converse is still allowed.
  */
-const THINKING_OFF = { type: "between_tools" } as const;
+const MAX_TOKENS = 16_000;
 
 let runtime: BedrockRuntimeClient | null = null;
 let runtimeKey = "";
@@ -92,9 +90,9 @@ async function converseText(
         modelId: args.modelId,
         system: [{ text: args.system }],
         messages: [{ role: "user", content: [{ text: args.user }] }],
-        inferenceConfig: { maxTokens: 320 },
-        outputConfig: { effort: "low" },
-        additionalModelRequestFields: { thinking: THINKING_OFF },
+        inferenceConfig: { maxTokens: MAX_TOKENS },
+        // Adaptive thinking stays on. Opus 5.5 rejects thinking.type "disabled".
+        outputConfig: { effort: BEDROCK_EFFORT },
       }),
       { abortSignal: abort.signal },
     );

@@ -169,7 +169,7 @@ Scores are stored per direction in `match_scores`. Saving preferences or finishi
 | `MODERATION_WEBHOOK_URL` | | Slack/Discord-style webhook for reports and auto-flags |
 | `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | | Shows "Continue with Google" |
 | `NEXT_PUBLIC_SPOTIFY_ENABLED`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI` | | Optional Spotify connection |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `BEDROCK_MODEL_ID` | | Optional. Profile "Why you match" blurb via Bedrock in us-east-1. Falls back to the usual reasons. |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `BEDROCK_MODEL_ID` | | Optional. Profile "Why you match" blurb via Bedrock in us-east-1 (default Claude Opus 5.5, effort max). Falls back to the usual reasons. |
 | `SEED_PHOTOS`, `SEED_ALLOW_REMOTE` | | Seeding options |
 | `PLAYWRIGHT_BASE_URL`, `PLAYWRIGHT_CHROMIUM_PATH`, `MAILPIT_URL` | | End-to-end test options |
 

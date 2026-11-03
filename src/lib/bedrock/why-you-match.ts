@@ -2,16 +2,21 @@
  * Prompt, parsing, and fallback for the profile "why you match" blurb.
  * No AWS client here — tests inject a converse function and never call Bedrock.
  *
- * Default model id is the US geo cross-region inference profile for Claude Sonnet 5.5.
- * us-east-1 has no in-region endpoint for that model (the model card lists the
- * in-region URL as N/A). Converse on bedrock-runtime in us-east-1 with this
- * profile id. From us-east-1, geo US routes to us-east-1, us-east-2, and us-west-2.
+ * Default model id is the US geo cross-region inference profile for Claude Opus 5.5.
+ * The bare model id is in-region only in eu-west-2. From us-east-1, Converse on
+ * bedrock-runtime uses this profile. Geo US from us-east-1 routes to us-east-1,
+ * us-east-2, and us-west-2.
  *
- * https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-5-5.html
- * (Programmatic access → Geo inference ID `us.anthropic.claude-sonnet-5-5`;
+ * https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-opus-5-5.html
+ * (Programmatic access → Geo inference ID `us.anthropic.claude-opus-5-5`;
  * Regional availability → Geo: US, source us-east-1)
+ *
+ * Opus 5.5 effort levels are low, medium, high, xhigh, and max. `max` is the highest.
  */
-export const DEFAULT_BEDROCK_MODEL_ID = "us.anthropic.claude-sonnet-5-5";
+export const DEFAULT_BEDROCK_MODEL_ID = "us.anthropic.claude-opus-5-5";
+
+/** Highest `outputConfig.effort` the Converse API accepts for Claude Opus 5.5. */
+export const BEDROCK_EFFORT = "max";
 
 export const DEFAULT_BEDROCK_REGION = "us-east-1";
 
