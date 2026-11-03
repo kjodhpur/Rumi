@@ -8,6 +8,7 @@ import { ScoreRing } from "@/components/ui/score-ring";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 import { spring } from "@/lib/motion";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { HeroOneLiners } from "./hero-one-liners";
 import { PhoneMockup } from "./phone-mockup";
 import { useHasSession } from "./session-aware";
 
@@ -50,10 +51,7 @@ export function Hero() {
             ))}
           </h1>
 
-          <p className="mt-6 max-w-[520px] text-body text-ink-2 sm:text-title sm:font-normal">
-            Answer a few questions about how you live. Rumi ranks every verified {LAUNCH_SCHOOL.shortName} student by how
-            well you&apos;d get along — a score out of 100, with the reasons why. No swiping.
-          </p>
+          <HeroOneLiners />
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild size="xl" className="group">
