@@ -55,7 +55,10 @@ export async function sendMessage(input: {
     return fail("Message didn't send. Tap to retry.");
   }
 
-  await supabase.from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", user.id);
+  await supabase
+    .from("profiles")
+    .update({ last_active_at: new Date().toISOString() })
+    .eq("id", user.id);
 
   const flags = moderateText(parsed.data.body);
   runInBackground("message-followups", async () => {
@@ -77,16 +80,23 @@ export async function sendMessage(input: {
 
 export async function markRead(conversationId: string): Promise<ActionResult> {
   const user = await getUser();
-  if (!user || !z.string().uuid().safeParse(conversationId).success) return fail("Couldn't update.");
+  if (!user || !z.string().uuid().safeParse(conversationId).success)
+    return fail("Couldn't update.");
   const supabase = createClient();
   await Promise.all([
     supabase.rpc("mark_conversation_read", { p_conversation_id: conversationId }),
-    supabase.from("profiles").update({ last_active_at: new Date().toISOString() }).eq("id", user.id),
+    supabase
+      .from("profiles")
+      .update({ last_active_at: new Date().toISOString() })
+      .eq("id", user.id),
   ]);
   return ok();
 }
 
-export async function loadOlderMessages(conversationId: string, before: string): Promise<ActionResult<{ messages: ChatMessage[]; hasMore: boolean }>> {
+export async function loadOlderMessages(
+  conversationId: string,
+  before: string,
+): Promise<ActionResult<{ messages: ChatMessage[]; hasMore: boolean }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!z.string().uuid().safeParse(conversationId).success || Number.isNaN(Date.parse(before))) {
@@ -100,5 +110,8 @@ export async function loadOlderMessages(conversationId: string, before: string):
     .order("created_at", { ascending: false })
     .limit(MESSAGE_PAGE);
   if (error) return fail("Couldn't load messages.");
-  return ok({ messages: (data ?? []).reverse().map(toChatMessage), hasMore: (data ?? []).length === MESSAGE_PAGE });
+  return ok({
+    messages: (data ?? []).reverse().map(toChatMessage),
+    hasMore: (data ?? []).length === MESSAGE_PAGE,
+  });
 }

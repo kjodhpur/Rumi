@@ -2,18 +2,41 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 
-const PUBLIC_PREFIXES = ["/login", "/auth", "/privacy", "/terms", "/offline", "/suspended", "/api/cron"];
+/**
+ * Reachable without a session. Token pages and feeds (/m, /parent, /api/calendar, /api/og)
+ * check their own signed token; /api/sms checks Twilio's signature; /s is a school's
+ * public landing page.
+ */
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/auth",
+  "/privacy",
+  "/terms",
+  "/security",
+  "/offline",
+  "/suspended",
+  "/m",
+  "/parent",
+  "/s",
+  "/api/cron",
+  "/api/calendar",
+  "/api/og",
+  "/api/sms",
+];
 
-const MARKETING = new Set(["/", "/privacy", "/terms", "/offline"]);
+const MARKETING = new Set(["/", "/privacy", "/terms", "/security", "/offline"]);
 
 function isPublic(pathname: string) {
-  return pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return (
+    pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  );
 }
 
 /** Refreshes the Supabase session cookie and guards private routes. */
 export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const { pathname, search } = request.nextUrl;
 
   // Marketing pages never need the session, so skip the auth round trip entirely.
@@ -21,7 +44,9 @@ export async function updateSession(request: NextRequest) {
 
   // Without Supabase configured, marketing pages still render; app pages can't.
   if (!url || !key) {
-    return isPublic(pathname) ? NextResponse.next() : NextResponse.redirect(new URL("/", request.url));
+    return isPublic(pathname)
+      ? NextResponse.next()
+      : NextResponse.redirect(new URL("/", request.url));
   }
 
   let response = NextResponse.next({ request });
@@ -33,7 +58,8 @@ export async function updateSession(request: NextRequest) {
       setAll(cookiesToSet) {
         for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of cookiesToSet) response.cookies.set(name, value, options);
+        for (const { name, value, options } of cookiesToSet)
+          response.cookies.set(name, value, options);
       },
     },
   });

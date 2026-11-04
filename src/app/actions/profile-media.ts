@@ -7,7 +7,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { cleanText } from "@/lib/sanitize";
-import { MAX_MEDIA_BYTES, MAX_MEDIA_DURATION_SECONDS, validateMediaUpload } from "@/lib/media/validation";
+import {
+  MAX_MEDIA_BYTES,
+  MAX_MEDIA_DURATION_SECONDS,
+  validateMediaUpload,
+} from "@/lib/media/validation";
 import { mediaDurationSeconds, sniffContainer } from "@/lib/media/duration";
 
 export interface ProfileMediaInfo {
@@ -33,13 +37,15 @@ export async function saveProfileMedia(raw: z.input<typeof saveInput>): Promise<
   if (!parsed.success) return fail("Check the clip and transcript.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!(await rateLimit(`media:${user.id}`, LIMITS.mediaUploadsPerHour))) return fail("Too many uploads. Try again later.");
+  if (!(await rateLimit(`media:${user.id}`, LIMITS.mediaUploadsPerHour)))
+    return fail("Too many uploads. Try again later.");
 
   const { path } = parsed.data;
   const transcript = cleanText(parsed.data.transcript);
   const db = createAdminClient();
   const discard = () => db.storage.from("intros-media").remove([path]);
-  if (!path.startsWith(`${user.id}/`) || path.includes("..")) return fail("That upload isn't yours.");
+  if (!path.startsWith(`${user.id}/`) || path.includes(".."))
+    return fail("That upload isn't yours.");
 
   const { data: file, error: downloadError } = await db.storage.from("intros-media").download(path);
   if (downloadError || !file) return fail("Couldn't find the upload. Try again.");
@@ -51,10 +57,17 @@ export async function saveProfileMedia(raw: z.input<typeof saveInput>): Promise<
   const container = sniffContainer(bytes);
   const seconds = mediaDurationSeconds(bytes);
   const mimeType = (file.type || (container === "mp4" ? "video/mp4" : "video/webm")).split(";")[0]!;
-  const check = validateMediaUpload({ mimeType, sizeBytes: file.size, durationSeconds: seconds ?? undefined, transcript });
+  const check = validateMediaUpload({
+    mimeType,
+    sizeBytes: file.size,
+    durationSeconds: seconds ?? undefined,
+    transcript,
+  });
   if (!container || seconds === null || !check.valid || !check.kind) {
     await discard();
-    return fail(check.error ?? `Use an MP4 or WebM clip up to ${MAX_MEDIA_DURATION_SECONDS} seconds.`);
+    return fail(
+      check.error ?? `Use an MP4 or WebM clip up to ${MAX_MEDIA_DURATION_SECONDS} seconds.`,
+    );
   }
   // A little slack for encoder rounding.
   if (seconds > MAX_MEDIA_DURATION_SECONDS + 0.5) {
@@ -62,7 +75,11 @@ export async function saveProfileMedia(raw: z.input<typeof saveInput>): Promise<
     return fail(`Clips can be up to ${MAX_MEDIA_DURATION_SECONDS} seconds.`);
   }
 
-  const { data: existing } = await db.from("profile_media").select("path, status").eq("user_id", user.id).maybeSingle();
+  const { data: existing } = await db
+    .from("profile_media")
+    .select("path, status")
+    .eq("user_id", user.id)
+    .maybeSingle();
   if (existing?.status === "removed") {
     await discard();
     return fail("A moderator removed your last intro, so you can't add a new one right now.");
@@ -84,7 +101,8 @@ export async function saveProfileMedia(raw: z.input<typeof saveInput>): Promise<
     await discard();
     return fail(friendlyDbError(error.message));
   }
-  if (existing && existing.path !== path) await db.storage.from("intros-media").remove([existing.path]);
+  if (existing && existing.path !== path)
+    await db.storage.from("intros-media").remove([existing.path]);
   revalidatePath(`/profile/${user.id}`);
   return ok();
 }
@@ -93,7 +111,11 @@ export async function deleteProfileMedia(): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
   const supabase = createClient();
-  const { data: existing } = await supabase.from("profile_media").select("path, status").eq("user_id", user.id).maybeSingle();
+  const { data: existing } = await supabase
+    .from("profile_media")
+    .select("path, status")
+    .eq("user_id", user.id)
+    .maybeSingle();
   if (!existing) return ok();
   const { error } = await supabase.from("profile_media").delete().eq("user_id", user.id);
   if (error) return fail("Couldn't remove the clip.");
@@ -102,7 +124,10 @@ export async function deleteProfileMedia(): Promise<ActionResult> {
   return ok();
 }
 
-const reportInput = z.object({ ownerId: z.string().uuid(), reason: z.enum(["inappropriate", "harassment", "spam", "not_them", "other"]) });
+const reportInput = z.object({
+  ownerId: z.string().uuid(),
+  reason: z.enum(["inappropriate", "harassment", "spam", "not_them", "other"]),
+});
 
 /** Two reports hide a clip until a moderator reviews it. */
 export async function reportProfileMedia(raw: z.input<typeof reportInput>): Promise<ActionResult> {
@@ -110,8 +135,12 @@ export async function reportProfileMedia(raw: z.input<typeof reportInput>): Prom
   if (!parsed.success) return fail("Pick a reason.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!(await rateLimit(`media-report:${user.id}`, LIMITS.mediaReportsPerDay))) return fail("You've sent a lot of reports today.");
-  const { error } = await createClient().rpc("report_profile_media", { p_owner: parsed.data.ownerId, p_reason: parsed.data.reason });
+  if (!(await rateLimit(`media-report:${user.id}`, LIMITS.mediaReportsPerDay)))
+    return fail("You've sent a lot of reports today.");
+  const { error } = await createClient().rpc("report_profile_media", {
+    p_owner: parsed.data.ownerId,
+    p_reason: parsed.data.reason,
+  });
   if (error) return fail(friendlyDbError(error.message));
   revalidatePath(`/profile/${parsed.data.ownerId}`);
   return ok();

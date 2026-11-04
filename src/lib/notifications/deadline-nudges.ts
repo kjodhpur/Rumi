@@ -3,7 +3,12 @@
  * needs it, and what it says. Dates are campus dates (yyyy-mm-dd).
  */
 
-export const DEADLINE_KEYS = ["roommateRequest", "selectionOpens", "selectionCloses", "agreementDue"] as const;
+export const DEADLINE_KEYS = [
+  "roommateRequest",
+  "selectionOpens",
+  "selectionCloses",
+  "agreementDue",
+] as const;
 export type DeadlineKey = (typeof DEADLINE_KEYS)[number];
 export const DEFAULT_OFFSETS = [7, 2, 0];
 
@@ -23,7 +28,9 @@ export interface NudgeRule {
 }
 
 export function daysUntil(deadline: string, today: string): number {
-  return Math.round((Date.parse(`${deadline}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
+  return Math.round(
+    (Date.parse(`${deadline}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000,
+  );
 }
 
 /** The offset that fires today, if any. */
@@ -50,7 +57,8 @@ export interface NudgeCopy {
   href: string;
 }
 
-const when = (offset: number) => (offset === 0 ? "today" : offset === 1 ? "tomorrow" : `in ${offset} days`);
+const when = (offset: number) =>
+  offset === 0 ? "today" : offset === 1 ? "tomorrow" : `in ${offset} days`;
 
 export function nudgeCopy(key: DeadlineKey, offset: number, office: string): NudgeCopy {
   switch (key) {
@@ -61,18 +69,40 @@ export function nudgeCopy(key: DeadlineKey, offset: number, office: string): Nud
         href: "/matches",
       };
     case "selectionOpens":
-      return { title: `Room selection opens ${when(offset)}`, body: "Pair up before it opens so you can pick a room together.", href: "/matches" };
+      return {
+        title: `Room selection opens ${when(offset)}`,
+        body: "Pair up before it opens so you can pick a room together.",
+        href: "/matches",
+      };
     case "selectionCloses":
-      return { title: `Room selection closes ${when(offset)}`, body: "Still looking for a roommate? Your best matches are waiting.", href: "/matches" };
+      return {
+        title: `Room selection closes ${when(offset)}`,
+        body: "Still looking for a roommate? Your best matches are waiting.",
+        href: "/matches",
+      };
     case "agreementDue":
-      return { title: `Your roommate agreement is due ${when(offset)}`, body: "Agree on quiet hours, guests and chores, then everyone signs.", href: "/groups" };
+      return {
+        title: `Your roommate agreement is due ${when(offset)}`,
+        body: "Agree on quiet hours, guests and chores, then everyone signs.",
+        href: "/groups",
+      };
   }
 }
 
 /** Rules for a term: the school's saved ones, with defaults for deadlines that have none. */
-export function effectiveRules(saved: NudgeRule[], deadlines: Partial<Record<DeadlineKey, string>>): NudgeRule[] {
+export function effectiveRules(
+  saved: NudgeRule[],
+  deadlines: Partial<Record<DeadlineKey, string>>,
+): NudgeRule[] {
   return DEADLINE_KEYS.filter((k) => deadlines[k]).map(
-    (k) => saved.find((r) => r.deadlineKey === k) ?? { id: null, deadlineKey: k, offsets: DEFAULT_OFFSETS, channels: ["in_app", "email"], paused: false },
+    (k) =>
+      saved.find((r) => r.deadlineKey === k) ?? {
+        id: null,
+        deadlineKey: k,
+        offsets: DEFAULT_OFFSETS,
+        channels: ["in_app", "email"],
+        paused: false,
+      },
   );
 }
 
@@ -86,14 +116,29 @@ export interface ScheduledSend {
 }
 
 /** The staff preview: every send date for the term's deadlines. */
-export function schedulePreview(rules: NudgeRule[], deadlines: Partial<Record<DeadlineKey, string>>, today: string): ScheduledSend[] {
+export function schedulePreview(
+  rules: NudgeRule[],
+  deadlines: Partial<Record<DeadlineKey, string>>,
+  today: string,
+): ScheduledSend[] {
   return rules
     .flatMap((r) =>
-      [...r.offsets].sort((a, b) => b - a).map((offset) => {
-        const deadline = deadlines[r.deadlineKey]!;
-        const date = new Date(Date.parse(`${deadline}T12:00:00Z`) - offset * 86_400_000).toISOString().slice(0, 10);
-        return { deadlineKey: r.deadlineKey, deadline, offset, date, paused: r.paused, past: date < today };
-      }),
+      [...r.offsets]
+        .sort((a, b) => b - a)
+        .map((offset) => {
+          const deadline = deadlines[r.deadlineKey]!;
+          const date = new Date(Date.parse(`${deadline}T12:00:00Z`) - offset * 86_400_000)
+            .toISOString()
+            .slice(0, 10);
+          return {
+            deadlineKey: r.deadlineKey,
+            deadline,
+            offset,
+            date,
+            paused: r.paused,
+            past: date < today,
+          };
+        }),
     )
     .sort((a, b) => a.date.localeCompare(b.date));
 }

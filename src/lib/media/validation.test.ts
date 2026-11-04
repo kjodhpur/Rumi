@@ -37,7 +37,7 @@ describe("profile media validation", () => {
     });
 
     expect(res.valid).toBe(false);
-    expect(res.error).toContain("Only MP4 and WebM");
+    expect(res.error).toContain("MP4 or WebM");
   });
 
   it("rejects files exceeding 20 MB limit", () => {

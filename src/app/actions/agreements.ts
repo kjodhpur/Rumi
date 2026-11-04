@@ -103,17 +103,15 @@ export async function startAgreement(groupId: string): Promise<ActionResult> {
     .select("id")
     .single();
   if (error || !agreement) return fail("Couldn't start the agreement.");
-  await db
-    .from("agreement_sections")
-    .insert(
-      draft.map((s, position) => ({
-        agreement_id: agreement.id,
-        key: s.key,
-        title: s.title,
-        position,
-        content: s.content,
-      })),
-    );
+  await db.from("agreement_sections").insert(
+    draft.map((s, position) => ({
+      agreement_id: agreement.id,
+      key: s.key,
+      title: s.title,
+      position,
+      content: s.content,
+    })),
+  );
   await db
     .from("agreement_events")
     .insert({ agreement_id: agreement.id, actor_id: userId, kind: "created" });
@@ -176,16 +174,14 @@ export async function editSection(raw: z.input<typeof editInput>): Promise<Actio
     })
     .eq("agreement_id", live.agreement.id)
     .eq("key", key);
-  await db
-    .from("agreement_events")
-    .insert({
-      agreement_id: live.agreement.id,
-      actor_id: userId,
-      kind: "edited",
-      section_key: key,
-      before: section.content,
-      after: content,
-    });
+  await db.from("agreement_events").insert({
+    agreement_id: live.agreement.id,
+    actor_id: userId,
+    kind: "edited",
+    section_key: key,
+    before: section.content,
+    after: content,
+  });
   await db
     .from("agreements")
     .update({ updated_at: new Date().toISOString() })
@@ -217,14 +213,12 @@ export async function acceptSection(input: {
     .update({ accepted_by: afterAccept(section.accepted_by, userId) })
     .eq("agreement_id", live.agreement.id)
     .eq("key", input.key);
-  await db
-    .from("agreement_events")
-    .insert({
-      agreement_id: live.agreement.id,
-      actor_id: userId,
-      kind: "accepted",
-      section_key: input.key,
-    });
+  await db.from("agreement_events").insert({
+    agreement_id: live.agreement.id,
+    actor_id: userId,
+    kind: "accepted",
+    section_key: input.key,
+  });
   refresh(input.groupId);
   return ok();
 }
@@ -260,15 +254,13 @@ export async function signAgreement(
   if (!signatureMatches(typedName, me?.first_name ?? ""))
     return fail("Type your full name, starting with your first name.");
 
-  await db
-    .from("agreement_signatures")
-    .upsert({
-      agreement_id: live.agreement.id,
-      user_id: userId,
-      version: live.agreement.version,
-      typed_name: typedName,
-      signed_at: new Date().toISOString(),
-    });
+  await db.from("agreement_signatures").upsert({
+    agreement_id: live.agreement.id,
+    user_id: userId,
+    version: live.agreement.version,
+    typed_name: typedName,
+    signed_at: new Date().toISOString(),
+  });
   await db
     .from("agreement_events")
     .insert({ agreement_id: live.agreement.id, actor_id: userId, kind: "signed" });
@@ -340,16 +332,14 @@ export async function acceptAllSections(
       .eq("key", s.key);
   }
   if (pending.length) {
-    await db
-      .from("agreement_events")
-      .insert(
-        pending.map((s) => ({
-          agreement_id: live.agreement.id,
-          actor_id: userId,
-          kind: "accepted",
-          section_key: s.key,
-        })),
-      );
+    await db.from("agreement_events").insert(
+      pending.map((s) => ({
+        agreement_id: live.agreement.id,
+        actor_id: userId,
+        kind: "accepted",
+        section_key: s.key,
+      })),
+    );
   }
   refresh(groupId);
   return ok({ accepted: pending.length });

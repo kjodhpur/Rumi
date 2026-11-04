@@ -17,7 +17,8 @@ function isBanned(error: { code?: string; message: string }) {
 }
 
 function safeNext(next: string | null | undefined) {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/login")) return null;
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/login"))
+    return null;
   return next;
 }
 
@@ -63,7 +64,9 @@ export async function requestCode(rawEmail: string): Promise<ActionResult<{ emai
   const supabase = createClient();
   const { data: school } = await supabase.rpc("school_for_email", { p_email: email });
   if (!school) {
-    return fail(`Rumi is for verified students — use your school email (like you@${LAUNCH_SCHOOL.domain}).`);
+    return fail(
+      `Rumi is for verified students — use your school email (like you@${LAUNCH_SCHOOL.domain}).`,
+    );
   }
 
   const [byEmail, byIp] = await Promise.all([

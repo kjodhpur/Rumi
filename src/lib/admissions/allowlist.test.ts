@@ -55,23 +55,21 @@ invalid-row
     expect(rows[1].email).toBe("sam@outlook.com");
   });
 
-  it("enforces pool separation: pre-arrival cannot match with regular students", () => {
-    const preArrivalStudent = mockProfile({ id: "p1", preArrival: true });
-    const regularStudent = mockProfile({ id: "p2", preArrival: false });
-    const preArrivalPeer = mockProfile({ id: "p3", preArrival: true });
+  it("enforces pool separation: pre-arrival students match each other and enrolled incoming students only", () => {
+    const preArrivalStudent = mockProfile({ id: "p1", preArrival: true, track: "freshman", admitTermId: "fall" });
+    const returning = mockProfile({ id: "p2", preArrival: false, track: "returning" });
+    const enrolledFreshman = mockProfile({ id: "p4", preArrival: false, track: "freshman" });
+    const preArrivalPeer = mockProfile({ id: "p3", preArrival: true, track: "freshman", admitTermId: "fall" });
+    const otherTerm = mockProfile({ id: "p5", preArrival: true, track: "freshman", admitTermId: "spring" });
 
-    // Pre-arrival vs regular is blocked by hardFilterFailure
-    expect(hardFilterFailure(preArrivalStudent, regularStudent)).toEqual({
-      kind: "pre_arrival_pool",
-      who: "a",
-    });
-    expect(hardFilterFailure(regularStudent, preArrivalStudent)).toEqual({
-      kind: "pre_arrival_pool",
-      who: "b",
-    });
+    // The enrolled side isn't an incoming student, so it is the one outside the pool.
+    expect(hardFilterFailure(preArrivalStudent, returning)).toEqual({ kind: "pre_arrival_pool", who: "b" });
+    expect(hardFilterFailure(returning, preArrivalStudent)).toEqual({ kind: "pre_arrival_pool", who: "a" });
 
-    // Two pre-arrival students can match
+    expect(hardFilterFailure(preArrivalStudent, enrolledFreshman)).toBeNull();
     expect(hardFilterFailure(preArrivalStudent, preArrivalPeer)).toBeNull();
+    // Same admit term only.
+    expect(hardFilterFailure(preArrivalStudent, otherTerm)).toEqual({ kind: "pre_arrival_pool", who: "a" });
   });
 
   it("enforces track pool separation: freshman cannot match with grad student by default", () => {

@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { newShareRow, shareTokenFor } from "@/lib/share/server";
-import { notifyInApp } from "@/lib/notifications/notify";
+import { dispatchMany } from "@/lib/notifications/dispatch";
 
 const uuid = z.string().uuid();
 
@@ -33,7 +33,10 @@ async function liveRow(me: string, other: string) {
   return data;
 }
 
-function toStatus(me: string, row: NonNullable<Awaited<ReturnType<typeof liveRow>>>): MatchShareStatus {
+function toStatus(
+  me: string,
+  row: NonNullable<Awaited<ReturnType<typeof liveRow>>>,
+): MatchShareStatus {
   const youAreA = row.user_a === me;
   const youConsented = youAreA ? row.user_a_consented : row.user_b_consented;
   const theyConsented = youAreA ? row.user_b_consented : row.user_a_consented;
@@ -46,7 +49,9 @@ function toStatus(me: string, row: NonNullable<Awaited<ReturnType<typeof liveRow
   };
 }
 
-export async function getMatchShareStatus(candidateId: string): Promise<ActionResult<{ status: MatchShareStatus | null }>> {
+export async function getMatchShareStatus(
+  candidateId: string,
+): Promise<ActionResult<{ status: MatchShareStatus | null }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
   if (!uuid.safeParse(candidateId).success) return fail("That match isn't available.");
@@ -55,11 +60,15 @@ export async function getMatchShareStatus(candidateId: string): Promise<ActionRe
 }
 
 /** Turn on my side of the card. The link works for others only once both of us have. */
-export async function consentMatchShare(candidateId: string): Promise<ActionResult<{ status: MatchShareStatus }>> {
+export async function consentMatchShare(
+  candidateId: string,
+): Promise<ActionResult<{ status: MatchShareStatus }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!uuid.safeParse(candidateId).success || candidateId === user.id) return fail("That match isn't available.");
-  if (!(await rateLimit(`share:${user.id}`, LIMITS.shareLinksPerHour))) return fail("Too many share changes. Try again in a bit.");
+  if (!uuid.safeParse(candidateId).success || candidateId === user.id)
+    return fail("That match isn't available.");
+  if (!(await rateLimit(`share:${user.id}`, LIMITS.shareLinksPerHour)))
+    return fail("Too many share changes. Try again in a bit.");
 
   const fresh = newShareRow("match");
   const { data, error } = await createClient().rpc("consent_match_share", {
@@ -74,8 +83,12 @@ export async function consentMatchShare(candidateId: string): Promise<ActionResu
 
   const status = toStatus(user.id, row);
   if (!status.theyConsented) {
-    const { data: me } = await createAdminClient().from("profiles").select("first_name").eq("id", user.id).maybeSingle();
-    await notifyInApp([
+    const { data: me } = await createAdminClient()
+      .from("profiles")
+      .select("first_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    await dispatchMany("matches", [
       {
         userId: candidateId,
         type: "share_request",
@@ -96,7 +109,8 @@ export async function revokeMatchShare(candidateId: string): Promise<ActionResul
   const user = await getUser();
   if (!user) return fail("Please sign in.");
   if (!uuid.safeParse(candidateId).success) return fail("That match isn't available.");
-  if (!(await rateLimit(`share:${user.id}`, LIMITS.shareLinksPerHour))) return fail("Too many share changes. Try again in a bit.");
+  if (!(await rateLimit(`share:${user.id}`, LIMITS.shareLinksPerHour)))
+    return fail("Too many share changes. Try again in a bit.");
   const { error } = await createClient().rpc("revoke_match_share", { p_other: candidateId });
   if (error) return fail(friendlyDbError(error.message));
   revalidatePath(`/profile/${candidateId}`);

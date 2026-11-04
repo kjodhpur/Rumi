@@ -19,53 +19,94 @@ const eventInput = z
   .object({
     groupId: uuid,
     kind: z.enum(["guest", "quiet", "away", "shared"]),
-    title: z.string().transform((v) => cleanText(v, { multiline: false })).pipe(z.string().min(1, "Add a title.").max(120)),
+    title: z
+      .string()
+      .transform((v) => cleanText(v, { multiline: false }))
+      .pipe(z.string().min(1, "Add a title.").max(120)),
     startsAt: iso,
     endsAt: iso,
     overnight: z.boolean(),
     guestCount: z.number().int().min(0).max(20),
     repeatDays: z.array(z.enum(WEEKDAYS)).max(7),
     repeatUntil: iso.nullable(),
-    notes: z.string().max(1000).transform((v) => cleanText(v)).optional(),
+    notes: z
+      .string()
+      .max(1000)
+      .transform((v) => cleanText(v))
+      .optional(),
   })
-  .refine((e) => Date.parse(e.endsAt) > Date.parse(e.startsAt), { message: "End after it starts.", path: ["endsAt"] })
-  .refine((e) => Date.parse(e.endsAt) - Date.parse(e.startsAt) <= 14 * 86_400_000, { message: "Keep events to two weeks or less.", path: ["endsAt"] })
-  .refine((e) => e.kind === "guest" || (!e.overnight && e.guestCount === 0), { message: "Only guest events have guests.", path: ["kind"] })
-  .refine((e) => !e.repeatUntil || Date.parse(e.repeatUntil) > Date.parse(e.startsAt), { message: "Repeat until a later date.", path: ["repeatUntil"] });
+  .refine((e) => Date.parse(e.endsAt) > Date.parse(e.startsAt), {
+    message: "End after it starts.",
+    path: ["endsAt"],
+  })
+  .refine((e) => Date.parse(e.endsAt) - Date.parse(e.startsAt) <= 14 * 86_400_000, {
+    message: "Keep events to two weeks or less.",
+    path: ["endsAt"],
+  })
+  .refine((e) => e.kind === "guest" || (!e.overnight && e.guestCount === 0), {
+    message: "Only guest events have guests.",
+    path: ["kind"],
+  })
+  .refine((e) => !e.repeatUntil || Date.parse(e.repeatUntil) > Date.parse(e.startsAt), {
+    message: "Repeat until a later date.",
+    path: ["repeatUntil"],
+  });
 
 export type RoomEventInput = z.input<typeof eventInput>;
 
 /** Soft checks before saving: never blocks, just tells everyone what the agreement says. */
-export async function previewRoomEvent(raw: RoomEventInput): Promise<ActionResult<{ warnings: string[] }>> {
+export async function previewRoomEvent(
+  raw: RoomEventInput,
+): Promise<ActionResult<{ warnings: string[] }>> {
   const parsed = eventInput.safeParse(raw);
   if (!parsed.success) return ok({ warnings: [] });
   const user = await getUser();
   if (!user) return fail("Please sign in.");
   const supabase = createClient();
-  const [room, events] = await Promise.all([loadRoomContext(supabase, user.id, parsed.data.groupId), loadRoomEvents(supabase, parsed.data.groupId)]);
+  const [room, events] = await Promise.all([
+    loadRoomContext(supabase, user.id, parsed.data.groupId),
+    loadRoomEvents(supabase, parsed.data.groupId),
+  ]);
   if (!room || !events) return fail("That room isn't available.");
   return ok({ warnings: warningsFor(parsed.data, events, room.overnightLimit) });
 }
 
-function warningsFor(e: z.output<typeof eventInput>, events: NonNullable<Awaited<ReturnType<typeof loadRoomEvents>>>, limit: number | null) {
-  const target = { kind: e.kind, startsAt: e.startsAt, endsAt: e.endsAt, overnight: e.overnight, rrule: null };
+function warningsFor(
+  e: z.output<typeof eventInput>,
+  events: NonNullable<Awaited<ReturnType<typeof loadRoomEvents>>>,
+  limit: number | null,
+) {
+  const target = {
+    kind: e.kind,
+    startsAt: e.startsAt,
+    endsAt: e.endsAt,
+    overnight: e.overnight,
+    rrule: null,
+  };
   const warnings: string[] = [];
   const guest = guestLimitWarning(target, events, limit, CAMPUS_TZ);
   if (guest) warnings.push(guest);
-  for (const title of quietOverlaps(target, events)) warnings.push(`It overlaps quiet hours: ${title}.`);
+  for (const title of quietOverlaps(target, events))
+    warnings.push(`It overlaps quiet hours: ${title}.`);
   return warnings;
 }
 
-export async function createRoomEvent(raw: RoomEventInput): Promise<ActionResult<{ warnings: string[] }>> {
+export async function createRoomEvent(
+  raw: RoomEventInput,
+): Promise<ActionResult<{ warnings: string[] }>> {
   const parsed = eventInput.safeParse(raw);
   if (!parsed.success) return fail(firstError(parsed.error));
   const e = parsed.data;
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!(await rateLimit(`room-calendar:${user.id}`, LIMITS.roomCalendarWritesPerHour))) return fail("Too many changes. Try again in a bit.");
+  if (!(await rateLimit(`room-calendar:${user.id}`, LIMITS.roomCalendarWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
 
   const supabase = createClient();
-  const [room, events] = await Promise.all([loadRoomContext(supabase, user.id, e.groupId), loadRoomEvents(supabase, e.groupId)]);
+  const [room, events] = await Promise.all([
+    loadRoomContext(supabase, user.id, e.groupId),
+    loadRoomEvents(supabase, e.groupId),
+  ]);
   if (!room || !events) return fail("That room isn't available.");
   if (events.length >= 500) return fail("This calendar is full. Remove some past events first.");
   const repeats = e.kind !== "guest" && e.repeatDays.length > 0;
@@ -88,10 +129,12 @@ export async function createRoomEvent(raw: RoomEventInput): Promise<ActionResult
 }
 
 export async function deleteRoomEvent(groupId: string, eventId: string): Promise<ActionResult> {
-  if (!uuid.safeParse(groupId).success || !uuid.safeParse(eventId).success) return fail("That event isn't available.");
+  if (!uuid.safeParse(groupId).success || !uuid.safeParse(eventId).success)
+    return fail("That event isn't available.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!(await rateLimit(`room-calendar:${user.id}`, LIMITS.roomCalendarWritesPerHour))) return fail("Too many changes. Try again in a bit.");
+  if (!(await rateLimit(`room-calendar:${user.id}`, LIMITS.roomCalendarWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { data, error } = await createClient()
     .from("room_events")
     .delete()
@@ -105,14 +148,24 @@ export async function deleteRoomEvent(groupId: string, eventId: string): Promise
 }
 
 /** The member's private feed URL. Created on first use; rotating replaces it. */
-export async function calendarFeed(groupId: string, rotate = false): Promise<ActionResult<{ path: string }>> {
+export async function calendarFeed(
+  groupId: string,
+  rotate = false,
+): Promise<ActionResult<{ path: string }>> {
   if (!uuid.safeParse(groupId).success) return fail("That room isn't available.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
   const supabase = createClient();
-  const { data: existing } = await supabase.from("room_calendar_tokens").select("id").eq("group_id", groupId).eq("user_id", user.id).maybeSingle();
-  if (existing && !rotate) return ok({ path: `/api/calendar/${shareTokenFor("calendar", existing.id)}` });
-  if (!(await rateLimit(`room-calendar:${user.id}`, LIMITS.roomCalendarWritesPerHour))) return fail("Too many changes. Try again in a bit.");
+  const { data: existing } = await supabase
+    .from("room_calendar_tokens")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (existing && !rotate)
+    return ok({ path: `/api/calendar/${shareTokenFor("calendar", existing.id)}` });
+  if (!(await rateLimit(`room-calendar:${user.id}`, LIMITS.roomCalendarWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (existing) await supabase.from("room_calendar_tokens").delete().eq("id", existing.id);
   const fresh = newShareRow("calendar");
   const { error } = await supabase.from("room_calendar_tokens").insert({

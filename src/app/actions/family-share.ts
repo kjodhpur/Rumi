@@ -15,7 +15,9 @@ export interface FamilyShareStatus {
   expiresAt: string;
 }
 
-export async function getFamilyShareStatus(): Promise<ActionResult<{ share: FamilyShareStatus | null }>> {
+export async function getFamilyShareStatus(): Promise<
+  ActionResult<{ share: FamilyShareStatus | null }>
+> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
   const { data, error } = await createClient()
@@ -28,20 +30,32 @@ export async function getFamilyShareStatus(): Promise<ActionResult<{ share: Fami
   if (error) return fail("Couldn't load your family link.");
   return ok({
     share: data
-      ? { id: data.id, path: `/parent/${shareTokenFor("family", data.id)}`, includeAgreement: parseScope(data.scope).include_agreement, expiresAt: data.expires_at }
+      ? {
+          id: data.id,
+          path: `/parent/${shareTokenFor("family", data.id)}`,
+          includeAgreement: parseScope(data.scope).include_agreement,
+          expiresAt: data.expires_at,
+        }
       : null,
   });
 }
 
 /** A new link replaces the old one, which stops working at once. */
-export async function createFamilyShare(input: { includeAgreement: boolean }): Promise<ActionResult<{ share: FamilyShareStatus }>> {
+export async function createFamilyShare(input: {
+  includeAgreement: boolean;
+}): Promise<ActionResult<{ share: FamilyShareStatus }>> {
   if (typeof input?.includeAgreement !== "boolean") return fail("Choose what to include.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
-  if (!(await rateLimit(`family:${user.id}`, LIMITS.familyLinksPerHour))) return fail("Too many new links. Try again in a bit.");
+  if (!(await rateLimit(`family:${user.id}`, LIMITS.familyLinksPerHour)))
+    return fail("Too many new links. Try again in a bit.");
 
   const supabase = createClient();
-  const { data: me } = await supabase.from("profiles").select("school_id, is_staff").eq("id", user.id).maybeSingle();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("school_id, is_staff")
+    .eq("id", user.id)
+    .maybeSingle();
   if (!me || me.is_staff) return fail("Only students can share a family link.");
   const today = new Date().toISOString().slice(0, 10);
   const { data: nextTerm } = await supabase
@@ -53,7 +67,11 @@ export async function createFamilyShare(input: { includeAgreement: boolean }): P
     .limit(1)
     .maybeSingle();
 
-  await supabase.from("family_shares").update({ revoked_at: new Date().toISOString() }).eq("user_id", user.id).is("revoked_at", null);
+  await supabase
+    .from("family_shares")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .is("revoked_at", null);
   const fresh = newShareRow("family");
   const expiresAt = familyLinkExpiry(new Date(), nextTerm?.starts_on ?? null).toISOString();
   const { error } = await supabase.from("family_shares").insert({
@@ -65,7 +83,14 @@ export async function createFamilyShare(input: { includeAgreement: boolean }): P
   });
   if (error) return fail("Couldn't create the link.");
   revalidatePath("/settings/privacy");
-  return ok({ share: { id: fresh.id, path: `/parent/${fresh.token}`, includeAgreement: input.includeAgreement, expiresAt } });
+  return ok({
+    share: {
+      id: fresh.id,
+      path: `/parent/${fresh.token}`,
+      includeAgreement: input.includeAgreement,
+      expiresAt,
+    },
+  });
 }
 
 export async function revokeFamilyShare(shareId: string): Promise<ActionResult> {

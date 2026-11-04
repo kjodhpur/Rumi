@@ -6,7 +6,10 @@ import { CONSENT_VERSION, isConsentKind } from "@/lib/consent";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
 
-export async function setConsent(kind: string, granted: boolean): Promise<ActionResult<{ granted: boolean }>> {
+export async function setConsent(
+  kind: string,
+  granted: boolean,
+): Promise<ActionResult<{ granted: boolean }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!isConsentKind(kind) || typeof granted !== "boolean") return fail("Unknown setting.");

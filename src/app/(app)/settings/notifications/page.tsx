@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { publicEnv, serverEnv } from "@/lib/env";
+import { loadMatrix } from "@/lib/notifications/dispatch";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 
 export const metadata: Metadata = { title: "Notification settings" };
@@ -7,23 +10,30 @@ export const dynamic = "force-dynamic";
 
 export default async function NotificationSettingsPage() {
   const user = (await getUser())!;
-  const { data } = await createClient()
-    .from("user_settings")
-    .select(
-      "email, notify_inapp_intros, notify_inapp_messages, notify_inapp_matches, notify_inapp_groups, notify_email_intros, notify_email_messages, notify_email_matches, notify_email_groups",
-    )
-    .eq("user_id", user.id)
-    .single();
-
-  const { email = user.email ?? "", ...initial } = data ?? {
-    notify_inapp_intros: true,
-    notify_inapp_messages: true,
-    notify_inapp_matches: true,
-    notify_inapp_groups: true,
-    notify_email_intros: true,
-    notify_email_messages: true,
-    notify_email_matches: true,
-    notify_email_groups: true,
-  };
-  return <NotificationSettings initial={initial} email={email} />;
+  const [matrix, { data: settings }, { data: pending }] = await Promise.all([
+    loadMatrix(user.id),
+    createClient()
+      .from("user_settings")
+      .select("email, phone_last4, phone_verified_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    createAdminClient()
+      .from("phone_verifications")
+      .select("expires_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
+  return (
+    <NotificationSettings
+      matrix={matrix}
+      email={settings?.email ?? user.email ?? ""}
+      sms={{
+        available: serverEnv.sms.enabled,
+        last4: settings?.phone_last4 ?? null,
+        verified: Boolean(settings?.phone_verified_at),
+        codeSent: Boolean(pending && Date.parse(pending.expires_at) > Date.now()),
+      }}
+      pushAvailable={publicEnv.pushEnabled}
+    />
+  );
 }

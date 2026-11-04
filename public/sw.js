@@ -1,6 +1,6 @@
 /* Rumi service worker: offline fallback + caching for immutable assets.
    Pages and data always come from the network so matches and messages stay fresh. */
-const VERSION = "rumi-v1";
+const VERSION = "rumi-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGE_CACHE = `${VERSION}-pages`;
 const OFFLINE_URL = "/offline";
@@ -70,4 +70,48 @@ self.addEventListener("fetch", (event) => {
       })(),
     );
   }
+});
+
+// Web push (Phase 7.5). The payload carries a title, a short body and a same-origin link.
+self.addEventListener("push", (event) => {
+  let data = { title: "Rumi", body: "", url: "/notifications" };
+  try {
+    data = { ...data, ...(event.data ? event.data.json() : {}) };
+  } catch {
+    // Keep the defaults for a payload we can't read.
+  }
+  let url = "/notifications";
+  try {
+    const parsed = new URL(data.url, self.location.origin);
+    if (parsed.origin === self.location.origin) url = parsed.pathname + parsed.search;
+  } catch {
+    // Fall back to the notifications page.
+  }
+  event.waitUntil(
+    self.registration.showNotification(String(data.title).slice(0, 80), {
+      body: String(data.body).slice(0, 200),
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url },
+      tag: url,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/notifications";
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of windows) {
+        if (new URL(client.url).origin === self.location.origin && "focus" in client) {
+          await client.focus();
+          if ("navigate" in client) await client.navigate(url);
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
 });

@@ -19,13 +19,21 @@ export async function toggleSave(targetId: string, save: boolean): Promise<Actio
   if (!uuid.safeParse(targetId).success) return fail("Couldn't update saved.");
   const supabase = createClient();
   const { error } = save
-    ? await supabase.from("saves").upsert({ user_id: user.id, target_id: targetId }, { onConflict: "user_id,target_id", ignoreDuplicates: true })
+    ? await supabase
+        .from("saves")
+        .upsert(
+          { user_id: user.id, target_id: targetId },
+          { onConflict: "user_id,target_id", ignoreDuplicates: true },
+        )
     : await supabase.from("saves").delete().eq("user_id", user.id).eq("target_id", targetId);
   if (error) return fail("Couldn't update saved. Try again.");
   return ok();
 }
 
-export async function sendIntro(input: { recipientId: string; message: string }): Promise<ActionResult<{ id: string }>> {
+export async function sendIntro(input: {
+  recipientId: string;
+  message: string;
+}): Promise<ActionResult<{ id: string }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   const parsed = introSchema.safeParse(input);
@@ -46,14 +54,22 @@ export async function sendIntro(input: { recipientId: string; message: string })
   runInBackground("intro-followups", async () => {
     await emailIntroReceived(data);
     if (flags.length) {
-      await fileAutoReport({ reportedId: user.id, flags, excerpt: parsed.data.message, introId: data });
+      await fileAutoReport({
+        reportedId: user.id,
+        flags,
+        excerpt: parsed.data.message,
+        introId: data,
+      });
     }
   });
   revalidatePath("/messages");
   return ok({ id: data });
 }
 
-export async function respondToIntro(introId: string, accept: boolean): Promise<ActionResult<{ conversationId: string | null }>> {
+export async function respondToIntro(
+  introId: string,
+  accept: boolean,
+): Promise<ActionResult<{ conversationId: string | null }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!uuid.safeParse(introId).success) return fail("That intro is no longer available.");
@@ -90,14 +106,19 @@ export async function blockUser(targetId: string): Promise<ActionResult> {
   const supabase = createClient();
   const { error } = await supabase
     .from("blocks")
-    .upsert({ blocker_id: user.id, blocked_id: targetId }, { onConflict: "blocker_id,blocked_id", ignoreDuplicates: true });
+    .upsert(
+      { blocker_id: user.id, blocked_id: targetId },
+      { onConflict: "blocker_id,blocked_id", ignoreDuplicates: true },
+    );
   if (error) return fail("Couldn't block. Try again.");
   // A block also quietly closes any pending intro between you.
   await createAdminClient()
     .from("intros")
     .update({ status: "withdrawn", responded_at: new Date().toISOString() })
     .eq("status", "pending")
-    .or(`and(sender_id.eq.${user.id},recipient_id.eq.${targetId}),and(sender_id.eq.${targetId},recipient_id.eq.${user.id})`);
+    .or(
+      `and(sender_id.eq.${user.id},recipient_id.eq.${targetId}),and(sender_id.eq.${targetId},recipient_id.eq.${user.id})`,
+    );
   revalidatePath("/matches");
   revalidatePath("/messages");
   return ok();
@@ -107,7 +128,11 @@ export async function unblockUser(targetId: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!uuid.safeParse(targetId).success) return fail("Couldn't unblock.");
-  const { error } = await createClient().from("blocks").delete().eq("blocker_id", user.id).eq("blocked_id", targetId);
+  const { error } = await createClient()
+    .from("blocks")
+    .delete()
+    .eq("blocker_id", user.id)
+    .eq("blocked_id", targetId);
   if (error) return fail("Couldn't unblock. Try again.");
   revalidatePath("/settings");
   return ok();
@@ -127,7 +152,11 @@ export async function reportUser(input: z.input<typeof reportSchema>): Promise<A
   // Attach the reported message itself (only if the reporter can see it).
   let excerpt: string | null = null;
   if (parsed.data.messageId) {
-    const { data } = await supabase.from("messages").select("body, sender_id").eq("id", parsed.data.messageId).maybeSingle();
+    const { data } = await supabase
+      .from("messages")
+      .select("body, sender_id")
+      .eq("id", parsed.data.messageId)
+      .maybeSingle();
     if (data?.sender_id === parsed.data.reportedId) excerpt = data.body.slice(0, 500);
   }
 

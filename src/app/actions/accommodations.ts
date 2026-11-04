@@ -44,7 +44,11 @@ const setInput = z.object({
   userId: uuid,
   key: z.string().refine(isAccommodationKey, "Pick an accommodation."),
   expiresOn: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")]).optional(),
-  note: z.string().max(1000).transform((v) => cleanText(v)).optional(),
+  note: z
+    .string()
+    .max(1000)
+    .transform((v) => cleanText(v))
+    .optional(),
   legalHold: z.boolean().default(false),
 });
 
@@ -54,32 +58,72 @@ export async function setAccommodation(raw: z.input<typeof setInput>): Promise<A
   const a = parsed.data;
   const actorId = await canManageAccommodations(a.schoolId);
   if (!actorId) return fail("Only housing admins and accommodation staff can do that.");
-  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour))) return fail("Too many changes. Try again in a bit.");
-  if (!(await consentedStudent(a.schoolId, a.userId))) return fail("This student hasn't chosen to share with your office.");
-  if (a.expiresOn && a.expiresOn < new Date().toISOString().slice(0, 10)) return fail("Pick a future end date, or leave it empty.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
+  if (!(await consentedStudent(a.schoolId, a.userId)))
+    return fail("This student hasn't chosen to share with your office.");
+  if (a.expiresOn && a.expiresOn < new Date().toISOString().slice(0, 10))
+    return fail("Pick a future end date, or leave it empty.");
 
-  const { data: type } = await createAdminClient().from("accommodation_types").select("active").eq("school_id", a.schoolId).eq("key", a.key).maybeSingle();
+  const { data: type } = await createAdminClient()
+    .from("accommodation_types")
+    .select("active")
+    .eq("school_id", a.schoolId)
+    .eq("key", a.key)
+    .maybeSingle();
   if (!type?.active) return fail("Your school doesn't use that accommodation.");
   const { error } = await createAdminClient()
     .from("accommodation_constraints")
     .upsert(
-      { school_id: a.schoolId, user_id: a.userId, constraint_key: a.key, set_by: actorId, expires_on: a.expiresOn || null, note_enc: a.note ? encrypt(a.note) : null, legal_hold: a.legalHold },
+      {
+        school_id: a.schoolId,
+        user_id: a.userId,
+        constraint_key: a.key,
+        set_by: actorId,
+        expires_on: a.expiresOn || null,
+        note_enc: a.note ? encrypt(a.note) : null,
+        legal_hold: a.legalHold,
+      },
       { onConflict: "user_id,constraint_key" },
     );
   if (error) return fail("Couldn't save the accommodation.");
-  await logAudit({ actorId, schoolId: a.schoolId, action: "accommodation_set", entity: "student", entityId: a.userId, meta: { key: a.key, expiresOn: a.expiresOn || null, legalHold: a.legalHold } });
+  await logAudit({
+    actorId,
+    schoolId: a.schoolId,
+    action: "accommodation_set",
+    entity: "student",
+    entityId: a.userId,
+    meta: { key: a.key, expiresOn: a.expiresOn || null, legalHold: a.legalHold },
+  });
   runInBackground("accommodation-recompute", () => recomputeMatchesFor(a.userId));
   revalidatePath("/staff/accommodations");
   return ok();
 }
 
-export async function removeAccommodation(school: string, userId: string, key: string): Promise<ActionResult> {
-  if (!uuid.safeParse(userId).success || !isAccommodationKey(key)) return fail("That accommodation isn't available.");
+export async function removeAccommodation(
+  school: string,
+  userId: string,
+  key: string,
+): Promise<ActionResult> {
+  if (!uuid.safeParse(userId).success || !isAccommodationKey(key))
+    return fail("That accommodation isn't available.");
   const actorId = await canManageAccommodations(school);
   if (!actorId) return fail("Only housing admins and accommodation staff can do that.");
-  const { error } = await createAdminClient().from("accommodation_constraints").delete().eq("school_id", school).eq("user_id", userId).eq("constraint_key", key);
+  const { error } = await createAdminClient()
+    .from("accommodation_constraints")
+    .delete()
+    .eq("school_id", school)
+    .eq("user_id", userId)
+    .eq("constraint_key", key);
   if (error) return fail("Couldn't remove it.");
-  await logAudit({ actorId, schoolId: school, action: "accommodation_removed", entity: "student", entityId: userId, meta: { key } });
+  await logAudit({
+    actorId,
+    schoolId: school,
+    action: "accommodation_removed",
+    entity: "student",
+    entityId: userId,
+    meta: { key },
+  });
   runInBackground("accommodation-recompute", () => recomputeMatchesFor(userId));
   revalidatePath("/staff/accommodations");
   return ok();

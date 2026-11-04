@@ -23,14 +23,20 @@ export interface PhotoRecord {
 }
 
 /** Records a photo the browser just uploaded to the user's own storage folder. */
-export async function registerPhoto(input: z.input<typeof registerSchema>): Promise<ActionResult<PhotoRecord>> {
+export async function registerPhoto(
+  input: z.input<typeof registerSchema>,
+): Promise<ActionResult<PhotoRecord>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   const parsed = registerSchema.safeParse(input);
-  if (!parsed.success || !parsed.data.path.startsWith(`${user.id}/`)) return fail("That upload didn't work.");
+  if (!parsed.success || !parsed.data.path.startsWith(`${user.id}/`))
+    return fail("That upload didn't work.");
 
   const supabase = createClient();
-  const { data: existing } = await supabase.from("photos").select("position").eq("user_id", user.id);
+  const { data: existing } = await supabase
+    .from("photos")
+    .select("position")
+    .eq("user_id", user.id);
   const taken = new Set((existing ?? []).map((p) => p.position));
   if (taken.size >= MAX_PHOTOS) return fail(`You can add up to ${MAX_PHOTOS} photos.`);
   let position = 0;
@@ -72,8 +78,13 @@ export async function removePhoto(id: string): Promise<ActionResult> {
   await supabase.storage.from("photos").remove([photo.storage_path]);
 
   // Close the gap so the first photo is always position 0.
-  const { data: rest } = await supabase.from("photos").select("id").eq("user_id", user.id).order("position");
-  if (rest && rest.length > 0) await supabase.rpc("reorder_photos", { p_ids: rest.map((p) => p.id) });
+  const { data: rest } = await supabase
+    .from("photos")
+    .select("id")
+    .eq("user_id", user.id)
+    .order("position");
+  if (rest && rest.length > 0)
+    await supabase.rpc("reorder_photos", { p_ids: rest.map((p) => p.id) });
   return ok();
 }
 

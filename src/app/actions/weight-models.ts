@@ -6,10 +6,7 @@ import { fail, ok, type ActionResult } from "@/lib/action";
 import { assertRole } from "@/lib/staff/context";
 import { logAudit } from "@/lib/staff/audit";
 
-export async function adoptWeightModel(
-  schoolId: string,
-  modelId: string,
-): Promise<ActionResult> {
+export async function adoptWeightModel(schoolId: string, modelId: string): Promise<ActionResult> {
   const actorId = await assertRole(schoolId, "configureTerm");
   if (!actorId) return fail("Unauthorized. Housing Admin role required to adopt weight models.");
 

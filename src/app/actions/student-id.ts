@@ -17,10 +17,13 @@ const studentId = z
  * Optional student ID, used only to match a Rumi pair to the student's housing application.
  * Stored encrypted; exported to housing only while the student shares their results.
  */
-export async function setStudentId(raw: string | null): Promise<ActionResult<{ last4: string | null }>> {
+export async function setStudentId(
+  raw: string | null,
+): Promise<ActionResult<{ last4: string | null }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!(await rateLimit(`student-id:${user.id}`, LIMITS.studentIdChangesPerHour))) return fail("Too many changes. Try again later.");
+  if (!(await rateLimit(`student-id:${user.id}`, LIMITS.studentIdChangesPerHour)))
+    return fail("Too many changes. Try again later.");
   let value: string | null = null;
   if (raw !== null && raw.trim() !== "") {
     const parsed = studentId.safeParse(raw);

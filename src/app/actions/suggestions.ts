@@ -13,9 +13,14 @@ export async function respondToSuggestion(
 ): Promise<ActionResult<{ state: "accepted" | "waiting" | "declined" | "invalid" }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!z.string().uuid().safeParse(proposalId).success || typeof accept !== "boolean") return fail("Unknown suggestion.");
-  if (!(await rateLimit(`suggestion:${user.id}`, LIMITS.suggestionResponsesPerHour))) return fail("Too many tries. Wait a bit.");
-  const { data, error } = await createClient().rpc("respond_housing_suggestion", { p_id: proposalId, p_accept: accept });
+  if (!z.string().uuid().safeParse(proposalId).success || typeof accept !== "boolean")
+    return fail("Unknown suggestion.");
+  if (!(await rateLimit(`suggestion:${user.id}`, LIMITS.suggestionResponsesPerHour)))
+    return fail("Too many tries. Wait a bit.");
+  const { data, error } = await createClient().rpc("respond_housing_suggestion", {
+    p_id: proposalId,
+    p_accept: accept,
+  });
   if (error) {
     if (error.message.includes("not_pending")) return fail("This suggestion was already answered.");
     return fail(friendlyDbError(error.message));

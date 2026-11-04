@@ -3,16 +3,37 @@ import { channelsFor, defaultMatrix, inQuietHours, normalizeUsPhone, smsKeyword 
 
 describe("notification channels", () => {
   it("defaults to in-app and email only", () => {
-    expect(channelsFor("deadlines", { matrix: defaultMatrix(), smsReady: true, pushReady: true, quiet: false })).toEqual(["in_app", "email"]);
+    expect(
+      channelsFor("deadlines", {
+        matrix: defaultMatrix(),
+        smsReady: true,
+        pushReady: true,
+        quiet: false,
+      }),
+    ).toEqual(["in_app", "email"]);
   });
 
   it("sends texts and push only when turned on, ready, and outside quiet hours", () => {
     const m = defaultMatrix();
     m.deadlines = { in_app: true, email: false, sms: true, push: true };
-    expect(channelsFor("deadlines", { matrix: m, smsReady: true, pushReady: true, quiet: false })).toEqual(["in_app", "sms", "push"]);
-    expect(channelsFor("deadlines", { matrix: m, smsReady: false, pushReady: true, quiet: false })).toEqual(["in_app", "push"]);
-    expect(channelsFor("deadlines", { matrix: m, smsReady: true, pushReady: true, quiet: true })).toEqual(["in_app"]);
-    expect(channelsFor("deadlines", { matrix: m, smsReady: true, pushReady: true, quiet: true, urgent: true })).toEqual(["in_app", "sms", "push"]);
+    expect(
+      channelsFor("deadlines", { matrix: m, smsReady: true, pushReady: true, quiet: false }),
+    ).toEqual(["in_app", "sms", "push"]);
+    expect(
+      channelsFor("deadlines", { matrix: m, smsReady: false, pushReady: true, quiet: false }),
+    ).toEqual(["in_app", "push"]);
+    expect(
+      channelsFor("deadlines", { matrix: m, smsReady: true, pushReady: true, quiet: true }),
+    ).toEqual(["in_app"]);
+    expect(
+      channelsFor("deadlines", {
+        matrix: m,
+        smsReady: true,
+        pushReady: true,
+        quiet: true,
+        urgent: true,
+      }),
+    ).toEqual(["in_app", "sms", "push"]);
   });
 
   it("knows campus quiet hours (9pm–8am)", () => {

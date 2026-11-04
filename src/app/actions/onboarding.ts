@@ -46,7 +46,10 @@ const prefFields = {
   budgetMin: z.number().int().min(200).max(5000),
   budgetMax: z.number().int().min(200).max(6000),
   areas: z.array(z.string().regex(/^[a-z0-9-]{2,48}$/)).max(12),
-  moveInDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  moveInDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .nullable(),
   leaseLength: oneOf(LEASE_LENGTHS),
   housingType: oneOf(HOUSING_TYPES),
   genderPref: z.array(oneOf(ROOMMATE_GENDERS)).max(4),
@@ -59,10 +62,15 @@ const prefFields = {
   pets: oneOf(PETS),
   study: oneOf(STUDY),
   dealbreakers: z.array(oneOf(DEALBREAKERS)).max(DEALBREAKERS.length),
-  weights: z.record(z.enum(FACTORS), z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)])),
+  weights: z.record(
+    z.enum(FACTORS),
+    z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+  ),
 } as const;
 
-export type ProfilePatch = { [K in keyof typeof profileFields]?: z.input<(typeof profileFields)[K]> };
+export type ProfilePatch = {
+  [K in keyof typeof profileFields]?: z.input<(typeof profileFields)[K]>;
+};
 export type PrefsPatch = { [K in keyof typeof prefFields]?: z.input<(typeof prefFields)[K]> };
 
 const PROFILE_COLUMNS = {
@@ -95,7 +103,10 @@ const PREF_COLUMNS = {
   weights: "weights",
 } as const;
 
-function pick<S extends Record<string, z.ZodTypeAny>>(schemas: S, input: Record<string, unknown> | undefined) {
+function pick<S extends Record<string, z.ZodTypeAny>>(
+  schemas: S,
+  input: Record<string, unknown> | undefined,
+) {
   const out: Record<string, unknown> = {};
   if (!input) return out;
   for (const [key, value] of Object.entries(input)) {
@@ -148,7 +159,12 @@ export async function saveProfileAndPrefs(input: {
     writes.push(supabase.from("profiles").update(profileUpdate).eq("id", user.id));
   }
   if (typeof profile.lastName === "string") {
-    writes.push(supabase.from("user_settings").update({ last_name: profile.lastName as string }).eq("user_id", user.id));
+    writes.push(
+      supabase
+        .from("user_settings")
+        .update({ last_name: profile.lastName as string })
+        .eq("user_id", user.id),
+    );
   }
   if (Object.keys(prefsUpdate).length > 0) {
     writes.push(supabase.from("preferences").update(prefsUpdate).eq("user_id", user.id));
@@ -163,7 +179,10 @@ export async function saveProfileAndPrefs(input: {
 }
 
 /** Settings edits: save, then refresh everyone's scores with this person in the background. */
-export async function savePreferences(input: { profile?: ProfilePatch; prefs?: PrefsPatch }): Promise<ActionResult> {
+export async function savePreferences(input: {
+  profile?: ProfilePatch;
+  prefs?: PrefsPatch;
+}): Promise<ActionResult> {
   const result = await saveProfileAndPrefs(input);
   if (!result.ok) return result;
   const user = await getUser();

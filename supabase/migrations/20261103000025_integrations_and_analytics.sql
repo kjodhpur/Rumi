@@ -92,10 +92,13 @@ create index push_subscriptions_user_idx on public.push_subscriptions (user_id);
 alter table public.user_settings
   add column if not exists phone_enc text check (phone_enc is null or char_length(phone_enc) <= 512),
   add column if not exists phone_last4 text check (phone_last4 is null or phone_last4 ~ '^[0-9]{4}$'),
+  -- Keyed hash of the E.164 number, so an inbound STOP finds the account without decrypting every row.
+  add column if not exists phone_hash text check (phone_hash is null or phone_hash ~ '^[0-9a-f]{64}$'),
   add column if not exists phone_verified_at timestamptz,
   add column if not exists locale text not null default 'en' check (locale in ('en', 'es', 'zh', 'hi'));
 
 grant update (locale) on public.user_settings to authenticated;
+create index if not exists user_settings_phone_hash_idx on public.user_settings (phone_hash) where phone_hash is not null;
 
 -- Outbound texts and inbound STOP/HELP. Service role only; bodies never include message text.
 create table public.sms_messages (

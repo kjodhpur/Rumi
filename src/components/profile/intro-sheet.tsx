@@ -6,6 +6,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { sendIntro } from "@/app/actions/social";
+import { offerPush } from "@/lib/push/client";
 
 export function IntroSheet({
   open,
@@ -58,6 +59,7 @@ export function IntroSheet({
       onSent();
       setMessage("");
       toast.success(`Intro sent to ${firstName}`, { description: "You'll be notified if they accept." });
+      window.setTimeout(() => offerPush(`Want to know when ${firstName} answers?`), 2500);
     }, 700);
   }
 

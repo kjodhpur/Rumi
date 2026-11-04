@@ -10,7 +10,8 @@ import { fail, ok, type ActionResult } from "@/lib/action";
 export async function resyncSpotify(): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!(await rateLimit(`spotify-sync:${user.id}`, { max: 5, window: 3600 }))) return fail("Try again in a little while.");
+  if (!(await rateLimit(`spotify-sync:${user.id}`, { max: 5, window: 3600 })))
+    return fail("Try again in a little while.");
   try {
     const synced = await syncTaste(user.id);
     if (!synced) return fail("Reconnect Spotify to refresh your music.");

@@ -9,27 +9,6 @@ import { recomputeMatchesFor } from "@/lib/matching/recompute";
 import { runInBackground } from "@/lib/background";
 import { fail, ok, type ActionResult } from "@/lib/action";
 
-const notificationSchema = z.object({
-  notify_inapp_intros: z.boolean(),
-  notify_inapp_messages: z.boolean(),
-  notify_inapp_matches: z.boolean(),
-  notify_inapp_groups: z.boolean(),
-  notify_email_intros: z.boolean(),
-  notify_email_messages: z.boolean(),
-  notify_email_matches: z.boolean(),
-  notify_email_groups: z.boolean(),
-}).partial();
-
-export async function updateNotificationSettings(input: z.input<typeof notificationSchema>): Promise<ActionResult> {
-  const user = await getUser();
-  if (!user) return fail("Please sign in again.");
-  const parsed = notificationSchema.safeParse(input);
-  if (!parsed.success || Object.keys(parsed.data).length === 0) return fail("Couldn't save.");
-  const { error } = await createClient().from("user_settings").update(parsed.data).eq("user_id", user.id);
-  if (error) return fail("Couldn't save. Try again.");
-  return ok();
-}
-
 const privacySchema = z.object({ is_hidden: z.boolean(), verified_only: z.boolean() }).partial();
 
 export async function updatePrivacy(input: z.input<typeof privacySchema>): Promise<ActionResult> {
@@ -71,12 +50,13 @@ export async function refreshMatches(): Promise<ActionResult<{ matches: number }
 export async function deleteAccount(confirmation: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (confirmation.trim().toUpperCase() !== "DELETE") return fail('Type DELETE to confirm.');
+  if (confirmation.trim().toUpperCase() !== "DELETE") return fail("Type DELETE to confirm.");
 
   const admin = createAdminClient();
   try {
     const { data: files } = await admin.storage.from("photos").list(user.id, { limit: 100 });
-    if (files?.length) await admin.storage.from("photos").remove(files.map((f) => `${user.id}/${f.name}`));
+    if (files?.length)
+      await admin.storage.from("photos").remove(files.map((f) => `${user.id}/${f.name}`));
 
     const { data: memberships } = await admin
       .from("conversation_members")
@@ -88,7 +68,11 @@ export async function deleteAccount(confirmation: string): Promise<ActionResult>
     if (direct.length) await admin.from("conversations").delete().in("id", direct);
 
     // Hand off any group they own before the cascade removes them.
-    const { data: group } = await admin.from("group_members").select("group_id").eq("user_id", user.id).maybeSingle();
+    const { data: group } = await admin
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
     if (group) {
       const { data: next } = await admin
         .from("group_members")
@@ -99,8 +83,15 @@ export async function deleteAccount(confirmation: string): Promise<ActionResult>
         .limit(1)
         .maybeSingle();
       if (next) {
-        await admin.from("groups").update({ owner_id: next.user_id, status: "open" }).eq("id", group.group_id);
-        await admin.from("group_members").update({ role: "owner" }).eq("group_id", group.group_id).eq("user_id", next.user_id);
+        await admin
+          .from("groups")
+          .update({ owner_id: next.user_id, status: "open" })
+          .eq("id", group.group_id);
+        await admin
+          .from("group_members")
+          .update({ role: "owner" })
+          .eq("group_id", group.group_id)
+          .eq("user_id", next.user_id);
       } else {
         await admin.from("groups").delete().eq("id", group.group_id);
       }

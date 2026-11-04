@@ -1,6 +1,7 @@
 import "server-only";
 import { runRetention } from "@/lib/retention/run";
 import { sendSurveyInvites } from "@/lib/retention/survey-invites";
+import { runLivingReminders } from "@/lib/checkins/reminders";
 
 /**
  * Jobs that ride along with the nightly recompute cron. Vercel plans cap the number
@@ -10,6 +11,7 @@ import { sendSurveyInvites } from "@/lib/retention/survey-invites";
 const JOBS: { name: string; run: () => Promise<unknown> }[] = [
   { name: "retention", run: () => runRetention() },
   { name: "survey-invites", run: () => sendSurveyInvites() },
+  { name: "living-reminders", run: () => runLivingReminders() },
 ];
 
 export async function runNightlyJobs() {

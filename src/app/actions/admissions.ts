@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { fail, ok, type ActionResult } from "@/lib/action";
-import { parseAllowlistCsv, isEmailAllowlisted, hashPersonalEmail } from "@/lib/admissions/allowlist";
+import {
+  parseAllowlistCsv,
+  isEmailAllowlisted,
+  hashPersonalEmail,
+} from "@/lib/admissions/allowlist";
 import { logAudit } from "@/lib/staff/audit";
 import { assertRole } from "@/lib/staff/context";
 
@@ -89,10 +93,7 @@ export async function setStudentTrack(
   if (!user) return fail("Please sign in.");
 
   const supabase = createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ track })
-    .eq("id", user.id);
+  const { error } = await supabase.from("profiles").update({ track }).eq("id", user.id);
 
   if (error) return fail(error.message);
 

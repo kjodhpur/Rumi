@@ -16,7 +16,10 @@ const note = z
   .optional()
   .transform((v) => (v ? cleanText(v).slice(0, 300) : undefined));
 
-export async function createGroup(input: { name: string; targetSize: number }): Promise<ActionResult<{ id: string }>> {
+export async function createGroup(input: {
+  name: string;
+  targetSize: number;
+}): Promise<ActionResult<{ id: string }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   const parsed = groupSchema.safeParse(input);
@@ -30,10 +33,15 @@ export async function createGroup(input: { name: string; targetSize: number }): 
   return ok({ id: data });
 }
 
-export async function inviteToGroup(input: { groupId: string; userId: string; message?: string }): Promise<ActionResult> {
+export async function inviteToGroup(input: {
+  groupId: string;
+  userId: string;
+  message?: string;
+}): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
-  if (!uuid.safeParse(input.groupId).success || !uuid.safeParse(input.userId).success) return fail("Couldn't send invite.");
+  if (!uuid.safeParse(input.groupId).success || !uuid.safeParse(input.userId).success)
+    return fail("Couldn't send invite.");
   if (!(await rateLimit(`group-invite:${user.id}`, LIMITS.groupInvitesPerDay))) {
     return fail("You've sent a lot of invites today. Try again tomorrow.");
   }
@@ -48,7 +56,10 @@ export async function inviteToGroup(input: { groupId: string; userId: string; me
   return ok();
 }
 
-export async function requestToJoin(input: { groupId: string; message?: string }): Promise<ActionResult> {
+export async function requestToJoin(input: {
+  groupId: string;
+  message?: string;
+}): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!uuid.safeParse(input.groupId).success) return fail("Couldn't send request.");
@@ -64,7 +75,10 @@ export async function requestToJoin(input: { groupId: string; message?: string }
   return ok();
 }
 
-export async function respondToGroupRequest(requestId: string, accept: boolean): Promise<ActionResult<{ groupId: string }>> {
+export async function respondToGroupRequest(
+  requestId: string,
+  accept: boolean,
+): Promise<ActionResult<{ groupId: string }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   if (!uuid.safeParse(requestId).success) return fail("That request is no longer available.");

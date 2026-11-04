@@ -116,18 +116,16 @@ export async function saveSchoolRules(raw: z.input<typeof rulesInput>): Promise<
   if (!actorId || actorId === "limited") return deny(actorId);
   const db = createAdminClient();
   for (const r of parsed.data.rules) {
-    const { error } = await db
-      .from("school_rules")
-      .upsert(
-        {
-          school_id: parsed.data.schoolId,
-          rule_type: r.type,
-          active: r.active,
-          updated_by: actorId,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "school_id,rule_type" },
-      );
+    const { error } = await db.from("school_rules").upsert(
+      {
+        school_id: parsed.data.schoolId,
+        rule_type: r.type,
+        active: r.active,
+        updated_by: actorId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "school_id,rule_type" },
+    );
     if (error) return fail("Couldn't save the rules.");
   }
   await db
@@ -405,18 +403,16 @@ export async function startNextTerm(raw: z.input<typeof nextTermInput>): Promise
   if (current && parsed.data.startsOn <= current.ends_on)
     return fail("The new term has to start after the current one ends.");
   if (current) await db.from("terms").update({ active: false }).eq("id", current.id);
-  const { error } = await db
-    .from("terms")
-    .insert({
-      school_id: parsed.data.schoolId,
-      name: parsed.data.name,
-      starts_on: parsed.data.startsOn,
-      ends_on: parsed.data.endsOn,
-      deadlines: {},
-      config: current?.config ?? {},
-      active: true,
-      created_by: actorId,
-    });
+  const { error } = await db.from("terms").insert({
+    school_id: parsed.data.schoolId,
+    name: parsed.data.name,
+    starts_on: parsed.data.startsOn,
+    ends_on: parsed.data.endsOn,
+    deadlines: {},
+    config: current?.config ?? {},
+    active: true,
+    created_by: actorId,
+  });
   if (error) {
     if (current) await db.from("terms").update({ active: true }).eq("id", current.id);
     return fail("Couldn't start the new term.");

@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { requestToJoin } from "@/app/actions/groups";
+import { offerPush } from "@/lib/push/client";
 
 export interface GroupSuggestion {
   id: string;
@@ -58,6 +59,7 @@ function GroupCard({ group }: { group: GroupSuggestion }) {
       setSuccess(false);
     }, 900);
     toast.success(`Request sent to ${group.name}`, { description: "Anyone in the group can accept." });
+    window.setTimeout(() => offerPush(`Want to know when ${group.name} answers?`), 2500);
   }
 
   const open = group.targetSize - group.memberCount;
