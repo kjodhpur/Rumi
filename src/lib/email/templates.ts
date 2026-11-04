@@ -1,7 +1,10 @@
 import { absoluteUrl } from "@/lib/utils";
 
 function escape(text: string) {
-  return text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return text.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 }
 
 interface LayoutInput {
@@ -60,7 +63,12 @@ export function introAcceptedEmail(recipientName: string, conversationId: string
   };
 }
 
-export function newMessageEmail(senderName: string, preview: string, conversationId: string, groupName?: string | null) {
+export function newMessageEmail(
+  senderName: string,
+  preview: string,
+  conversationId: string,
+  groupName?: string | null,
+) {
   return {
     subject: groupName ? `New message in ${groupName}` : `New message from ${senderName}`,
     ...layout({
@@ -85,21 +93,34 @@ export function groupInviteEmail(inviterName: string, groupName: string) {
   };
 }
 
-export function strongMatchDigestEmail(firstName: string, matches: { name: string; score: number; id: string }[]) {
+export function strongMatchDigestEmail(
+  firstName: string,
+  matches: { name: string; score: number; id: string }[],
+) {
   const top = matches.slice(0, 3);
   const list = top.map((m) => `${m.name} (${m.score}%)`).join(", ");
   return {
-    subject: matches.length === 1 ? `New ${top[0].score}% match on Rumi` : `${matches.length} strong new matches on Rumi`,
+    subject:
+      matches.length === 1
+        ? `New ${top[0].score}% match on Rumi`
+        : `${matches.length} strong new matches on Rumi`,
     ...layout({
       preheader: list,
-      heading: firstName ? `${firstName}, you have new strong matches` : "You have new strong matches",
+      heading: firstName
+        ? `${firstName}, you have new strong matches`
+        : "You have new strong matches",
       body: `People who fit how you live just joined or updated their profile: ${list}.`,
       cta: { label: "See your matches", href: "/matches" },
     }),
   };
 }
 
-export function staffInviteEmail(inviterName: string, schoolName: string, roleLabel: string, token: string) {
+export function staffInviteEmail(
+  inviterName: string,
+  schoolName: string,
+  roleLabel: string,
+  token: string,
+) {
   return {
     subject: `${inviterName} invited you to Rumi for ${schoolName}`,
     ...layout({
@@ -107,7 +128,8 @@ export function staffInviteEmail(inviterName: string, schoolName: string, roleLa
       heading: `Join ${schoolName} on Rumi`,
       body: `${inviterName} invited you as ${roleLabel}. Sign in with this email address to accept. The link works for 7 days.`,
       cta: { label: "Accept invite", href: `/invite/${token}` },
-      footer: "You're getting this because someone at your school invited this address. Ignore it if you weren't expecting it.",
+      footer:
+        "You're getting this because someone at your school invited this address. Ignore it if you weren't expecting it.",
     }),
   };
 }
@@ -125,13 +147,20 @@ export function inactivityWarningEmail(daysLeft: number) {
   };
 }
 
-export function housingSuggestionEmail(office: string, proposalId: string) {
+export function housingSuggestionEmail(office: string, proposalId: string, size = 2) {
+  const group = size > 2;
   return {
-    subject: `${office} suggested a roommate for you`,
+    subject: group
+      ? `${office} suggested a group of ${size} for you`
+      : `${office} suggested a roommate for you`,
     ...layout({
-      preheader: "See who it is and say yes or no. Nothing happens unless you both say yes.",
-      heading: "A roommate suggestion",
-      body: `${office} used Rumi to suggest someone you're compatible with. See why you match, then accept or decline. Nothing happens unless you both say yes.`,
+      preheader: group
+        ? "Meet them and say yes or no. Nothing happens unless everyone says yes."
+        : "See who it is and say yes or no. Nothing happens unless you both say yes.",
+      heading: group ? "A group suggestion" : "A roommate suggestion",
+      body: group
+        ? `${office} used Rumi to suggest a room of ${size} where everyone is compatible. Meet them, then accept or decline. Nothing happens unless everyone says yes.`
+        : `${office} used Rumi to suggest someone you're compatible with. See why you match, then accept or decline. Nothing happens unless you both say yes.`,
       cta: { label: "See the suggestion", href: `/suggestions/${proposalId}` },
     }),
   };
@@ -164,12 +193,18 @@ export function escalationForwardEmail(input: {
     body: `${input.reporterFirstName} (${input.reporterEmail}) reported "${input.category}" on Rumi and chose to send it to your office so you can follow up. Rumi is a roommate-matching service and doesn't investigate.${input.details ? ` What they wrote: ${input.details}` : ""}`,
     quote: input.excerpt ?? undefined,
     cta: { label: "About Rumi", href: "/security" },
-    footer: "Sent because the student chose to forward their report to this address, which your school configured in Rumi.",
+    footer:
+      "Sent because the student chose to forward their report to this address, which your school configured in Rumi.",
   });
   return { subject: `Forwarded report from a student (${input.category})`, html, text };
 }
 
 export function deadlineNudgeEmail(copy: { title: string; body: string; href: string }) {
-  const { html, text } = layout({ preheader: copy.body, heading: copy.title, body: copy.body, cta: { label: "Open Rumi", href: copy.href } });
+  const { html, text } = layout({
+    preheader: copy.body,
+    heading: copy.title,
+    body: copy.body,
+    cta: { label: "Open Rumi", href: copy.href },
+  });
   return { subject: copy.title, html, text };
 }

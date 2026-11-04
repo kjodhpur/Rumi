@@ -49,6 +49,7 @@ export function AutoPair({
 }) {
   const router = useRouter();
   const [minScore, setMinScore] = React.useState(run?.params.minScore ?? 60);
+  const [size, setSize] = React.useState<2 | 3 | 4>(run?.params.size ?? 2);
   const [running, setRunning] = React.useState(false);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -60,11 +61,14 @@ export function AutoPair({
 
   async function startRun() {
     setRunning(true);
-    const result = await runAutoPair({ schoolId, minScore });
+    const result = await runAutoPair({ schoolId, minScore, size });
     setRunning(false);
     if (!result.ok) return void toast.error(result.error);
+    const noun = size === 2 ? "pairs" : `groups of ${size}`;
     toast.success(
-      result.data.pairs ? `${result.data.pairs} pairs proposed` : "No pairs met the minimum score",
+      result.data.pairs
+        ? `${result.data.pairs} ${noun} proposed`
+        : `No ${noun} met the minimum score`,
     );
     setSelected(new Set());
     router.refresh();
@@ -118,10 +122,25 @@ export function AutoPair({
             New run
           </h2>
           <p className="mt-1 text-body-sm text-ink-2">
-            Pairs as many students as possible, then picks the highest total compatibility. Pairs
-            that break a dealbreaker are never proposed. A new run replaces unsent proposals.
+            Places as many students as possible, then picks the highest total compatibility. In a
+            group every pair must meet the minimum, and nobody breaks a dealbreaker. A new run
+            replaces unsent proposals.
           </p>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-caption font-medium text-ink-2">Room size</span>
+          <Select
+            value={String(size)}
+            onChange={(e) =>
+              setSize(Number(e.target.value) === 4 ? 4 : Number(e.target.value) === 3 ? 3 : 2)
+            }
+            className="w-40"
+          >
+            <option value="2">Pairs</option>
+            <option value="3">Groups of 3</option>
+            <option value="4">Groups of 4</option>
+          </Select>
+        </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-caption font-medium text-ink-2">Minimum score</span>
           <Select
@@ -161,12 +180,20 @@ export function AutoPair({
               Run <RelativeTime iso={run.createdAt} />
               {run.createdBy ? ` by ${run.createdBy}` : ""} · minimum score{" "}
               {run.params.minScore ?? "—"}
+              {run.params.size && run.params.size > 2 ? ` · groups of ${run.params.size}` : ""}
             </p>
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               <Stat label="Students waiting" value={run.stats.candidates ?? 0} />
-              <Stat label="With a compatible partner" value={run.stats.feasible ?? 0} />
               <Stat
-                label="Paired"
+                label={
+                  run.params.size && run.params.size > 2
+                    ? "With enough compatible partners"
+                    : "With a compatible partner"
+                }
+                value={run.stats.feasible ?? 0}
+              />
+              <Stat
+                label={run.params.size && run.params.size > 2 ? "Placed in a group" : "Paired"}
                 value={run.stats.paired ?? 0}
                 note={
                   run.stats.feasible
@@ -285,7 +312,13 @@ function ProposalItem({
   onDecide: (decision: "approved" | "rejected" | "proposed") => void;
 }) {
   const status = STATUS[proposal.status] ?? STATUS.proposed;
-  const names = proposal.members.map((m) => m.name).join(" & ");
+  const names =
+    proposal.members.length === 2
+      ? proposal.members.map((m) => m.name).join(" & ")
+      : `${proposal.members
+          .slice(0, -1)
+          .map((m) => m.name)
+          .join(", ")} & ${proposal.members[proposal.members.length - 1].name}`;
   return (
     <li
       className={cn(

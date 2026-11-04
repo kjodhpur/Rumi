@@ -190,7 +190,7 @@ export interface AutoPairRun {
   id: string;
   createdAt: string;
   createdBy: string | null;
-  params: { minScore?: number };
+  params: { minScore?: number; size?: 2 | 3 | 4 };
   stats: {
     candidates?: number;
     feasible?: number;

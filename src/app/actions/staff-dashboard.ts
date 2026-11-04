@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { assertRole } from "@/lib/staff/context";
 import { logAudit } from "@/lib/staff/audit";
-import { assignPairs } from "@/lib/matching/assign";
+import { assignGroups, assignPairs } from "@/lib/matching/assign";
 import { parseMapping } from "@/lib/integrations/starrez/csv";
 import { sendEmail } from "@/lib/email/send";
 import { housingNudgeEmail, housingSuggestionEmail } from "@/lib/email/templates";
@@ -345,14 +345,18 @@ export async function sendNudges(
 // Auto-pair
 // ─────────────────────────────────────────────────────────────────────────────
 
-const runInput = z.object({ schoolId, minScore: z.number().int().min(0).max(100) });
+const runInput = z.object({
+  schoolId,
+  minScore: z.number().int().min(0).max(100),
+  size: z.union([z.literal(2), z.literal(3), z.literal(4)]).default(2),
+});
 
 export async function runAutoPair(
   raw: z.input<typeof runInput>,
 ): Promise<ActionResult<{ pairs: number }>> {
   const parsed = runInput.safeParse(raw);
   if (!parsed.success) return fail(firstError(parsed.error));
-  const { schoolId: school, minScore } = parsed.data;
+  const { schoolId: school, minScore, size } = parsed.data;
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can run auto-pair.");
   if (!(await rateLimit(`autopair:${school}`, LIMITS.autoPairRunsPerHour)))
@@ -447,11 +451,34 @@ export async function runAutoPair(
   }
   const edges = [...byPair.values()];
 
-  const result = assignPairs(
-    candidates.map((c) => ({ id: c.id, signedUpAt: c.created_at })),
-    edges,
-    { minScore },
-  );
+  const people = candidates.map((c) => ({ id: c.id, signedUpAt: c.created_at }));
+  // Pairs: maximum-weight matching. Groups of 3–4: every pair compatible, greedy + swaps (1.C).
+  const result =
+    size === 2
+      ? (() => {
+          const r = assignPairs(people, edges, { minScore });
+          return {
+            proposals: r.pairs.map((p) => ({
+              members: [p.a, p.b],
+              score: p.score,
+              minScore: p.score,
+            })),
+            unpaired: r.unpaired,
+            stats: r.stats,
+          };
+        })()
+      : (() => {
+          const r = assignGroups(people, edges, { size, minScore });
+          return {
+            proposals: r.groups.map((g) => ({
+              members: g.members,
+              score: g.score,
+              minScore: g.minScore,
+            })),
+            unpaired: r.unpaired,
+            stats: r.stats,
+          };
+        })();
   const reasonsOf = new Map(edges.map((e) => [`${e.a}|${e.b}`, e.reasons]));
   // For anyone with no feasible partner, name the rule that blocks the most of the others.
   const blocked = new Map<string, string>();
@@ -488,7 +515,7 @@ export async function runAutoPair(
     .from("auto_pair_runs")
     .insert({
       school_id: school,
-      params: { minScore },
+      params: { minScore, size },
       stats: {
         ...result.stats,
         unpaired: result.unpaired.map((u) => ({
@@ -503,14 +530,18 @@ export async function runAutoPair(
     .select("id")
     .single();
   if (error || !run) return fail("Couldn't save the run.");
-  if (result.pairs.length > 0) {
+  if (result.proposals.length > 0) {
     await db.from("auto_pair_proposals").insert(
-      result.pairs.map((p) => ({
+      result.proposals.map((p) => ({
         run_id: run.id,
         school_id: school,
-        member_ids: [p.a, p.b],
+        member_ids: p.members,
         score: p.score,
-        reasons: (reasonsOf.get(pairKey(p.a, p.b)) ?? []) as NonNullable<Json>,
+        min_score: p.minScore,
+        // A pair carries its reasons; a group's are on each member's profile.
+        reasons: (p.members.length === 2
+          ? (reasonsOf.get(pairKey(p.members[0], p.members[1])) ?? [])
+          : []) as NonNullable<Json>,
       })),
     );
   }
@@ -520,10 +551,10 @@ export async function runAutoPair(
     action: "auto_pair_run",
     entity: "auto_pair_run",
     entityId: run.id,
-    meta: { minScore, ...result.stats },
+    meta: { minScore, size, ...result.stats },
   });
   revalidatePath("/staff/pairings/auto");
-  return ok({ pairs: result.pairs.length });
+  return ok({ pairs: result.proposals.length });
 }
 
 const decideInput = z.object({
@@ -593,7 +624,8 @@ export async function sendApprovedProposals(input: {
         "id",
         invalid.map((p) => p.id),
       );
-  if (valid.length === 0) return fail("Everyone in the approved pairs has since joined a group.");
+  if (valid.length === 0)
+    return fail("Everyone in the approved proposals has since joined a group.");
   await db
     .from("auto_pair_proposals")
     .update({ status: "sent", sent_at: now })
@@ -617,8 +649,14 @@ export async function sendApprovedProposals(input: {
         user_id: userId,
         type: "housing_suggestion",
         entity_id: p.id,
-        title: `${office} suggested a roommate`,
-        body: "See why you match, then say yes or no. Nothing happens unless you both say yes.",
+        title:
+          p.member_ids.length === 2
+            ? `${office} suggested a roommate`
+            : `${office} suggested a group of ${p.member_ids.length}`,
+        body:
+          p.member_ids.length === 2
+            ? "See why you match, then say yes or no. Nothing happens unless you both say yes."
+            : "Meet them, then say yes or no. Nothing happens unless everyone says yes.",
         href: `/suggestions/${p.id}`,
       })),
     ),
@@ -627,7 +665,10 @@ export async function sendApprovedProposals(input: {
     for (const userId of p.member_ids) {
       const s = settingsOf.get(userId);
       if (s?.notify_email_matches)
-        await sendEmail({ to: s.email, ...housingSuggestionEmail(office, p.id) });
+        await sendEmail({
+          to: s.email,
+          ...housingSuggestionEmail(office, p.id, p.member_ids.length),
+        });
     }
   }
   await logAudit({

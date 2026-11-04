@@ -357,14 +357,14 @@ isOneToOne: false
                   ]
                 },"auto_pair_proposals": {
                   Row: {
-                    "created_at": string,"decided_at": string | null,"decided_by": string | null,"group_id": string | null,"id": string,"member_ids": (string)[],"reasons": NonNullable<Json>,"responses": NonNullable<Json>,"run_id": string,"school_id": string,"score": number,"sent_at": string | null,"status": string
+                    "created_at": string,"decided_at": string | null,"decided_by": string | null,"group_id": string | null,"id": string,"member_ids": (string)[],"min_score": number | null,"reasons": NonNullable<Json>,"responses": NonNullable<Json>,"run_id": string,"school_id": string,"score": number,"sent_at": string | null,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids": (string)[],"reasons"?: NonNullable<Json>,"responses"?: NonNullable<Json>,"run_id": string,"school_id": string,"score": number,"sent_at"?: string | null,"status"?: string
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids": (string)[],"min_score"?: number | null,"reasons"?: NonNullable<Json>,"responses"?: NonNullable<Json>,"run_id": string,"school_id": string,"score": number,"sent_at"?: string | null,"status"?: string
                   }
                   Update: {
-                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"reasons"?: NonNullable<Json>,"responses"?: NonNullable<Json>,"run_id"?: string,"school_id"?: string,"score"?: number,"sent_at"?: string | null,"status"?: string
+                    "created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"group_id"?: string | null,"id"?: string,"member_ids"?: (string)[],"min_score"?: number | null,"reasons"?: NonNullable<Json>,"responses"?: NonNullable<Json>,"run_id"?: string,"school_id"?: string,"score"?: number,"sent_at"?: string | null,"status"?: string
                   }
                   Relationships: [
                     {
