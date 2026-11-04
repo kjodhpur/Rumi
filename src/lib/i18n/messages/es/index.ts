@@ -19,6 +19,8 @@ import { email } from "./email";
 import { accounts } from "./accounts";
 import { privacy } from "./privacy";
 import { settingsPages } from "./settingsPages";
+import { safety } from "./safety";
+import { share } from "./share";
 
 /** Spanish: complete for student flows. The type makes a missing key a compile error. */
 export const es: Messages = {
@@ -42,4 +44,6 @@ export const es: Messages = {
   accounts,
   privacy,
   settingsPages,
+  safety,
+  share,
 };

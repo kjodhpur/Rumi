@@ -14,6 +14,7 @@ import {
   revokeMatchShare,
   type MatchShareStatus,
 } from "@/app/actions/match-share";
+import { useIntlLocale, useT } from "@/components/providers/i18n";
 
 /**
  * "Why we're a match" share card (Phase 7.7). Both students turn sharing on before the
@@ -37,6 +38,8 @@ export function ShareMatchDialog({
   const [pending, setPending] = React.useState(false);
   const [status, setStatus] = React.useState<MatchShareStatus | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const t = useT("share");
+  const intl = useIntlLocale();
   const [copied, setCopied] = React.useState(false);
 
   React.useEffect(() => {
@@ -63,7 +66,9 @@ export function ShareMatchDialog({
     setPending(false);
     if (!result.ok) return void toast.error(result.error);
     setStatus(result.data.status);
-    toast.success(result.data.status.ready ? "Your card is ready to share" : `We asked ${candidateFirstName} to turn it on too`);
+    toast.success(
+      result.data.status.ready ? t("yourCardReady") : t("asked", { name: candidateFirstName }),
+    );
   }
 
   async function revoke() {
@@ -72,7 +77,7 @@ export function ShareMatchDialog({
     setPending(false);
     if (!result.ok) return void toast.error(result.error);
     setStatus(null);
-    toast.success("Link turned off. It no longer opens for anyone.");
+    toast.success(t("turnedOff"));
   }
 
   async function copy() {
@@ -81,14 +86,17 @@ export function ShareMatchDialog({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy the link.");
+      toast.error(t("copyLinkFailed"));
     }
   }
 
   async function share() {
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${myFirstName} & ${candidateFirstName} on Rumi`, url: url() });
+        await navigator.share({
+          title: `${myFirstName} & ${candidateFirstName} on Rumi`,
+          url: url(),
+        });
         return;
       } catch (shareError) {
         if ((shareError as Error).name === "AbortError") return;
@@ -99,7 +107,10 @@ export function ShareMatchDialog({
 
   const card = {
     firstNames: [myFirstName, candidateFirstName] as [string, string],
-    initials: [myFirstName.charAt(0).toUpperCase(), candidateFirstName.charAt(0).toUpperCase()] as [string, string],
+    initials: [myFirstName.charAt(0).toUpperCase(), candidateFirstName.charAt(0).toUpperCase()] as [
+      string,
+      string,
+    ],
     score,
     reasons: reasons.slice(0, 3),
   };
@@ -107,13 +118,13 @@ export function ShareMatchDialog({
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        <Share2 aria-hidden /> Share
+        <Share2 aria-hidden /> {t("share")}
       </Button>
       <Sheet
         open={open}
         onOpenChange={setOpen}
-        title="Share your match card"
-        description="First names, your score and up to three reasons. Never last names, photos, emails or where you live."
+        title={t("dialogTitle")}
+        description={t("dialogBody")}
         size="md"
       >
         <div className="flex flex-col gap-5">
@@ -126,44 +137,55 @@ export function ShareMatchDialog({
             ) : status ? (
               <div className="flex flex-col gap-3 rounded-xl bg-surface-sunken p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-body-sm font-medium text-ink">Link</span>
+                  <span className="text-body-sm font-medium text-ink">{t("link")}</span>
                   {status.ready ? (
                     <Badge variant="success">
-                      <Check className="size-3" strokeWidth={2.5} aria-hidden /> Live
+                      <Check className="size-3" strokeWidth={2.5} aria-hidden /> {t("live")}
                     </Badge>
                   ) : (
-                    <Badge variant="warning">Waiting for {candidateFirstName}</Badge>
+                    <Badge variant="warning">{t("waitingFor", { name: candidateFirstName })}</Badge>
                   )}
                 </div>
                 <p className="text-caption text-ink-2">
                   {status.ready
-                    ? `Anyone with the link can see the card until ${new Date(status.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
-                    : `It opens for others once ${candidateFirstName} turns sharing on. We sent them a notification.`}
+                    ? t("until", {
+                        date: new Date(status.expiresAt).toLocaleDateString(intl, {
+                          month: "short",
+                          day: "numeric",
+                        }),
+                      })
+                    : t("opensOnce", { name: candidateFirstName })}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {status.ready ? (
                     <>
                       <Button size="sm" onClick={() => void share()}>
-                        <Share2 aria-hidden /> Share
+                        <Share2 aria-hidden /> {t("share")}
                       </Button>
                       <Button size="sm" variant="secondary" onClick={() => void copy()}>
-                        {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? "Copied" : "Copy link"}
+                        {copied ? <Check aria-hidden /> : <Copy aria-hidden />}{" "}
+                        {copied ? t("copied") : t("copyLink")}
                       </Button>
                       <Button size="sm" variant="ghost" asChild>
                         <a href={status.path} target="_blank" rel="noopener">
-                          <ExternalLink aria-hidden /> Open
+                          <ExternalLink aria-hidden /> {t("open")}
                         </a>
                       </Button>
                     </>
                   ) : null}
-                  <Button size="sm" variant="danger-ghost" loading={pending} onClick={() => void revoke()}>
-                    <Link2Off aria-hidden /> Turn off
+                  <Button
+                    size="sm"
+                    variant="danger-ghost"
+                    loading={pending}
+                    onClick={() => void revoke()}
+                  >
+                    <Link2Off aria-hidden /> {t("turnOff")}
                   </Button>
                 </div>
               </div>
             ) : (
               <Button block loading={pending} onClick={() => void turnOn()}>
-                <Share2 aria-hidden /> Turn on sharing
+                <Share2 aria-hidden /> {t("turnOn")}
               </Button>
             )}
           </div>

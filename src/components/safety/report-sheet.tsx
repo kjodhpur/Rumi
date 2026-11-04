@@ -10,23 +10,34 @@ import { Switch } from "@/components/ui/switch";
 import { OptionCards } from "@/components/ui/choice";
 import { reportUser } from "@/app/actions/social";
 import { fileSeriousReport, getActiveEscalationRoutes } from "@/app/actions/safety";
-import { REPORT_REASONS, type ReportReason } from "@/lib/options";
+import type { ReportReason } from "@/lib/options";
 import {
   ESCALATION_CATEGORIES,
   NATIONAL_EMERGENCY_RESOURCES,
   resolveEscalationDestination,
-  SAFETY_DISCLAIMER,
   type EscalationCategory,
   type EscalationRoute,
 } from "@/lib/safety/escalation";
 import { LAUNCH_SCHOOL } from "@/lib/school";
+import { useOptions, useT } from "@/components/providers/i18n";
 
 type Reason = ReportReason;
+
+const RESOURCE_KEY: Record<string, "emergency" | "crisis" | "rainn" | "dv"> = {
+  "911 Emergency": "emergency",
+  "988 Suicide & Crisis Lifeline": "crisis",
+  "RAINN Sexual Assault Hotline": "rainn",
+  "National Domestic Violence Hotline": "dv",
+};
 
 /** National lines that fit the category, always including 911. */
 function resourcesFor(category: EscalationCategory | "") {
   const names: Record<EscalationCategory, string[]> = {
-    harassment: ["911 Emergency", "RAINN Sexual Assault Hotline", "National Domestic Violence Hotline"],
+    harassment: [
+      "911 Emergency",
+      "RAINN Sexual Assault Hotline",
+      "National Domestic Violence Hotline",
+    ],
     threat: ["911 Emergency", "988 Suicide & Crisis Lifeline"],
     discrimination: ["911 Emergency"],
     wellbeing: ["988 Suicide & Crisis Lifeline", "911 Emergency"],
@@ -51,6 +62,8 @@ export function ReportSheet({
   messageId?: string;
   conversationId?: string;
 }) {
+  const t = useT("safety");
+  const { REPORT_REASONS } = useOptions();
   const [reason, setReason] = React.useState<Reason | "">("");
   const [isSerious, setIsSerious] = React.useState(false);
   const [seriousCategory, setSeriousCategory] = React.useState<EscalationCategory | "">("");
@@ -81,11 +94,13 @@ export function ReportSheet({
     }
   }, [reason]);
 
-  const activeDestination = seriousCategory ? resolveEscalationDestination(seriousCategory, routes) : null;
+  const activeDestination = seriousCategory
+    ? resolveEscalationDestination(seriousCategory, routes)
+    : null;
 
   async function submit() {
     if (!reason && !seriousCategory) {
-      setError("Choose what's going on.");
+      setError(t("report.choose"));
       return;
     }
 
@@ -129,34 +144,36 @@ export function ReportSheet({
     setBlockUserNow(false);
     setDetails("");
 
-    const forwardedTo = result.data && "forwardedTo" in result.data ? result.data.forwardedTo : null;
-    const extraMsg = forwardedTo ? ` We sent it to ${forwardedTo}.` : "";
+    const forwardedTo =
+      result.data && "forwardedTo" in result.data ? result.data.forwardedTo : null;
+    const extraMsg = forwardedTo ? t("report.sentTo", { office: forwardedTo }) : "";
 
-    toast.success("Thanks for telling us", {
-      description: `Our safety team reviews every report. ${firstName} won't know it was you.${extraMsg}`,
+    toast.success(t("report.thanks"), {
+      description: `${t("report.thanksBody", { name: firstName })}${extraMsg}`,
     });
   }
 
   const seriousOptions = ESCALATION_CATEGORIES.map((c) => ({
     value: c.key,
-    label: c.label,
-    hint: c.description,
+    label: t(`categories.${c.key}.label`),
+    hint: t(`categories.${c.key}.description`),
   }));
 
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={`Report ${firstName}`}
-      description={`Reports are confidential. If you're in immediate danger, dial 911 or ${LAUNCH_SCHOOL.police.name} at ${LAUNCH_SCHOOL.police.phone}.`}
+      title={t("report.title", { name: firstName })}
+      description={t("report.description", {
+        police: LAUNCH_SCHOOL.police.name,
+        phone: LAUNCH_SCHOOL.police.phone,
+      })}
       footer={
         <div className="flex w-full flex-col gap-2">
           <Button variant="danger" size="lg" block onClick={() => void submit()} loading={pending}>
-            {isSerious && consentForward ? "Submit and forward report" : "Send report"}
+            {isSerious && consentForward ? t("report.submitForward") : t("report.submit")}
           </Button>
-          <p className="text-center text-caption text-ink-3">
-            {SAFETY_DISCLAIMER}
-          </p>
+          <p className="text-center text-caption text-ink-3">{t("report.disclaimer")}</p>
         </div>
       }
     >
@@ -166,8 +183,8 @@ export function ReportSheet({
           <div className="flex items-center gap-2.5">
             <ShieldAlert className="h-5 w-5 text-accent" />
             <div>
-              <p className="text-body-sm font-semibold text-ink">Urgent safety or official escalation?</p>
-              <p className="text-caption text-ink-3">Route to campus Title IX, CARE, or emergency safety</p>
+              <p className="text-body-sm font-semibold text-ink">{t("report.urgent")}</p>
+              <p className="text-caption text-ink-3">{t("report.urgentHint")}</p>
             </div>
           </div>
           <Switch
@@ -176,7 +193,7 @@ export function ReportSheet({
               setIsSerious(checked);
               if (checked && !seriousCategory) setSeriousCategory("harassment");
             }}
-            aria-label="Toggle serious safety escalation"
+            aria-label={t("report.urgentToggle")}
           />
         </div>
 
@@ -184,9 +201,9 @@ export function ReportSheet({
           /* Serious Escalation Form */
           <div className="flex flex-col gap-4">
             <div>
-              <label className="text-caption font-semibold text-ink">Category of incident</label>
+              <label className="text-caption font-semibold text-ink">{t("report.category")}</label>
               <OptionCards
-                aria-label="Serious incident category"
+                aria-label={t("report.categoryAria")}
                 value={seriousCategory}
                 onValueChange={(v) => {
                   setSeriousCategory(v as EscalationCategory);
@@ -204,34 +221,54 @@ export function ReportSheet({
                 <div className="flex-1 text-caption text-ink">
                   {activeDestination ? (
                     <div>
-                      <p className="font-semibold text-ink">Official Destination:</p>
-                      <p className="font-medium text-ink mt-0.5">{activeDestination.destinationLabel}</p>
+                      <p className="font-semibold text-ink">{t("report.destination")}</p>
+                      <p className="mt-0.5 font-medium text-ink">
+                        {activeDestination.destinationLabel}
+                      </p>
                       <div className="mt-2 flex flex-wrap gap-3 text-caption text-ink-2">
                         {activeDestination.phone ? (
-                          <a href={`tel:${activeDestination.phone}`} className="inline-flex items-center gap-1 text-ink underline">
+                          <a
+                            href={`tel:${activeDestination.phone}`}
+                            className="inline-flex items-center gap-1 text-ink underline"
+                          >
                             <Phone className="h-3.5 w-3.5" />
                             {activeDestination.phone}
                           </a>
                         ) : null}
                         {activeDestination.url ? (
-                          <a href={activeDestination.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-ink underline">
+                          <a
+                            href={activeDestination.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-ink underline"
+                          >
                             <ExternalLink className="h-3.5 w-3.5" />
-                            Official reporting page
+                            {t("report.reportingPage")}
                           </a>
                         ) : null}
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <p className="font-semibold text-ink">National & Campus Emergency Contacts</p>
-                      <p className="mt-1 text-ink-2">
-                        Your school hasn&apos;t set up where these reports go, so no campus office is told. The Rumi team reviews it, and you can reach these services directly:
-                      </p>
+                      <p className="font-semibold text-ink">{t("report.contacts")}</p>
+                      <p className="mt-1 text-ink-2">{t("report.noRoute")}</p>
                       <div className="mt-2 space-y-1.5">
                         {resourcesFor(seriousCategory).map((r) => (
-                          <div key={r.name} className="flex items-center justify-between text-body-sm">
-                            <span className="font-medium text-ink">{r.name}</span>
-                            <a href={`tel:${r.phone}`} className="font-semibold text-accent underline">{r.phone}</a>
+                          <div
+                            key={r.name}
+                            className="flex items-center justify-between text-body-sm"
+                          >
+                            <span className="font-medium text-ink">
+                              {RESOURCE_KEY[r.name]
+                                ? t(`resources.${RESOURCE_KEY[r.name]!}`)
+                                : r.name}
+                            </span>
+                            <a
+                              href={`tel:${r.phone}`}
+                              className="font-semibold text-accent underline"
+                            >
+                              {r.phone}
+                            </a>
                           </div>
                         ))}
                       </div>
@@ -242,20 +279,24 @@ export function ReportSheet({
 
               {/* Student Consent Toggle */}
               {activeDestination ? (
-                <div className="mt-3.5 border-t border-line pt-3 flex items-center justify-between">
+                <div className="mt-3.5 flex items-center justify-between border-t border-line pt-3">
                   <div className="pr-3">
-                    <p className="text-body-sm font-medium text-ink">Send this to {activeDestination.destinationLabel}</p>
+                    <p className="text-body-sm font-medium text-ink">
+                      {t("report.sendTo", { office: activeDestination.destinationLabel })}
+                    </p>
                     <p className="text-caption text-ink-3">
                       {activeDestination.email
-                        ? "We'll email them what you write, the reported message, and your first name and school email so they can follow up."
-                        : "They don't take reports by email. Use their phone or reporting page above."}
+                        ? t("report.sendToEmail")
+                        : t("report.sendToNoEmail")}
                     </p>
                   </div>
                   <Switch
                     disabled={!activeDestination.email}
                     checked={consentForward}
                     onCheckedChange={setConsentForward}
-                    aria-label={`Forward report to ${activeDestination.destinationLabel}`}
+                    aria-label={t("report.forwardAria", {
+                      office: activeDestination.destinationLabel,
+                    })}
                   />
                 </div>
               ) : null}
@@ -264,22 +305,24 @@ export function ReportSheet({
             {/* Immediate Block Option */}
             <div className="flex items-center justify-between rounded-xl border border-line bg-surface-sunken p-3">
               <div className="pr-3">
-                <p className="text-body-sm font-medium text-ink">Block {firstName} immediately</p>
-                <p className="text-caption text-ink-3">They won&apos;t be able to message you or see your profile</p>
+                <p className="text-body-sm font-medium text-ink">
+                  {t("report.blockNow", { name: firstName })}
+                </p>
+                <p className="text-caption text-ink-3">{t("report.blockNowHint")}</p>
               </div>
               <Switch
                 checked={blockUserNow}
                 onCheckedChange={setBlockUserNow}
-                aria-label={`Block ${firstName}`}
+                aria-label={t("report.blockAria", { name: firstName })}
               />
             </div>
           </div>
         ) : (
           /* Standard Report Reason Options */
           <div>
-            <label className="text-caption font-semibold text-ink">Reason for report</label>
+            <label className="text-caption font-semibold text-ink">{t("report.reason")}</label>
             <OptionCards
-              aria-label="Reason for report"
+              aria-label={t("report.reason")}
               value={reason}
               onValueChange={(v) => {
                 setReason(v);
@@ -294,10 +337,10 @@ export function ReportSheet({
 
         {/* Optional Details Textarea */}
         <div>
-          <label className="text-caption font-semibold text-ink">Additional details (optional)</label>
+          <label className="text-caption font-semibold text-ink">{t("report.details")}</label>
           <Textarea
-            aria-label="Details (optional)"
-            placeholder="Anything that helps us understand what happened..."
+            aria-label={t("report.detailsAria")}
+            placeholder={t("report.detailsPlaceholder")}
             rows={3}
             maxLength={1000}
             value={details}
