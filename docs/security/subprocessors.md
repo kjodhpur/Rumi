@@ -12,6 +12,6 @@
 | Twilio | Optional text messages | Phone number, message text, STOP/HELP replies | Only when `SMS_ENABLED` and the student verified a number |
 | Web push services (browser vendors) | Optional push notifications | Push endpoint, notification title and body | Only for students who turn on push |
 | Amazon Web Services (Bedrock) | Optional "Why you match" sentences | Both students' compatibility factors (no names, no messages) | Only when AWS keys are configured |
-| Vercel AI Gateway (model provider behind it) | Optional message moderation classifier | Message text | Only when `AI_MODERATION_ENABLED` and the school turned it on |
+| Vercel AI Gateway, routing to Anthropic (Claude) | Optional AI message screening for harassment, threats and scams | Text of messages and intros only (no names, emails or profile data) | Only when `AI_MODERATION_ENABLED` is set and the school turned it on in Staff → Safety settings |
 | Google / Microsoft | Optional calendar free/busy | Free/busy blocks only | Only for students who connect a calendar |
 | StarRez | Optional housing sync (school's own system) | Roommate groups, assignments | Only when a school connects it |

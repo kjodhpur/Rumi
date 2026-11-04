@@ -25,6 +25,7 @@
     "fit-weights": "tsx --conditions=react-server scripts/fit-weights.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1161.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",

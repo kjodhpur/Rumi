@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { fail, friendlyDbError, ok, type ActionResult } from "@/lib/action";
 import { firstError, introSchema, reportSchema } from "@/lib/validation";
-import { fileAutoReport, forwardToWebhook, moderateText } from "@/lib/moderation";
+import { forwardToWebhook, screenAndReport } from "@/lib/moderation";
 import { runInBackground } from "@/lib/background";
 import { emailIntroAccepted, emailIntroReceived } from "@/lib/email/notify";
 
@@ -50,17 +50,9 @@ export async function sendIntro(input: {
   });
   if (error || !data) return fail(friendlyDbError(error?.message));
 
-  const flags = moderateText(parsed.data.message);
   runInBackground("intro-followups", async () => {
     await emailIntroReceived(data);
-    if (flags.length) {
-      await fileAutoReport({
-        reportedId: user.id,
-        flags,
-        excerpt: parsed.data.message,
-        introId: data,
-      });
-    }
+    await screenAndReport({ reportedId: user.id, excerpt: parsed.data.message, introId: data });
   });
   revalidatePath("/messages");
   return ok({ id: data });

@@ -679,14 +679,12 @@ export async function reviewProfileMedia(input: {
       .eq("user_id", input.userId);
     await admin.storage.from("intros-media").remove([media.path]);
   }
-  await admin
-    .from("moderation_log")
-    .insert({
-      actor_id: actorId,
-      target_id: input.userId,
-      action: input.decision === "restore" ? "media_restored" : "media_removed",
-      meta: { school_id: input.schoolId },
-    });
+  await admin.from("moderation_log").insert({
+    actor_id: actorId,
+    target_id: input.userId,
+    action: input.decision === "restore" ? "media_restored" : "media_removed",
+    meta: { school_id: input.schoolId },
+  });
   await logAudit({
     actorId,
     schoolId: input.schoolId,
@@ -695,5 +693,32 @@ export async function reviewProfileMedia(input: {
     entityId: input.userId,
   });
   revalidatePath("/staff/safety");
+  return ok();
+}
+
+/**
+ * Phase 0.5: lets the school send its students' message text to the AI screening model.
+ * Off by default; only a housing admin can turn it on, and every change is audited.
+ */
+export async function setAiScreening(schoolId: string, enabled: boolean): Promise<ActionResult> {
+  if (!schoolIdSchema.safeParse(schoolId).success || typeof enabled !== "boolean")
+    return fail("Couldn't save.");
+  const actorId = await assertRole(schoolId, "configureSchool");
+  if (!actorId) return fail("Only housing admins can change message screening.");
+  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
+  const { error } = await createAdminClient()
+    .from("schools")
+    .update({ ai_moderation_enabled: enabled })
+    .eq("id", schoolId);
+  if (error) return fail("Couldn't save.");
+  await logAudit({
+    actorId,
+    schoolId,
+    action: enabled ? "ai_screening_enabled" : "ai_screening_disabled",
+    entity: "school",
+    entityId: schoolId,
+  });
+  revalidatePath("/staff/settings/escalation");
   return ok();
 }

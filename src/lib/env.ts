@@ -116,15 +116,20 @@ export const serverEnv = {
       microsoftClientSecret: process.env.MICROSOFT_CALENDAR_CLIENT_SECRET ?? "",
     };
   },
-  /** Phase 0.5: model-based moderation through the Vercel AI Gateway. */
+  /**
+   * Phase 0.5 AI screening. Off unless AI_MODERATION_ENABLED=true and a gateway key is set;
+   * even then a school must opt in before its students' messages are sent to the model.
+   */
   get aiModeration() {
+    const threshold = Number(process.env.AI_MODERATION_THRESHOLD ?? "0.8");
+    const timeoutMs = Number(process.env.AI_MODERATION_TIMEOUT_MS ?? "8000");
     return {
       enabled: process.env.AI_MODERATION_ENABLED === "true",
-      gatewayUrl: process.env.AI_GATEWAY_URL ?? "https://ai-gateway.vercel.sh/v1/chat/completions",
+      baseURL: process.env.AI_GATEWAY_BASE_URL || "https://ai-gateway.vercel.sh",
       apiKey: process.env.AI_GATEWAY_API_KEY ?? "",
-      model: process.env.AI_MODERATION_MODEL ?? "anthropic/claude-haiku-4.5",
-      threshold: Number(process.env.AI_MODERATION_THRESHOLD ?? "0.8"),
-      timeoutMs: Number(process.env.AI_MODERATION_TIMEOUT_MS ?? "2500"),
+      model: process.env.AI_MODERATION_MODEL || "anthropic/claude-opus-5.5",
+      threshold: Number.isFinite(threshold) && threshold > 0 && threshold <= 1 ? threshold : 0.8,
+      timeoutMs: Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 8000,
     };
   },
 };

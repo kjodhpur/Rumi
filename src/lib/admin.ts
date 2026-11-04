@@ -199,6 +199,7 @@ export async function searchPeople(q: string, filter: "recent" | "banned"): Prom
 }
 
 const ACTION_LABELS: Record<string, string> = {
+  auto_flag: "Automatic flag on",
   ban: "Suspended",
   unban: "Restored",
   revoke_verification: "Revoked verification for",
