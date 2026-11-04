@@ -17,6 +17,7 @@ import { notifications } from "./notifications";
 import { email } from "./email";
 import { accounts } from "./accounts";
 import { privacy } from "./privacy";
+import { settingsPages } from "./settingsPages";
 
 /** English: the source of truth. Every other complete locale must match these keys. */
 export const en = {
@@ -39,6 +40,7 @@ export const en = {
   email,
   accounts,
   privacy,
+  settingsPages,
 };
 
 export type Messages = typeof en;

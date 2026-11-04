@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { SettingsBack } from "@/components/settings/settings-ui";
 import { ImportedAnswers } from "@/components/settings/imported-answers";
 
-export const metadata: Metadata = { title: "From your housing profile" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("settingsPages"))("imported.title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function ImportedAnswersPage() {
@@ -29,14 +32,16 @@ export default async function ImportedAnswersPage() {
       .eq("id", user.id)
       .maybeSingle(),
   ]);
+  const [t, tp] = await Promise.all([getT("settingsPages"), getT("privacy")]);
   const office =
     (me?.schools as { housing_office_name: string | null } | null)?.housing_office_name ??
-    "your housing office";
+    tp("yourOffice");
+  const description = t("imported.description", { office });
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-8">
       <SettingsBack
-        title="From your housing profile"
-        description={`${office} shared your roommate questionnaire answers. Nothing counts until you confirm them.`}
+        title={t("imported.title")}
+        description={description.charAt(0).toUpperCase() + description.slice(1)}
       />
       <ImportedAnswers
         answers={(answers ?? []).map((a) => ({

@@ -15,10 +15,7 @@ import {
   startPhoneVerification,
 } from "@/app/actions/notification-channels";
 import {
-  CHANNEL_LABEL,
   CHANNELS,
-  KIND_DESCRIPTION,
-  KIND_LABEL,
   NOTIFICATION_KINDS,
   type Channel,
   type Matrix,
@@ -31,6 +28,7 @@ import {
   unsubscribePush,
 } from "@/lib/push/client";
 import { SettingsBack, SettingsSection } from "./settings-ui";
+import { useLocalizeError, useT } from "@/components/providers/i18n";
 
 export interface NotificationSettingsProps {
   matrix: Matrix;
@@ -45,6 +43,7 @@ export function NotificationSettings({
   sms,
   pushAvailable,
 }: NotificationSettingsProps) {
+  const t = useT("settingsPages");
   const [matrix, setMatrix] = React.useState(initial);
   const [pushOn, setPushOn] = React.useState<boolean | null>(null);
   React.useEffect(() => setMatrix(initial), [initial]);
@@ -70,22 +69,22 @@ export function NotificationSettings({
 
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-8">
-      <SettingsBack title="Notifications" description="Choose what reaches you, and where." />
+      <SettingsBack title={t("notifications.title")} description={t("notifications.description")} />
 
       <section aria-labelledby="grid-title" className="flex flex-col gap-2">
         <h2
           id="grid-title"
           className="px-1 text-caption font-semibold tracking-wide text-ink-3 uppercase"
         >
-          What you hear about
+          {t("notifications.what")}
         </h2>
         <div className="overflow-hidden rounded-lg bg-surface ring-1 ring-line">
           <table className="w-full text-left">
-            <caption className="sr-only">Notification preferences by type and channel</caption>
+            <caption className="sr-only">{t("notifications.caption")}</caption>
             <thead>
               <tr className="border-b border-line text-caption text-ink-3">
                 <th scope="col" className="px-4 py-2.5 font-medium">
-                  <span className="sr-only">Notification</span>
+                  <span className="sr-only">{t("notifications.notification")}</span>
                 </th>
                 {columns.map((c) => (
                   <th
@@ -93,7 +92,7 @@ export function NotificationSettings({
                     scope="col"
                     className="w-14 px-1 py-2.5 text-center font-medium sm:w-20"
                   >
-                    {CHANNEL_LABEL[c]}
+                    {t(`notifications.channels.${c}`)}
                   </th>
                 ))}
               </tr>
@@ -103,10 +102,10 @@ export function NotificationSettings({
                 <tr key={kind}>
                   <th scope="row" className="px-4 py-3 align-top font-normal">
                     <span className="block text-body-sm font-medium text-ink">
-                      {KIND_LABEL[kind]}
+                      {t(`notifications.kinds.${kind}`)}
                     </span>
                     <span className="mt-0.5 hidden text-caption text-ink-3 sm:block">
-                      {KIND_DESCRIPTION[kind]}
+                      {t(`notifications.kindHints.${kind}`)}
                     </span>
                   </th>
                   {columns.map((c) => (
@@ -115,7 +114,10 @@ export function NotificationSettings({
                         checked={matrix[kind][c] && usable(c)}
                         disabled={!usable(c)}
                         onCheckedChange={(v) => void toggle(kind, c, v === true)}
-                        aria-label={`${KIND_LABEL[kind]}: ${CHANNEL_LABEL[c]}`}
+                        aria-label={t("notifications.cell", {
+                          kind: t(`notifications.kinds.${kind}`),
+                          channel: t(`notifications.channels.${c}`),
+                        })}
                       />
                     </td>
                   ))}
@@ -124,10 +126,7 @@ export function NotificationSettings({
             </tbody>
           </table>
         </div>
-        <p className="px-1 text-caption text-ink-3">
-          Email goes to {email}. Texts and push wait until 8am if something comes in after 9pm
-          Arizona time. Safety notices always reach you in the app.
-        </p>
+        <p className="px-1 text-caption text-ink-3">{t("notifications.footer", { email })}</p>
       </section>
 
       {sms.available ? <PhoneCard sms={sms} /> : null}
@@ -138,6 +137,7 @@ export function NotificationSettings({
 
 function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
   const router = useRouter();
+  const t = useT("settingsPages");
   const [phone, setPhone] = React.useState("");
   const [code, setCode] = React.useState("");
   const [stage, setStage] = React.useState<"enter" | "code">(
@@ -153,7 +153,7 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
     setPending(false);
     if (!r.ok) return setError(r.error);
     setStage("code");
-    toast.success(`Code sent to the number ending ${r.data.last4}`);
+    toast.success(t("notifications.codeSent", { last4: r.data.last4 }));
   }
   async function confirm() {
     setPending(true);
@@ -161,7 +161,7 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
     const r = await confirmPhoneVerification(code);
     setPending(false);
     if (!r.ok) return setError(r.error);
-    toast.success("Texts are on for housing deadlines");
+    toast.success(t("notifications.textsOn"));
     setCode("");
     router.refresh();
   }
@@ -170,16 +170,13 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
     const r = await removePhone();
     setPending(false);
     if (!r.ok) return toast.error(r.error);
-    toast.success("Number removed. Texts are off.");
+    toast.success(t("notifications.numberRemoved"));
     setStage("enter");
     router.refresh();
   }
 
   return (
-    <SettingsSection
-      title="Text messages"
-      footer="Msg and data rates may apply. Reply STOP to any text to opt out, or HELP for help. Your number is stored encrypted and never shown to anyone."
-    >
+    <SettingsSection title={t("notifications.texts")} footer={t("notifications.textsFooter")}>
       <div className="flex flex-col gap-4 p-4">
         <div className="flex items-start gap-3">
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-2">
@@ -187,8 +184,8 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
           </span>
           <p className="text-body-sm text-ink-2">
             {sms.verified
-              ? `Texts go to the number ending ${sms.last4}. Pick which ones above.`
-              : "Add a US mobile number to get texts for the notices you pick. We text a code to confirm it's yours."}
+              ? t("notifications.textsTo", { last4: sms.last4 ?? "" })
+              : t("notifications.addNumber")}
           </p>
         </div>
         {sms.verified ? (
@@ -198,7 +195,7 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
             loading={pending}
             onClick={() => void remove()}
           >
-            Remove number
+            {t("notifications.removeNumber")}
           </Button>
         ) : stage === "enter" ? (
           <form
@@ -206,7 +203,7 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
             onSubmit={(e) => (e.preventDefault(), void send())}
           >
             <Field
-              label="Mobile number"
+              label={t("notifications.mobile")}
               error={error ?? undefined}
               className="min-w-[200px] flex-1"
             >
@@ -224,7 +221,7 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
               )}
             </Field>
             <Button type="submit" loading={pending} disabled={!phone.trim()}>
-              Text me a code
+              {t("notifications.textCode")}
             </Button>
           </form>
         ) : (
@@ -233,8 +230,8 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
             onSubmit={(e) => (e.preventDefault(), void confirm())}
           >
             <Field
-              label="Six-digit code"
-              hint="By confirming, you agree to get texts from Rumi for the notices you pick."
+              label={t("notifications.sixDigit")}
+              hint={t("notifications.agree")}
               error={error ?? undefined}
               className="min-w-[200px] flex-1"
             >
@@ -251,14 +248,14 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
               )}
             </Field>
             <Button type="submit" loading={pending} disabled={code.length !== 6}>
-              Confirm
+              {t("notifications.confirm")}
             </Button>
             <Button
               type="button"
               variant="ghost"
               onClick={() => (setStage("enter"), setError(null))}
             >
-              Use another number
+              {t("notifications.another")}
             </Button>
           </form>
         )}
@@ -269,6 +266,8 @@ function PhoneCard({ sms }: { sms: NotificationSettingsProps["sms"] }) {
 
 function PushCard({ on, onChange }: { on: boolean | null; onChange: (on: boolean) => void }) {
   const router = useRouter();
+  const t = useT("settingsPages");
+  const localizeError = useLocalizeError();
   const [pending, setPending] = React.useState(false);
   const supported = typeof window !== "undefined" && pushSupported();
 
@@ -276,27 +275,24 @@ function PushCard({ on, onChange }: { on: boolean | null; onChange: (on: boolean
     setPending(true);
     const r = on ? await unsubscribePush() : await subscribePush();
     setPending(false);
-    if (!r.ok) return toast.error(r.error);
+    if (!r.ok) return toast.error(localizeError(r.error));
     onChange(!on);
-    toast.success(on ? "Push is off on this device" : "Push is on for messages and deadlines");
+    toast.success(on ? t("notifications.pushOff") : t("notifications.pushOn"));
     router.refresh();
   }
 
   return (
-    <SettingsSection
-      title="Push on this device"
-      footer="Push works in the installed app and in most desktop browsers. On iPhone, add Rumi to your Home Screen first."
-    >
+    <SettingsSection title={t("notifications.push")} footer={t("notifications.pushFooter")}>
       <div className="flex flex-wrap items-center gap-3 p-4">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-2">
           <BellRing className="size-[18px]" aria-hidden />
         </span>
         <p className="min-w-0 flex-1 text-body-sm text-ink-2">
           {!supported
-            ? "This browser can't get push notifications."
+            ? t("notifications.pushUnsupported")
             : on
-              ? "This device gets push notifications."
-              : "Get notified here even when Rumi isn't open."}
+              ? t("notifications.pushEnabled")
+              : t("notifications.pushPitch")}
         </p>
         {supported ? (
           <Button
@@ -304,7 +300,7 @@ function PushCard({ on, onChange }: { on: boolean | null; onChange: (on: boolean
             loading={pending || on === null}
             onClick={() => void flip()}
           >
-            {on ? "Turn off" : "Turn on"}
+            {on ? t("notifications.turnOff") : t("notifications.turnOn")}
           </Button>
         ) : null}
       </div>

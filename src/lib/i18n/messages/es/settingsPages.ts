@@ -1,0 +1,173 @@
+import type { Messages } from "../en";
+
+export const settingsPages: Messages["settingsPages"] = {
+  notifications: {
+    title: "Notificaciones",
+    description: "Elige qué te llega y por dónde.",
+    what: "Sobre qué te avisamos",
+    caption: "Preferencias de notificación por tipo y canal",
+    notification: "Notificación",
+    cell: "{kind}: {channel}",
+    footer:
+      "El correo llega a {email}. Los mensajes de texto y las notificaciones push esperan hasta las 8 a. m. si algo llega después de las 9 p. m., hora del campus. Los avisos de seguridad siempre te llegan en la app.",
+    kinds: {
+      intros: "Presentaciones",
+      messages: "Mensajes",
+      matches: "Nuevas compatibilidades altas",
+      groups: "Grupos",
+      deadlines: "Fechas límite de vivienda",
+      checkins: "Seguimientos y avisos del RA",
+      agreements: "Acuerdos de convivencia",
+    },
+    kindHints: {
+      intros:
+        "Presentaciones que recibes y las tuyas que aceptan. También personas que dicen conocerte.",
+      messages:
+        "Mensajes nuevos en tus chats. Los correos se agrupan: como máximo uno por chat cada 30 minutos.",
+      matches: "Alguien que encaja muy bien contigo y tarjetas de compatibilidad para compartir.",
+      groups:
+        "Invitaciones, solicitudes para unirse, nuevos miembros y grupos que siguen el próximo período.",
+      deadlines:
+        "Fechas de solicitud de compañero, selección de cuartos y acuerdos de tu oficina de vivienda.",
+      checkins:
+        "Seguimientos después de mudarte, intercambios de cuarto y la encuesta de fin de período.",
+      agreements: "Cambios, comentarios y firmas en tu acuerdo de convivencia.",
+    },
+    channels: { in_app: "En la app", email: "Correo", sms: "Texto", push: "Push" },
+    codeSent: "Enviamos un código al número que termina en {last4}",
+    textsOn: "Los mensajes de texto están activados para las fechas límite de vivienda",
+    numberRemoved: "Número eliminado. Los mensajes de texto están desactivados.",
+    texts: "Mensajes de texto",
+    textsFooter:
+      "Pueden aplicarse cargos por mensajes y datos. Responde STOP a cualquier mensaje para darte de baja, o HELP para obtener ayuda. Tu número se guarda cifrado y nunca se muestra a nadie.",
+    textsTo: "Los mensajes llegan al número que termina en {last4}. Elige cuáles arriba.",
+    addNumber:
+      "Agrega un celular de EE. UU. para recibir mensajes de texto de los avisos que elijas. Te enviamos un código para confirmar que es tuyo.",
+    removeNumber: "Quitar número",
+    mobile: "Número de celular",
+    textCode: "Envíame un código",
+    sixDigit: "Código de seis dígitos",
+    agree: "Al confirmar, aceptas recibir mensajes de texto de Rumi para los avisos que elijas.",
+    confirm: "Confirmar",
+    another: "Usar otro número",
+    pushOff: "Las notificaciones push están desactivadas en este dispositivo",
+    pushOn: "Las notificaciones push están activadas para mensajes y fechas límite",
+    push: "Notificaciones push en este dispositivo",
+    pushFooter:
+      "Las notificaciones push funcionan en la app instalada y en la mayoría de los navegadores de escritorio. En iPhone, primero agrega Rumi a tu pantalla de inicio.",
+    pushUnsupported: "Este navegador no puede recibir notificaciones push.",
+    pushEnabled: "Este dispositivo recibe notificaciones push.",
+    pushPitch: "Recibe avisos aquí aunque Rumi no esté abierto.",
+    turnOff: "Desactivar",
+    turnOn: "Activar",
+  },
+  editor: {
+    title: "Perfil y preferencias",
+    description: "Los cambios se guardan solos y reordenan tus compatibles.",
+    checkField: "Revisa este campo.",
+    keepArea: "Deja al menos una zona.",
+    tabs: {
+      about: "Sobre ti",
+      photos: "Fotos",
+      housing: "Vivienda",
+      lifestyle: "Estilo de vida",
+      matching: "Compatibilidad",
+    },
+    campus: "Campus",
+    campusHint:
+      "Se usa para las reglas de compatibilidad de tu oficina de vivienda. Nunca se muestra en tu perfil.",
+    areas: "Zonas",
+    matters: "Lo más importante",
+    dealbreakers: "Condiciones",
+    saving: "Guardando",
+    saved: "Guardado · actualizando compatibles",
+    notSaved: "Sin guardar",
+  },
+  scenarios: {
+    title: "Situaciones de convivencia",
+    description:
+      "Situaciones cotidianas, desde los platos hasta las visitas que se quedan a dormir. Tus respuestas afinan el factor de compatibilidad correspondiente y pueden aparecer en “por qué son compatibles”.",
+    loadError: "No pudimos cargar tus respuestas",
+    loadErrorBody: "Actualiza la página para intentar de nuevo.",
+  },
+  delete: {
+    title: "Eliminar cuenta",
+    description: "Esto no se puede deshacer.",
+    removes: "Eliminar tu cuenta borra para siempre:",
+    r1: "Tu perfil, fotos y preferencias",
+    r2: "Tus compatibles, guardados, presentaciones y mensajes directos",
+    r3: "Tu conexión con Spotify y tu historial de notificaciones",
+    r4: "Tu lugar en cualquier grupo (el grupo pasa a otro miembro)",
+    copyFirst: "¿Quieres una copia antes?",
+    download: "Descarga tus datos",
+    pause: ". ¿Solo necesitas un descanso? Puedes ocultar tu perfil en Privacidad.",
+    confirmLabel: 'Escribe "DELETE" para confirmar',
+    submit: "Eliminar mi cuenta para siempre",
+  },
+  family: {
+    ready: "Enlace familiar listo",
+    off: "Enlace desactivado. Ya no se abre.",
+    copyFailed: "No se pudo copiar el enlace.",
+    intro:
+      "Comparte una página de solo lectura con tu mamá, papá o tutor: los nombres de tus compañeros (si lo permiten), tus puntuaciones de compatibilidad y las razones principales. Nunca tus mensajes.",
+    link: "Enlace familiar",
+    copy: "Copiar enlace familiar",
+    includes: "Incluye el estado de tu acuerdo. ",
+    until: "Funciona hasta el {date}.",
+    preview: "Vista previa",
+    turnOff: "Desactivar",
+    includeLabel: "Incluir si nuestro acuerdo está firmado",
+    includeAria: "Incluir estado del acuerdo",
+    create: "Crear enlace familiar",
+  },
+  imported: {
+    title: "De tu perfil de vivienda",
+    description:
+      "{office} compartió tus respuestas del cuestionario de convivencia. Nada cuenta hasta que las confirmes.",
+    none: "Nada que confirmar",
+    noneBody:
+      "Cuando tu oficina de vivienda comparta tus respuestas del cuestionario, aparecerán aquí.",
+    added: "Se agregaron a tu perfil. Tus compatibles se están actualizando.",
+    ignored: "Ignoradas. Tu perfil queda como está.",
+    profileSays: "Tu perfil dice {value}",
+    use: "Usar estas respuestas",
+    ignore: "Ignorar",
+    scale: {
+      sleep_schedule: {
+        v1: "Madrugador",
+        v2: "Antes de medianoche",
+        v3: "Cerca de medianoche",
+        v4: "Después de la 1 a. m.",
+        v5: "Noctámbulo",
+      },
+      cleanliness: {
+        v1: "Relajado",
+        v2: "Bastante relajado",
+        v3: "Intermedio",
+        v4: "Ordenado",
+        v5: "Impecable",
+      },
+      noise: {
+        v1: "Silencioso",
+        v2: "Casi siempre tranquilo",
+        v3: "Intermedio",
+        v4: "Animado",
+        v5: "Ruidoso",
+      },
+      guests: {
+        v1: "Rara vez",
+        v2: "De vez en cuando",
+        v3: "A veces",
+        v4: "Seguido",
+        v5: "Todo el tiempo",
+      },
+    },
+  },
+  link: {
+    title: "¿Ya tienes tu correo escolar?",
+    body: "Agrégalo aquí para salir de la lista de admitidos. Tus compatibles, chats y grupos se mantienen.",
+    sent: "Revisa {email} y toca el enlace de confirmación. Hasta entonces inicias sesión con tu correo personal.",
+    label: "Correo escolar",
+    send: "Enviar confirmación",
+  },
+};

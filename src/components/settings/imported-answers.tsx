@@ -7,25 +7,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { resolveImportedAnswers } from "@/app/actions/starrez";
-
-const LABEL: Record<string, string> = {
-  sleep_schedule: "Sleep schedule",
-  cleanliness: "Cleanliness",
-  noise: "Noise",
-  guests: "Guests",
-  smoking: "Smoking",
-  drinking: "Drinking",
-  pets: "Pets",
-  study: "Study habits",
-};
-const SCALE: Record<string, string[]> = {
-  sleep_schedule: ["Early bird", "Before midnight", "Around midnight", "After 1am", "Night owl"],
-  cleanliness: ["Relaxed", "Fairly relaxed", "In between", "Tidy", "Spotless"],
-  noise: ["Quiet", "Mostly quiet", "In between", "Lively", "Loud"],
-  guests: ["Rarely", "Now and then", "Sometimes", "Often", "All the time"],
-};
-const pretty = (factor: string, value: string) =>
-  SCALE[factor]?.[Number(value) - 1] ?? value.replace(/_/g, " ");
+import { useOptions, useT } from "@/components/providers/i18n";
 
 /** One tap to use the answers (they replace what's in your profile), or one to ignore them. */
 export function ImportedAnswers({
@@ -34,13 +16,32 @@ export function ImportedAnswers({
   answers: { factor: string; value: string; current: string }[];
 }) {
   const router = useRouter();
+  const t = useT("settingsPages");
+  const { FACTOR_LABELS, SCALES } = useOptions();
+  const label = (factor: string) =>
+    factor === "sleep_schedule"
+      ? SCALES.sleep_schedule.label
+      : (FACTOR_LABELS[factor as keyof typeof FACTOR_LABELS] ?? factor);
+  const pretty = (factor: string, value: string) => {
+    const n = Number(value);
+    if (
+      (factor === "sleep_schedule" ||
+        factor === "cleanliness" ||
+        factor === "noise" ||
+        factor === "guests") &&
+      n >= 1 &&
+      n <= 5
+    )
+      return t(`imported.scale.${factor}.v${n as 1 | 2 | 3 | 4 | 5}`);
+    return value.replace(/_/g, " ");
+  };
   const [pending, setPending] = React.useState<"yes" | "no" | null>(null);
   if (!answers.length)
     return (
       <EmptyState
         icon={<Check strokeWidth={1.75} />}
-        title="Nothing to confirm"
-        description="When your housing office shares your questionnaire answers, they'll show up here."
+        title={t("imported.none")}
+        description={t("imported.noneBody")}
       />
     );
 
@@ -49,11 +50,7 @@ export function ImportedAnswers({
     const r = await resolveImportedAnswers(confirm);
     setPending(null);
     if (!r.ok) return void toast.error(r.error);
-    toast.success(
-      confirm
-        ? "Added to your profile. Your matches are updating."
-        : "Ignored. Your profile stays as it is.",
-    );
+    toast.success(confirm ? t("imported.added") : t("imported.ignored"));
     router.refresh();
   }
 
@@ -65,12 +62,12 @@ export function ImportedAnswers({
             key={a.factor}
             className="flex items-center justify-between gap-4 px-4 py-3 text-body-sm"
           >
-            <span className="text-ink-2">{LABEL[a.factor] ?? a.factor}</span>
+            <span className="text-ink-2">{label(a.factor)}</span>
             <span className="text-right">
               <span className="font-medium text-ink">{pretty(a.factor, a.value)}</span>
               {a.current && a.current !== a.value ? (
                 <span className="block text-caption text-ink-3">
-                  Your profile says {pretty(a.factor, a.current)}
+                  {t("imported.profileSays", { value: pretty(a.factor, a.current) })}
                 </span>
               ) : null}
             </span>
@@ -79,10 +76,10 @@ export function ImportedAnswers({
       </ul>
       <div className="flex flex-wrap gap-2">
         <Button loading={pending === "yes"} onClick={() => void resolve(true)}>
-          <Check aria-hidden /> Use these answers
+          <Check aria-hidden /> {t("imported.use")}
         </Button>
         <Button variant="secondary" loading={pending === "no"} onClick={() => void resolve(false)}>
-          Ignore
+          {t("imported.ignore")}
         </Button>
       </div>
     </div>

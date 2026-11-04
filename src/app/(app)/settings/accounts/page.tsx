@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getT } from "@/lib/i18n/server";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { publicEnv } from "@/lib/env";
@@ -10,7 +11,9 @@ import { housingDatesFor } from "@/lib/calendar/housing-dates";
 import { classBlocksSchema } from "@/lib/calendar/class-schedule";
 import { campusToday } from "@/lib/time";
 
-export const metadata: Metadata = { title: "Connected accounts" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("accounts"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function AccountsSettingsPage({

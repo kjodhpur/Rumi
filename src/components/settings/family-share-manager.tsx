@@ -13,12 +13,15 @@ import {
   revokeFamilyShare,
   type FamilyShareStatus,
 } from "@/app/actions/family-share";
+import { useIntlLocale, useT } from "@/components/providers/i18n";
 
 /**
  * Family link (Phase 7.9): a read-only page with your match summary for a parent or
  * guardian. Roommates appear by name only if they turned on "Family can see my name".
  */
 export function FamilyShareManager() {
+  const t = useT("settingsPages");
+  const intl = useIntlLocale();
   const [share, setShare] = React.useState<FamilyShareStatus | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -42,7 +45,7 @@ export function FamilyShareManager() {
     setPending(false);
     if (!r.ok) return void toast.error(r.error);
     setShare(r.data.share);
-    toast.success("Family link ready");
+    toast.success(t("family.ready"));
   }
 
   async function revoke() {
@@ -52,7 +55,7 @@ export function FamilyShareManager() {
     setPending(false);
     if (!r.ok) return void toast.error(r.error);
     setShare(null);
-    toast.success("Link turned off. It no longer opens.");
+    toast.success(t("family.off"));
   }
 
   async function copy() {
@@ -61,7 +64,7 @@ export function FamilyShareManager() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy the link.");
+      toast.error(t("family.copyFailed"));
     }
   }
 
@@ -70,40 +73,38 @@ export function FamilyShareManager() {
 
   return (
     <div className="flex flex-col gap-4" aria-live="polite">
-      <p className="text-body-sm text-ink-2">
-        Share a read-only page with a parent or guardian: your roommates&apos; first names (if they
-        allow it), your match scores and top reasons. Never your messages.
-      </p>
+      <p className="text-body-sm text-ink-2">{t("family.intro")}</p>
       {share ? (
         <>
           <div className="flex gap-2">
             <Input
               readOnly
               value={url}
-              aria-label="Family link"
+              aria-label={t("family.link")}
               onFocus={(e) => e.currentTarget.select()}
             />
             <Button
               variant="secondary"
               size="icon"
-              aria-label="Copy family link"
+              aria-label={t("family.copy")}
               onClick={() => void copy()}
             >
               {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
             </Button>
           </div>
           <p className="text-caption text-ink-3">
-            {share.includeAgreement ? "Includes your agreement status. " : ""}Works until{" "}
-            {new Date(share.expiresAt).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
+            {share.includeAgreement ? t("family.includes") : ""}
+            {t("family.until", {
+              date: new Date(share.expiresAt).toLocaleDateString(intl, {
+                month: "long",
+                day: "numeric",
+              }),
             })}
-            .
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" size="sm" asChild>
               <a href={share.path} target="_blank" rel="noopener">
-                <ExternalLink aria-hidden /> Preview
+                <ExternalLink aria-hidden /> {t("family.preview")}
               </a>
             </Button>
             <Button
@@ -112,22 +113,22 @@ export function FamilyShareManager() {
               loading={pending}
               onClick={() => void revoke()}
             >
-              <Link2Off aria-hidden /> Turn off
+              <Link2Off aria-hidden /> {t("family.turnOff")}
             </Button>
           </div>
         </>
       ) : (
         <>
           <label className="flex items-center justify-between gap-3 text-body-sm text-ink">
-            Include whether our agreement is signed
+            {t("family.includeLabel")}
             <Switch
               checked={includeAgreement}
               onCheckedChange={setIncludeAgreement}
-              aria-label="Include agreement status"
+              aria-label={t("family.includeAria")}
             />
           </label>
           <Button className="self-start" loading={pending} onClick={() => void create()}>
-            Create family link
+            {t("family.create")}
           </Button>
         </>
       )}

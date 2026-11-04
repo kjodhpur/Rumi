@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { getT } from "@/lib/i18n/server";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { publicEnv, serverEnv } from "@/lib/env";
 import { loadMatrix } from "@/lib/notifications/dispatch";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 
-export const metadata: Metadata = { title: "Notification settings" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("settingsPages"))("notifications.title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function NotificationSettingsPage() {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getT } from "@/lib/i18n/server";
 import { redirect } from "next/navigation";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { loadActiveQuestions } from "@/lib/matching/questions";
@@ -6,7 +7,9 @@ import { ScenarioQuestions } from "@/components/matching/scenario-questions";
 import { SettingsBack } from "@/components/settings/settings-ui";
 import { ErrorState } from "@/components/ui/error-state";
 
-export const metadata: Metadata = { title: "Roommate scenarios" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("settingsPages"))("scenarios.title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function ScenariosSettingsPage() {
@@ -34,17 +37,12 @@ export default async function ScenariosSettingsPage() {
     else outdated.add(q.key);
   }
 
+  const t = await getT("settingsPages");
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-8">
-      <SettingsBack
-        title="Roommate scenarios"
-        description="Everyday situations, from dishes to overnight guests. Your answers sharpen the matching factor they speak to and can show up in “why you match”."
-      />
+      <SettingsBack title={t("scenarios.title")} description={t("scenarios.description")} />
       {error ? (
-        <ErrorState
-          title="Couldn't load your answers"
-          description="Refresh the page to try again."
-        />
+        <ErrorState title={t("scenarios.loadError")} description={t("scenarios.loadErrorBody")} />
       ) : (
         <ScenarioQuestions
           initialAnswers={answers}

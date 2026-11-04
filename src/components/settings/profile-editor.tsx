@@ -21,9 +21,12 @@ import type { OnboardingData, PrefsDraft, ProfileDraft } from "@/components/onbo
 import type { PhotoRecord } from "@/app/actions/photos";
 import { basicsSchema, bioSchema } from "@/lib/validation";
 import { SettingsBack } from "./settings-ui";
+import { useLocalizeError, useT } from "@/components/providers/i18n";
 
 /** Every onboarding answer, editable in place. Changes save themselves and re-rank matches. */
 export function ProfileEditor({ data }: { data: OnboardingData }) {
+  const t = useT("settingsPages");
+  const localizeError = useLocalizeError();
   const [profile, setProfile] = React.useState<ProfileDraft>(data.profile);
   const [prefs, setPrefs] = React.useState<PrefsDraft>(data.prefs);
   const [photos, setPhotos] = React.useState<PhotoRecord[]>(data.photos);
@@ -44,7 +47,10 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
               : (basicsSchema.shape as Record<string, import("zod").ZodTypeAny>)[key];
         const result = schema ? schema.safeParse(value) : { success: true as const };
         if (result.success) (valid as Record<string, string>)[key] = value;
-        else nextErrors[key] = result.error.issues[0]?.message ?? "Check this field.";
+        else
+          nextErrors[key] = result.error.issues[0]?.message
+            ? localizeError(result.error.issues[0].message)
+            : t("editor.checkField");
       }
       setErrors((e) => {
         const merged = { ...e };
@@ -53,14 +59,14 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
       });
       if (Object.keys(valid).length) queue({ profile: valid as Record<string, never> });
     },
-    [queue],
+    [queue, localizeError, t],
   );
 
   const updatePrefs = React.useCallback(
     (patch: Partial<PrefsDraft>) => {
       setPrefs((p) => ({ ...p, ...patch }));
       if (patch.areas && patch.areas.length === 0) {
-        setErrors((e) => ({ ...e, areas: "Keep at least one neighborhood." }));
+        setErrors((e) => ({ ...e, areas: t("editor.keepArea") }));
         return;
       }
       setErrors((e) => {
@@ -78,8 +84,8 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
     <div className="mx-auto max-w-[680px]">
       <div className="flex items-start justify-between gap-4">
         <SettingsBack
-          title="Profile & preferences"
-          description="Changes save automatically and re-rank your matches."
+          title={t("editor.title")}
+          description={t("editor.description")}
           className="pb-6 lg:pb-8"
         />
         <div className="pt-12">
@@ -88,20 +94,18 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
       </div>
       <Tabs defaultValue="about">
         <TabsList className="mb-8 scrollbar-none overflow-x-auto">
-          <TabsTrigger value="about">About</TabsTrigger>
-          <TabsTrigger value="photos">Photos</TabsTrigger>
-          <TabsTrigger value="housing">Housing</TabsTrigger>
-          <TabsTrigger value="lifestyle">Lifestyle</TabsTrigger>
-          <TabsTrigger value="matching">Matching</TabsTrigger>
+          <TabsTrigger value="about">{t("editor.tabs.about")}</TabsTrigger>
+          <TabsTrigger value="photos">{t("editor.tabs.photos")}</TabsTrigger>
+          <TabsTrigger value="housing">{t("editor.tabs.housing")}</TabsTrigger>
+          <TabsTrigger value="lifestyle">{t("editor.tabs.lifestyle")}</TabsTrigger>
+          <TabsTrigger value="matching">{t("editor.tabs.matching")}</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="flex flex-col gap-10 outline-none">
           <BasicsStep {...stepProps} trackLocked={data.school.trackLocked} />
           {hasSchoolOptions(data.school) ? (
             <div>
-              <h2 className="mb-1 text-body font-medium text-ink">Campus</h2>
-              <p className="mb-4 text-body-sm text-ink-3">
-                Used for your housing office&apos;s matching rules. Never shown on your profile.
-              </p>
+              <h2 className="mb-1 text-body font-medium text-ink">{t("editor.campus")}</h2>
+              <p className="mb-4 text-body-sm text-ink-3">{t("editor.campusHint")}</p>
               <SchoolStep {...stepProps} school={data.school} />
             </div>
           ) : null}
@@ -113,7 +117,7 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
         <TabsContent value="housing" className="flex flex-col gap-10 outline-none">
           <HousingStep {...stepProps} />
           <div>
-            <h2 className="mb-4 text-body font-medium text-ink">Neighborhoods</h2>
+            <h2 className="mb-4 text-body font-medium text-ink">{t("editor.areas")}</h2>
             <AreasStep {...stepProps} areas={data.areas} />
           </div>
         </TabsContent>
@@ -124,14 +128,14 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
         </TabsContent>
         <TabsContent value="matching" className="flex flex-col gap-10 outline-none">
           <div>
-            <h2 className="mb-1 text-body font-medium text-ink">What matters most</h2>
+            <h2 className="mb-1 text-body font-medium text-ink">{t("editor.matters")}</h2>
             <PrioritiesStep {...stepProps} musicEnabled={data.spotify.connected} />
             <div className="mt-6">
               <ConsistencyPrompt input={consistencyInput(prefs)} dismissed={data.dismissedFlags} />
             </div>
           </div>
           <div>
-            <h2 className="mb-4 text-body font-medium text-ink">Dealbreakers</h2>
+            <h2 className="mb-4 text-body font-medium text-ink">{t("editor.dealbreakers")}</h2>
             <DealbreakersStep {...stepProps} />
           </div>
         </TabsContent>
@@ -141,6 +145,7 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
 }
 
 function Status({ status }: { status: ReturnType<typeof useAutosave>["status"] }) {
+  const t = useT("settingsPages");
   return (
     <AnimatePresence mode="wait" initial={false}>
       {status === "idle" ? null : (
@@ -158,15 +163,16 @@ function Status({ status }: { status: ReturnType<typeof useAutosave>["status"] }
         >
           {status === "saving" ? (
             <>
-              <span className="size-1.5 animate-pulse rounded-full bg-ink-3" /> Saving
+              <span className="size-1.5 animate-pulse rounded-full bg-ink-3" /> {t("editor.saving")}
             </>
           ) : status === "saved" ? (
             <>
-              <Check className="size-3.5" strokeWidth={2.5} aria-hidden /> Saved · matches updating
+              <Check className="size-3.5" strokeWidth={2.5} aria-hidden /> {t("editor.saved")}
             </>
           ) : (
             <>
-              <AlertCircle className="size-3.5" strokeWidth={2} aria-hidden /> Not saved
+              <AlertCircle className="size-3.5" strokeWidth={2} aria-hidden />{" "}
+              {t("editor.notSaved")}
             </>
           )}
         </motion.span>
