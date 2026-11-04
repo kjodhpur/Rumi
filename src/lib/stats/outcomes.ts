@@ -65,8 +65,19 @@ export function armMetrics(arm: Arm, students: OutcomeStudent[]): ArmMetrics {
   const changed = assigned.filter((s) => s.firstChangeAt);
   const days = changed
     .filter((s) => s.movedInAt)
-    .map((s) => Math.max(0, Math.round((Date.parse(s.firstChangeAt!) - Date.parse(`${s.movedInAt}T00:00:00Z`)) / 86_400_000)));
-  const scores = mine.flatMap((s) => (s.checkinScores.length ? [s.checkinScores.reduce((a, b) => a + b, 0) / s.checkinScores.length] : []));
+    .map((s) =>
+      Math.max(
+        0,
+        Math.round(
+          (Date.parse(s.firstChangeAt!) - Date.parse(`${s.movedInAt}T00:00:00Z`)) / 86_400_000,
+        ),
+      ),
+    );
+  const scores = mine.flatMap((s) =>
+    s.checkinScores.length
+      ? [s.checkinScores.reduce((a, b) => a + b, 0) / s.checkinScores.length]
+      : [],
+  );
   const grouped = mine.filter((s) => s.inGroup);
   const surveyed = mine.filter((s) => s.roomAgain !== null);
   const retainable = assigned.filter((s) => s.retained !== null);
@@ -75,7 +86,14 @@ export function armMetrics(arm: Arm, students: OutcomeStudent[]): ArmMetrics {
     students: mine.length,
     roomChange: proportion(changed.length, assigned.length),
     medianDaysToFirstChange: changed.length >= 5 ? median(days) : null,
-    checkinAverage: { value: scores.length >= 5 ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100 : null, n: scores.length, suppressed: scores.length > 0 && scores.length < 5 },
+    checkinAverage: {
+      value:
+        scores.length >= 5
+          ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100
+          : null,
+      n: scores.length,
+      suppressed: scores.length > 0 && scores.length < 5,
+    },
     agreement: proportion(grouped.filter((s) => s.agreementSigned).length, grouped.length),
     roomAgain: proportion(surveyed.filter((s) => s.roomAgain === "yes").length, surveyed.length),
     retention: proportion(retainable.filter((s) => s.retained).length, retainable.length),
@@ -84,8 +102,12 @@ export function armMetrics(arm: Arm, students: OutcomeStudent[]): ArmMetrics {
 
 /** Standard normal CDF (Abramowitz–Stegun 7.1.26 via erf). */
 function normalCdf(z: number) {
-  const t = 1 / (1 + 0.3275911 * Math.abs(z) / Math.SQRT2);
-  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-(z * z) / 2);
+  const t = 1 / (1 + (0.3275911 * Math.abs(z)) / Math.SQRT2);
+  const y =
+    1 -
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+      t *
+      Math.exp(-(z * z) / 2);
   return z >= 0 ? (1 + y) / 2 : (1 - y) / 2;
 }
 
@@ -99,14 +121,29 @@ export interface Comparison {
 
 /** Rumi vs. control on one proportion. Needs 5+ in each arm; never on suppressed cells. */
 export function compareProportions(a: Proportion, b: Proportion, alpha = 0.05): Comparison {
-  if (a.n < 5 || b.n < 5) return { p: null, significant: false, label: "Not enough students to compare" };
+  if (a.n < 5 || b.n < 5)
+    return { p: null, significant: false, label: "Not enough students to compare" };
+  // A p-value next to known sample sizes would let a reader work back to a suppressed 1–4 count.
+  const small = (k: number, n: number) => (k > 0 && k < 5) || (n - k > 0 && n - k < 5);
+  if (small(a.k, a.n) || small(b.k, b.n))
+    return {
+      p: null,
+      significant: false,
+      label: "Too few to compare without revealing small counts",
+    };
   const pooled = (a.k + b.k) / (a.n + b.n);
   const se = Math.sqrt(pooled * (1 - pooled) * (1 / a.n + 1 / b.n));
   if (se === 0) return { p: 1, significant: false, label: "Not statistically significant" };
   const z = (a.k / a.n - b.k / b.n) / se;
   const p = 2 * (1 - normalCdf(Math.abs(z)));
   const significant = p < alpha;
-  return { p: Math.round(p * 1000) / 1000, significant, label: significant ? `Statistically significant (p = ${p < 0.001 ? "<0.001" : p.toFixed(3)})` : "Not statistically significant" };
+  return {
+    p: Math.round(p * 1000) / 1000,
+    significant,
+    label: significant
+      ? `Statistically significant (p = ${p < 0.001 ? "<0.001" : p.toFixed(3)})`
+      : "Not statistically significant",
+  };
 }
 
 export type ScoreBand = "<50" | "50-69" | "70-84" | "85+";
@@ -133,7 +170,11 @@ export function deidentifiedCsv(rows: DeidentifiedRow[]): string {
   const header = "arm,score_band,agreement_signed,checkin_average,room_change,room_again";
   // Shuffle-free but sorted, so row order can't be joined back to sign-up order.
   const lines = rows
-    .map((r) => [r.arm, r.scoreBand, r.agreementSigned, r.checkinAverage, r.roomChange, r.roomAgain].join(","))
+    .map((r) =>
+      [r.arm, r.scoreBand, r.agreementSigned, r.checkinAverage, r.roomChange, r.roomAgain].join(
+        ",",
+      ),
+    )
     .sort();
   return [header, ...lines].join("\r\n") + "\r\n";
 }

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { armMetrics, compareProportions, deidentifiedCsv, formatProportion, proportion, scoreBand, type OutcomeStudent } from "./outcomes";
+import {
+  armMetrics,
+  compareProportions,
+  deidentifiedCsv,
+  formatProportion,
+  proportion,
+  scoreBand,
+  type OutcomeStudent,
+} from "./outcomes";
 import { wilson } from "./wilson";
 
 const s = (over: Partial<OutcomeStudent>): OutcomeStudent => ({
@@ -39,7 +47,9 @@ describe("suppression", () => {
 describe("arm metrics", () => {
   it("counts room changes over assigned students and the median days to the first one", () => {
     const students = [
-      ...Array.from({ length: 5 }, (_, i) => s({ firstChangeAt: `2026-09-${String(10 + i).padStart(2, "0")}T12:00:00Z` })),
+      ...Array.from({ length: 5 }, (_, i) =>
+        s({ firstChangeAt: `2026-09-${String(10 + i).padStart(2, "0")}T12:00:00Z` }),
+      ),
       ...Array.from({ length: 15 }, () => s({})),
       s({ arm: "control", firstChangeAt: "2026-09-01T00:00:00Z" }),
       s({ assigned: false }),
@@ -53,7 +63,10 @@ describe("arm metrics", () => {
   it("averages consented check-ins per student and suppresses under five", () => {
     const few = armMetrics("rumi", [s({ checkinScores: [4, 2] }), s({ checkinScores: [5] })]);
     expect(few.checkinAverage).toEqual({ value: null, n: 2, suppressed: true });
-    const many = armMetrics("rumi", Array.from({ length: 5 }, () => s({ checkinScores: [4, 2] })));
+    const many = armMetrics(
+      "rumi",
+      Array.from({ length: 5 }, () => s({ checkinScores: [4, 2] })),
+    );
     expect(many.checkinAverage.value).toBe(3);
   });
 });
@@ -66,21 +79,51 @@ describe("comparison", () => {
   });
 
   it("says 'not statistically significant' when it isn't", () => {
-    expect(compareProportions(proportion(10, 50), proportion(12, 50))).toMatchObject({ significant: false, label: "Not statistically significant" });
+    expect(compareProportions(proportion(10, 50), proportion(12, 50))).toMatchObject({
+      significant: false,
+      label: "Not statistically significant",
+    });
   });
 
   it("refuses to compare tiny arms", () => {
-    expect(compareProportions(proportion(1, 4), proportion(10, 40)).label).toBe("Not enough students to compare");
+    expect(compareProportions(proportion(1, 4), proportion(10, 40)).label).toBe(
+      "Not enough students to compare",
+    );
+  });
+
+  it("gives no p-value when either arm has a suppressed 1–4 count", () => {
+    expect(compareProportions(proportion(9, 170), proportion(2, 20))).toMatchObject({
+      p: null,
+      significant: false,
+    });
+    expect(compareProportions(proportion(9, 170), proportion(18, 20)).p).toBeNull();
+    expect(compareProportions(proportion(9, 170), proportion(0, 20)).p).not.toBeNull();
   });
 });
 
 describe("de-identified export", () => {
   it("has no identifiers and a stable, sorted order", () => {
     const csv = deidentifiedCsv([
-      { arm: "rumi", scoreBand: scoreBand(91), agreementSigned: "Y", checkinAverage: "4.5", roomChange: "N", roomAgain: "yes" },
-      { arm: "control", scoreBand: scoreBand(null), agreementSigned: "", checkinAverage: "", roomChange: "Y", roomAgain: "" },
+      {
+        arm: "rumi",
+        scoreBand: scoreBand(91),
+        agreementSigned: "Y",
+        checkinAverage: "4.5",
+        roomChange: "N",
+        roomAgain: "yes",
+      },
+      {
+        arm: "control",
+        scoreBand: scoreBand(null),
+        agreementSigned: "",
+        checkinAverage: "",
+        roomChange: "Y",
+        roomAgain: "",
+      },
     ]);
-    expect(csv.split("\r\n")[0]).toBe("arm,score_band,agreement_signed,checkin_average,room_change,room_again");
+    expect(csv.split("\r\n")[0]).toBe(
+      "arm,score_band,agreement_signed,checkin_average,room_change,room_again",
+    );
     expect(csv).toContain("control,unknown,,,Y,");
     expect(csv).not.toMatch(/@|[0-9a-f]{8}-[0-9a-f]{4}|20\d\d-\d\d/);
   });
