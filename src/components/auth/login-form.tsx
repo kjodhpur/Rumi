@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Mail } from "lucide-react";
-import { requestCode, verifyCode } from "@/app/actions/auth";
+import { requestCode, startSso, verifyCode } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
@@ -22,6 +22,7 @@ export function LoginForm({
   next,
   googleEnabled,
   showDevHint,
+  sso = [],
 }: {
   initialError: string | null;
   /** Prefilled when the form was submitted natively before the page finished loading. */
@@ -29,6 +30,8 @@ export function LoginForm({
   next: string | null;
   googleEnabled: boolean;
   showDevHint: boolean;
+  /** Schools with single sign-on (Phase 3); each gets a "Continue with" button. */
+  sso?: { id: string; shortName: string }[];
 }) {
   const router = useRouter();
   const [step, setStep] = React.useState<"email" | "code">("email");
@@ -39,6 +42,19 @@ export function LoginForm({
   const [success, setSuccess] = React.useState(false);
   const [cooldown, setCooldown] = React.useState(0);
   const [googlePending, setGooglePending] = React.useState(false);
+  const [ssoPending, setSsoPending] = React.useState<string | null>(null);
+
+  async function signInWithSso(schoolId: string) {
+    setSsoPending(schoolId);
+    setError(null);
+    const result = await startSso(schoolId, next);
+    if (!result.ok) {
+      setSsoPending(null);
+      setError(result.error);
+      return;
+    }
+    window.location.assign(result.data.url);
+  }
 
   React.useEffect(() => {
     if (cooldown <= 0) return;
@@ -141,6 +157,23 @@ export function LoginForm({
               </Button>
             </form>
 
+            {sso.length ? (
+              <div className="mt-6 flex flex-col gap-2">
+                {sso.map((school) => (
+                  <Button
+                    key={school.id}
+                    variant="secondary"
+                    size="lg"
+                    block
+                    loading={ssoPending === school.id}
+                    onClick={() => void signInWithSso(school.id)}
+                  >
+                    Continue with {school.shortName} sign-in
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+
             {googleEnabled ? (
               <>
                 <div className="my-6 flex items-center gap-4 text-caption text-ink-3">
@@ -166,11 +199,17 @@ export function LoginForm({
 
             <p className="mt-8 text-caption text-ink-3">
               By continuing you agree to our{" "}
-              <Link href="/terms" className="text-ink-2 underline underline-offset-2 hover:text-ink">
+              <Link
+                href="/terms"
+                className="text-ink-2 underline underline-offset-2 hover:text-ink"
+              >
                 Terms
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-ink-2 underline underline-offset-2 hover:text-ink">
+              <Link
+                href="/privacy"
+                className="text-ink-2 underline underline-offset-2 hover:text-ink"
+              >
                 Privacy Policy
               </Link>
               .
@@ -190,7 +229,7 @@ export function LoginForm({
                 setStep("email");
                 setError(null);
               }}
-              className="-ml-2 mb-6 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-body-sm font-medium text-ink-2 transition-colors hover:bg-surface-hover hover:text-ink"
+              className="mb-6 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-body-sm font-medium text-ink-2 transition-colors hover:bg-surface-hover hover:text-ink"
             >
               <ArrowLeft className="size-4" strokeWidth={1.75} aria-hidden />
               Use a different email
@@ -261,7 +300,12 @@ export function LoginForm({
             {showDevHint ? (
               <p className="mt-8 rounded-md bg-surface-sunken px-3 py-2.5 text-caption text-ink-2">
                 Local dev: read the code in Mailpit at{" "}
-                <a className="font-medium underline" href="http://127.0.0.1:54324" target="_blank" rel="noreferrer">
+                <a
+                  className="font-medium underline"
+                  href="http://127.0.0.1:54324"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   127.0.0.1:54324
                 </a>
               </p>

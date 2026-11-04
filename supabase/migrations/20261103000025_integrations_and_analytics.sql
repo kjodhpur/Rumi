@@ -187,6 +187,10 @@ alter table public.profiles add column if not exists is_demo boolean not null de
 -- Phase 9: a live pilot limits the student pool (and so every dashboard) to its scope.
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Phase 3: a school sign-on that released an affiliation without "student" (staff, faculty)
+-- keeps the account out of the student pool. Set only by the server after SSO sign-in.
+alter table public.profiles add column if not exists sso_non_student boolean not null default false;
+
 create or replace function public.in_pilot_scope(p_school text, p_residential_college text)
 returns boolean
 language sql
@@ -219,6 +223,7 @@ as $$
   join public.schools s on s.id = p.school_id
   where p.school_id = p_school
     and not p.is_staff
+    and not p.sso_non_student
     and p.banned_at is null
     and (not p.is_seed or s.is_demo)
     and public.in_pilot_scope(p_school, p.residential_college);
@@ -670,3 +675,4 @@ revoke all on public.phone_verifications from anon, authenticated;
 -- Phase 1 term configuration: required school questions and allowed importance ranges.
 -- { "requiredQuestions": ["key", …], "maxImportance": { "<factor>": 0–3 } }
 alter table public.terms add column if not exists config jsonb not null default '{}'::jsonb check (jsonb_typeof(config) = 'object');
+

@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase
       .from("profiles")
       .select(
-        "id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at, is_staff, last_active_at",
+        "id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at, is_staff, last_active_at, sso_non_student",
       )
       .eq("id", user.id)
       .single(),
@@ -27,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!profile) redirect("/login");
   if (profile.banned_at) redirect("/suspended");
   if (profile.is_staff) redirect("/staff");
+  if (profile.sso_non_student) redirect("/not-a-student");
   if (!profile.onboarding_completed_at) redirect("/onboarding");
   // Opening the app counts as activity (at most one write a day) for inactive-account retention.
   if (Date.now() - Date.parse(profile.last_active_at) > 86_400_000) {

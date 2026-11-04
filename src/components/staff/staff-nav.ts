@@ -19,6 +19,7 @@ import {
   PieChart,
   Shuffle,
   GraduationCap,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";

@@ -155,7 +155,8 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
       .eq("school_id", schoolId)
       .not("onboarding_completed_at", "is", null)
       .is("banned_at", null)
-      .eq("is_staff", false);
+      .eq("is_staff", false)
+      .eq("sso_non_student", false);
     if (school?.hide_seed_profiles) q = q.eq("is_seed", false);
     if (scope.length) q = q.in("residential_college", scope);
     return q.order("id").range(from, to).returns<PoolRow[]>();

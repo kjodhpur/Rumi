@@ -1,65 +1,89 @@
-# ASU SSO Integration Specifications (Draft — Not Approved)
+# Single sign-on for ASU (draft for ASU IT review)
 
-> [!NOTE]
-> This document specifies the SAML 2.0 / OIDC requirements for integrating Rumi with Arizona State University (ASU) Identity Management (IT / Shibboleth IdP).
-> **Status:** Draft proposal for ASU IT review — ASU has not yet reviewed or approved this configuration.
+> **Status: draft. ASU has not reviewed or approved this configuration.** It describes what
+> Rumi supports and what ASU's identity team would need to provide if ASU chooses to connect.
 
----
+Rumi is an independent service and is not affiliated with Arizona State University.
 
-## 1. Overview & Authentication Model
+## How it works
 
-Rumi supports single sign-on (SSO) via enterprise SAML 2.0 (preferred by ASU Shibboleth) or OpenID Connect (OIDC). Authentication is configured per school.
+- Rumi uses **Supabase Auth SSO** (SAML 2.0; OIDC also possible). Supabase hosts the service
+  provider, so the endpoints below live on Rumi's Supabase project URL. SAML SSO needs a
+  Supabase plan that includes it.
+- Login page → **Continue with ASU sign-in** → ASU's IdP → Supabase → `/auth/callback` →
+  Rumi. The existing database rule still applies: only `@asu.edu` accounts become student
+  accounts (`handle_new_user`), and the sign-in re-stamps the yearly student verification.
+- **Affiliation mapping.** If the assertion releases `eduPersonAffiliation` and it doesn't
+  include `student` (for example only `staff` or `faculty`), the account is kept out of
+  roommate matching (`profiles.sso_non_student`, hidden from the pool and from staff totals)
+  and the person sees "Rumi is for students". With no affiliation released, the school email
+  check alone decides, as with code sign-in. Code: `src/lib/auth/sso.ts`.
+- **Code sign-in fallback** stays on by default. A housing admin can turn it off in
+  Staff → Single sign-on once SSO works. Admitted students without an ASU account
+  (pre-arrival, `docs/phase-3-tracks-and-prearrival.md`) always use codes.
+- **Pre-arrival accounts** move to the ASU email on the same account (Settings → "Got your
+  school email?"), keeping matches and chats. A housing admin can link a duplicate account
+  in Staff → Admitted students.
 
-Students and staff authenticate against ASU's IdP. Rumi provisions and verifies users on receipt of a valid assertion:
-- Verification timestamp is stamped from assertion validity.
-- Domain restriction checks (`@asu.edu`) remain enforced at the database trigger level as a defense-in-depth measure.
-- OTP email login remains available as a school-configurable fallback.
+## What ASU IT would provide
 
----
+1. IdP metadata: a metadata URL (preferred) or XML with the entity ID, SSO endpoint and
+   signing certificate.
+2. Attribute release for Rumi's service provider:
 
-## 2. Requirements from ASU IT
+| Attribute     | SAML name                                                   | Use                                | Needed      |
+| ------------- | ----------------------------------------------------------- | ---------------------------------- | ----------- |
+| Persistent ID | NameID (persistent) or `eduPersonPrincipalName`             | Stable account key                 | Required    |
+| Email         | `urn:oid:0.9.2342.19200300.100.1.3` (`mail`)                | School email check                 | Required    |
+| Given name    | `urn:oid:2.5.4.42`                                          | First name on the profile          | Required    |
+| Surname       | `urn:oid:2.5.4.4`                                           | Last initial only                  | Required    |
+| Affiliation   | `urn:oid:1.3.6.1.4.1.5923.1.1.1.1` (`eduPersonAffiliation`) | Keep staff/faculty out of matching | Recommended |
 
-To establish the federation, ASU Identity Management will need to provide:
+Rumi doesn't ask for student IDs, majors, colleges or any directory data beyond these.
 
-1. **IdP Metadata URL or XML**:
-   - Production / Staging SAML 2.0 Entity ID (e.g. `https://webauth.asu.edu/idp/shibboleth`).
-   - Single Sign-On Service HTTP-Redirect / HTTP-POST endpoint.
-   - Public signing X.509 certificate.
+## What Rumi gives ASU IT
 
-2. **Attribute Release Policy**:
-   Rumi requires the following SAML attributes (or OIDC claims) released in the assertion:
+Shown with copy buttons in Staff → Single sign-on. For a Supabase project at
+`https://<project>.supabase.co`:
 
-| Attribute Name (SAML / OIDC) | Friendly Name | Purpose | Required / Optional |
-|---|---|---|---|
-| `urn:oid:0.9.2342.19200300.100.1.1` (`uid` / `sub`) | ASURITE ID | Unique persistent identifier | **Required** |
-| `urn:oid:0.9.2342.19200300.100.1.3` (`mail`) | School Email | Verification (`@asu.edu`) | **Required** |
-| `urn:oid:2.5.4.42` (`givenName`) | First Name | Displayed on profile (first name only) | **Required** |
-| `urn:oid:2.5.4.4` (`sn`) | Surname | Truncated to initial for student privacy | **Required** |
-| `urn:oid:1.3.6.1.4.1.5923.1.1.1.1` (`eduPersonAffiliation`) | Affiliation | Identifies `student`, `faculty`, `staff` | **Required** |
-| `asuPrimaryCollege` / `asuMajor` | Academic College | Powers LLC / Major constraints (Phase 1) | *Optional* |
+| Item                 | Value                                                     |
+| -------------------- | --------------------------------------------------------- |
+| Entity ID / metadata | `https://<project>.supabase.co/auth/v1/sso/saml/metadata` |
+| ACS URL              | `https://<project>.supabase.co/auth/v1/sso/saml/acs`      |
+| NameID format        | `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent`    |
 
-3. **Affiliation Filtering & FERPA Safeguards**:
-   - `eduPersonAffiliation` containing `staff` or `faculty` without `student` are automatically prevented from appearing in the student roommate matching pool.
-   - FERPA directory hold flags (if passed via assertion) immediately toggle profile privacy (`is_private = true`).
+## Setup steps (Rumi team)
 
----
+1. Register the provider with the Supabase CLI, mapping attributes into user metadata:
 
-## 3. Service Provider (Rumi) Details for ASU
+   ```sh
+   supabase sso add --type saml --project-ref <ref> \
+     --metadata-url "<ASU metadata URL>" --domains asu.edu \
+     --attribute-mapping-file sso-asu-mapping.json
+   ```
 
-| Configuration Item | Value |
-|---|---|
-| **SP Entity ID** | `https://rumi.app/auth/v1/sso/saml/metadata` (or school-specific `urn:rumi:sp:asu`) |
-| **ACS URL (Assertion Consumer)** | `https://rumi.app/auth/v1/sso/saml/acs` |
-| **NameID Format** | `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` |
-| **Signing / Encryption** | HTTP-POST with SHA-256 signatures; encrypted assertions supported |
-| **RelayState Handling** | Supported (used for deep linking from StarRez or Canvas LMS) |
+   `sso-asu-mapping.json`:
 
----
+   ```json
+   {
+     "keys": {
+       "email": { "name": "urn:oid:0.9.2342.19200300.100.1.3" },
+       "first_name": { "name": "urn:oid:2.5.4.42" },
+       "last_name": { "name": "urn:oid:2.5.4.4" },
+       "affiliation": { "name": "urn:oid:1.3.6.1.4.1.5923.1.1.1.1", "array": true }
+     }
+   }
+   ```
 
-## 4. Pre-Arrival Students Without ASURITE Active
+2. Copy the provider ID from `supabase sso list` into Staff → Single sign-on (Rumi team
+   accounts only) with the domain `asu.edu`.
+3. Set `NEXT_PUBLIC_SSO_ENABLED=true` and redeploy. Test with an ASU test account, including
+   a staff-affiliated one (it should land on "Rumi is for students").
+4. Optionally turn off code sign-in for the school.
 
-For newly admitted students who do not yet have an active ASURITE SSO credential:
-- Rumi provides **Pre-Arrival Admitted Student Mode** (Phase 3.1).
-- Admissions staff upload an allowlist of hashed personal email addresses.
-- Pre-arrival admits match exclusively within their admitted cohort track.
-- Upon receiving ASU credentials and first SSO login, accounts link seamlessly via email verification without losing previous matches or messages.
+## Tests
+
+- Unit: attribute mapping and the student/non-student decision (`src/lib/auth/sso.test.ts`).
+- End to end: a mocked SSO identity (an account provisioned with an `sso:` provider and
+  affiliation metadata, signed in through a magic link) lands on "Rumi is for students"
+  (`e2e/sso.spec.ts`). No live IdP is contacted.
