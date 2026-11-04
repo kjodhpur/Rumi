@@ -46,7 +46,16 @@ export interface AccountsData {
   };
 }
 
-export function AccountsSettings({ data, status }: { data: AccountsData; status?: string }) {
+export function AccountsSettings({
+  data,
+  status,
+  children,
+}: {
+  data: AccountsData;
+  status?: string;
+  /** More connection cards (calendar, class schedule). */
+  children?: React.ReactNode;
+}) {
   const router = useRouter();
   const [syncing, setSyncing] = React.useState(false);
   const [synced, setSynced] = React.useState(false);
@@ -108,7 +117,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
     }
 
     toast.success(`Saved ${platform === "instagram" ? "Instagram" : "LinkedIn"} handle.`, {
-      description: "Paste your verification code in your bio to earn a verified badge.",
+      description: "Add the code to your bio, then confirm here. Your profile shows the link as self-confirmed.",
     });
     router.refresh();
   }
@@ -127,7 +136,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
       return;
     }
 
-    toast.success(`Verified ${platform === "instagram" ? "Instagram" : "LinkedIn"} profile!`);
+    toast.success(`${platform === "instagram" ? "Instagram" : "LinkedIn"} link marked self-confirmed`);
     router.refresh();
   }
 
@@ -194,7 +203,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
       {/* Social Accounts Section */}
       <SettingsSection
         title="Social accounts"
-        footer="Your handles appear as direct links on your profile. Rumi never scrapes or calls social media APIs. Adding a verification code to your bio earns a verified trust badge."
+        footer="Your handles appear as direct links on your profile. Rumi never scrapes or calls social media APIs. Rumi doesn't check them: a link you confirm shows as self-confirmed, which is a small trust signal, not proof."
       >
         {/* Instagram */}
         <div className="flex flex-col gap-4 border-b border-line p-4 sm:p-5">
@@ -212,7 +221,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
             </div>
             {social.instagram.verified ? (
               <Badge variant="success">
-                <Check className="mr-1 size-3" strokeWidth={2.5} /> Verified
+                <Check className="mr-1 size-3" strokeWidth={2.5} aria-hidden /> Self-confirmed
               </Badge>
             ) : null}
           </div>
@@ -222,7 +231,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
               {!social.instagram.verified && social.instagram.verificationCode ? (
                 <div className="flex flex-col gap-2">
                   <p className="text-ink-2">
-                    To verify ownership, place this code in your Instagram bio:
+                    Put this code in your Instagram bio, then confirm. Rumi doesn&apos;t check it for you.
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
@@ -244,7 +253,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
                       onClick={() => void handleVerifySocial("instagram")}
                       loading={verifyingIg}
                     >
-                      Verify bio code
+                      I added the code
                     </Button>
                     <Button
                       variant="danger-ghost"
@@ -311,7 +320,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
             </div>
             {social.linkedin.verified ? (
               <Badge variant="success">
-                <Check className="mr-1 size-3" strokeWidth={2.5} /> Verified
+                <Check className="mr-1 size-3" strokeWidth={2.5} aria-hidden /> Self-confirmed
               </Badge>
             ) : null}
           </div>
@@ -321,7 +330,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
               {!social.linkedin.verified && social.linkedin.verificationCode ? (
                 <div className="flex flex-col gap-2">
                   <p className="text-ink-2">
-                    To verify ownership, place this code in your LinkedIn headline or bio:
+                    Put this code in your LinkedIn headline or bio, then confirm. Rumi doesn&apos;t check it for you.
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
@@ -343,7 +352,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
                       onClick={() => void handleVerifySocial("linkedin")}
                       loading={verifyingLi}
                     >
-                      Verify headline code
+                      I added the code
                     </Button>
                     <Button
                       variant="danger-ghost"
@@ -458,6 +467,7 @@ export function AccountsSettings({ data, status }: { data: AccountsData; status?
           )}
         </SettingsSection>
       ) : null}
+      {children}
     </div>
   );
 }

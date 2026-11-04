@@ -28,7 +28,8 @@ export const WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
 
 const DAY = 86_400_000;
-const RRULE = /^FREQ=WEEKLY(;BYDAY=((MO|TU|WE|TH|FR|SA|SU)(,(MO|TU|WE|TH|FR|SA|SU)){0,6}))?(;UNTIL=(\d{8}T\d{6}Z))?$/;
+const RRULE =
+  /^FREQ=WEEKLY(;BYDAY=((MO|TU|WE|TH|FR|SA|SU)(,(MO|TU|WE|TH|FR|SA|SU)){0,6}))?(;UNTIL=(\d{8}T\d{6}Z))?$/;
 
 export function buildWeeklyRule(days: Weekday[], until: string | null): string {
   const unique = WEEKDAYS.filter((d) => days.includes(d));
@@ -43,7 +44,9 @@ export function parseWeeklyRule(rrule: string): { days: Weekday[]; until: Date |
   if (!m) return null;
   const days = m[2] ? (m[2].split(",") as Weekday[]) : [];
   const until = m[7]
-    ? new Date(`${m[7].slice(0, 4)}-${m[7].slice(4, 6)}-${m[7].slice(6, 8)}T${m[7].slice(9, 11)}:${m[7].slice(11, 13)}:${m[7].slice(13, 15)}Z`)
+    ? new Date(
+        `${m[7].slice(0, 4)}-${m[7].slice(4, 6)}-${m[7].slice(6, 8)}T${m[7].slice(9, 11)}:${m[7].slice(11, 13)}:${m[7].slice(13, 15)}Z`,
+      )
     : null;
   return { days, until };
 }
@@ -62,7 +65,9 @@ export function occurrences(event: RoomEvent, from: Date, to: Date): Occurrence[
   const length = Date.parse(event.endsAt) - start;
   const overlaps = (s: number) => s < to.getTime() && s + length > from.getTime();
   if (!event.rrule) {
-    return overlaps(start) ? [{ eventId: event.id, startsAt: event.startsAt, endsAt: event.endsAt }] : [];
+    return overlaps(start)
+      ? [{ eventId: event.id, startsAt: event.startsAt, endsAt: event.endsAt }]
+      : [];
   }
   const rule = parseWeeklyRule(event.rrule);
   if (!rule) return [];
@@ -72,11 +77,20 @@ export function occurrences(event: RoomEvent, from: Date, to: Date): Occurrence[
   // Walk day by day from the first occurrence; cheap for the ranges a room calendar shows.
   const firstDay = start - (start % DAY);
   const offset = start - firstDay;
-  for (let day = Math.max(firstDay, from.getTime() - length - (from.getTime() % DAY) - DAY); day < end; day += DAY) {
+  for (
+    let day = Math.max(firstDay, from.getTime() - length - (from.getTime() % DAY) - DAY);
+    day < end;
+    day += DAY
+  ) {
     if (!days.includes(utcWeekday(day))) continue;
     const s = day + offset;
     if (s < start || s >= end) continue;
-    if (overlaps(s)) out.push({ eventId: event.id, startsAt: new Date(s).toISOString(), endsAt: new Date(s + length).toISOString() });
+    if (overlaps(s))
+      out.push({
+        eventId: event.id,
+        startsAt: new Date(s).toISOString(),
+        endsAt: new Date(s + length).toISOString(),
+      });
     if (out.length > 500) break;
   }
   return out;
@@ -84,7 +98,13 @@ export function occurrences(event: RoomEvent, from: Date, to: Date): Occurrence[
 
 /** The campus-time Monday (yyyy-mm-dd) of the week an instant falls in. */
 export function campusWeekKey(iso: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" }).formatToParts(new Date(iso));
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
   const weekday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(get("weekday"));
   const date = Date.UTC(Number(get("year")), Number(get("month")) - 1, Number(get("day")));
@@ -101,7 +121,8 @@ export function agreementOvernightLimit(guestSection: string | null | undefined)
   return words[m[1]!.toLowerCase()] ?? Number(m[1]);
 }
 
-const ordinal = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
+const ordinal = (n: number) =>
+  `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
 
 /** Soft warning when an overnight guest goes past the agreement's weekly limit. */
 export function guestLimitWarning(
@@ -117,7 +138,8 @@ export function guestLimitWarning(
   let count = 1;
   for (const event of existing) {
     if (event.kind !== "guest" || !event.overnight) continue;
-    for (const o of occurrences(event, from, to)) if (campusWeekKey(o.startsAt, timeZone) === week) count += 1;
+    for (const o of occurrences(event, from, to))
+      if (campusWeekKey(o.startsAt, timeZone) === week) count += 1;
   }
   if (count <= limit) return null;
   return limit === 0
@@ -126,7 +148,10 @@ export function guestLimitWarning(
 }
 
 /** Quiet or exam times a new guest or shared event runs into (titles, deduped). */
-export function quietOverlaps(target: Pick<RoomEvent, "kind" | "startsAt" | "endsAt">, existing: RoomEvent[]): string[] {
+export function quietOverlaps(
+  target: Pick<RoomEvent, "kind" | "startsAt" | "endsAt">,
+  existing: RoomEvent[],
+): string[] {
   if (target.kind !== "guest" && target.kind !== "shared") return [];
   const from = new Date(target.startsAt);
   const to = new Date(target.endsAt);
@@ -144,7 +169,15 @@ export function campusLocalToIso(local: string, timeZone: string): string | null
   const asUtc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
   // The zone's offset at that moment, found by formatting the guess back in the zone.
   const offsetAt = (ms: number) => {
-    const parts = new Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(ms));
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).formatToParts(new Date(ms));
     const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
     return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute")) - ms;
   };
@@ -154,7 +187,15 @@ export function campusLocalToIso(local: string, timeZone: string): string | null
 
 /** A UTC instant as the campus wall-clock value an <input type="datetime-local"> expects. */
 export function isoToCampusLocal(iso: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(iso));
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(new Date(iso));
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }

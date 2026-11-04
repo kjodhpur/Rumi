@@ -10,11 +10,20 @@ function zone(local: boolean) {
 }
 
 export function formatTime(iso: string, local: boolean) {
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: zone(local) }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: zone(local),
+  }).format(new Date(iso));
 }
 
 function dayKey(date: Date, local: boolean) {
-  return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: zone(local) }).format(date);
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: zone(local),
+  }).format(date);
 }
 
 export function sameDay(a: string, b: string, local: boolean) {
@@ -27,7 +36,12 @@ export function dayLabel(iso: string, local: boolean, now = Date.now()) {
   const key = dayKey(d, local);
   if (key === dayKey(new Date(now), local)) return "Today";
   if (key === dayKey(new Date(now - 86_400_000), local)) return "Yesterday";
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: zone(local) }).format(d);
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: zone(local),
+  }).format(d);
 }
 
 /** Inbox-style stamp: time today, "Yesterday", weekday this week, else "Oct 20". */
@@ -40,11 +54,21 @@ export function listStamp(iso: string | null, local: boolean, now = Date.now()) 
   if (now - d.getTime() < 6 * 86_400_000) {
     return new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: zone(local) }).format(d);
   }
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: zone(local) }).format(d);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: zone(local),
+  }).format(d);
 }
 
 export function fullStamp(iso: string, local: boolean) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: zone(local) }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: zone(local),
+  }).format(new Date(iso));
 }
 
 /** "just now", "5m", "3h", "2d", "Oct 20" — relative to `now`. */
@@ -61,8 +85,16 @@ export function relative(iso: string, now: number) {
 }
 
 /** Formats a calendar date ("2027-08-01") without time-zone drift. Returns null when unparseable. */
-export function formatCalendarDate(date: string, options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) {
+export function formatCalendarDate(
+  date: string,
+  options: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" },
+) {
   const parsed = new Date(`${date.slice(0, 10)}T00:00:00Z`);
   if (Number.isNaN(parsed.getTime())) return null;
   return new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(parsed);
+}
+
+/** Today's date on campus, yyyy-mm-dd. */
+export function campusToday(now: Date = new Date()) {
+  return now.toLocaleDateString("en-CA", { timeZone: CAMPUS_TZ });
 }

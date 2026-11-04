@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import { createClient, getUser } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { publicEnv } from "@/lib/env";
 import { isVerified } from "@/lib/verification";
 import { AccountsSettings } from "@/components/settings/accounts-settings";
+import { CalendarSettings } from "@/components/settings/calendar-settings";
+import { configuredProviders, PROVIDER_LABEL } from "@/lib/calendar/oauth";
+import { housingDatesFor } from "@/lib/calendar/housing-dates";
+import { classBlocksSchema } from "@/lib/calendar/class-schedule";
+import { campusToday } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Connected accounts" };
 export const dynamic = "force-dynamic";
@@ -10,7 +16,7 @@ export const dynamic = "force-dynamic";
 export default async function AccountsSettingsPage({
   searchParams,
 }: {
-  searchParams: { spotify?: string };
+  searchParams: { spotify?: string; calendar?: string };
 }) {
   const user = (await getUser())!;
   const supabase = createClient();
@@ -20,6 +26,9 @@ export default async function AccountsSettingsPage({
     { data: spotify },
     { data: music },
     { data: socialLinks },
+    { data: calendars },
+    { data: schedule },
+    dates,
   ] = await Promise.all([
     supabase.from("profiles").select("student_verified_at").eq("id", user.id).single(),
     supabase.from("user_settings").select("email").eq("user_id", user.id).single(),
@@ -37,7 +46,26 @@ export default async function AccountsSettingsPage({
       .from("social_links")
       .select("platform, handle, verification_code, verified_at")
       .eq("user_id", user.id),
+    supabase
+      .from("calendar_accounts")
+      .select("provider, last_sync_at, last_error")
+      .eq("user_id", user.id),
+    supabase
+      .from("class_schedules")
+      .select("source, blocks, last_sync_at, last_error")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    housingDatesFor(user.id, campusToday()),
   ]);
+  const { data: feed } =
+    schedule?.source === "ics"
+      ? await createAdminClient()
+          .from("class_schedules")
+          .select("ics_url_enc")
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : { data: null };
+  const blocks = classBlocksSchema.safeParse(schedule?.blocks ?? []);
 
   const artists = Array.isArray(music?.top_artists)
     ? (music!.top_artists as { name: string; image?: string | null }[]).map((a) => ({
@@ -80,6 +108,31 @@ export default async function AccountsSettingsPage({
           },
         },
       }}
-    />
+    >
+      <CalendarSettings
+        status={searchParams.calendar}
+        view={{
+          providers: configuredProviders().map((provider) => {
+            const row = (calendars ?? []).find((c) => c.provider === provider);
+            return {
+              provider,
+              label: PROVIDER_LABEL[provider],
+              connected: Boolean(row),
+              lastSyncAt: row?.last_sync_at ?? null,
+              lastError: row?.last_error ?? null,
+            };
+          }),
+          schedule: {
+            source:
+              schedule?.source === "ics" || schedule?.source === "manual" ? schedule.source : null,
+            blocks: blocks.success ? blocks.data : [],
+            hasFeed: Boolean(feed?.ics_url_enc),
+            lastSyncAt: schedule?.last_sync_at ?? null,
+            lastError: schedule?.last_error ?? null,
+          },
+          dates: dates.map(({ uid, title, date }) => ({ uid, title, date })),
+        }}
+      />
+    </AccountsSettings>
   );
 }

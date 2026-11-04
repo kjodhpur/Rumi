@@ -162,8 +162,8 @@ Scores are stored per direction in `match_scores`. Saving preferences or finishi
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `NEXT_PUBLIC_APP_URL` | ✓ | Public URL, used for email links and OAuth redirects |
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | Supabase project |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✓ | Server-only. Recompute, notifications, moderation, deletion |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) | ✓ | Supabase project |
+| `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`) | ✓ | Server-only. Recompute, notifications, moderation, deletion |
 | `TOKEN_ENCRYPTION_KEY` | ✓ | 64 hex chars. AES-256-GCM for third-party tokens |
 | `CRON_SECRET` | ✓ in prod | Authenticates `/api/cron/*` (Vercel sends it automatically) |
 | `ADMIN_EMAILS` | | Comma-separated admin accounts |
@@ -173,6 +173,10 @@ Scores are stored per direction in `match_scores`. Saving preferences or finishi
 | `MODERATION_WEBHOOK_URL` | | Slack/Discord-style webhook for reports and auto-flags |
 | `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | | Shows "Continue with Google" |
 | `NEXT_PUBLIC_SPOTIFY_ENABLED`, `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI` | | Optional Spotify connection |
+| `NEXT_PUBLIC_SMS_ENABLED`, `SMS_ENABLED`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_FROM_NUMBER` | | Optional texts for chosen notices (both flags `true`). Inbound webhook: `/api/sms/inbound` for STOP/START/HELP |
+| `NEXT_PUBLIC_PUSH_ENABLED`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | | Optional web push for the installed app |
+| `NEXT_PUBLIC_SSO_ENABLED` | | School single sign-on through Supabase Auth SSO (see `docs/sso-asu.md`) |
+| `NEXT_PUBLIC_CALENDAR_ENABLED`, `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET`, `MICROSOFT_CALENDAR_CLIENT_ID`/`_SECRET` | | Optional read-only free/busy for "Find a time to meet". Each provider shows only when its keys are set |
 | `AI_MODERATION_ENABLED`, `AI_GATEWAY_API_KEY` (+ optional `AI_GATEWAY_BASE_URL`, `AI_MODERATION_MODEL`, `AI_MODERATION_THRESHOLD`, `AI_MODERATION_TIMEOUT_MS`) | | Optional AI message screening through the Vercel AI Gateway (default Claude Opus 5.5, effort low) for schools that opt in. Reports only, never bans; falls back to regex |
 | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `BEDROCK_MODEL_ID` | | Optional. Profile "Why you match" blurb via Bedrock in us-east-1 (default Claude Opus 5.5, effort max). Falls back to the usual reasons. |
 | `SEED_PHOTOS`, `SEED_ALLOW_REMOTE` | | Seeding options |

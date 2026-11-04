@@ -3,12 +3,19 @@ import type { RoomEvent } from "./room";
 /** UTC iCalendar timestamp: YYYYMMDDTHHMMSSZ. */
 export function formatIcsDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  return d
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
 }
 
 /** Escapes text per RFC 5545 §3.3.11. */
 export function escapeIcsText(text: string): string {
-  return text.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
 }
 
 /** Folds lines longer than 75 octets (RFC 5545 §3.1). */
@@ -51,7 +58,9 @@ export function generateIcsFeed(
     const label = ev.kind === "guest" && ev.overnight ? "Overnight guest" : KIND_LABEL[ev.kind];
     const details = [
       ev.createdByName ? `Added by ${ev.createdByName}` : null,
-      ev.kind === "guest" && ev.guestCount > 0 ? `${ev.guestCount} ${ev.guestCount === 1 ? "guest" : "guests"}` : null,
+      ev.kind === "guest" && ev.guestCount > 0
+        ? `${ev.guestCount} ${ev.guestCount === 1 ? "guest" : "guests"}`
+        : null,
       ev.notes || null,
     ].filter(Boolean);
     lines.push(
@@ -71,24 +80,52 @@ export function generateIcsFeed(
   return lines.map(fold).join("\r\n") + "\r\n";
 }
 
-/** A single all-day event (move-in day, agreement due) as a downloadable .ics (Phase 7.3 b). */
-export function singleEventIcs(input: { uid: string; title: string; date: string; description?: string }, now: Date = new Date()): string {
-  const day = input.date.replace(/-/g, "");
-  const next = new Date(Date.parse(`${input.date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, "");
-  return [
+export interface AllDayEvent {
+  uid: string;
+  title: string;
+  /** yyyy-mm-dd */
+  date: string;
+  description?: string;
+}
+
+/** All-day events (move-in day, housing deadlines) as a downloadable .ics (Phase 7.3 b). */
+export function allDayIcs(
+  events: AllDayEvent[],
+  now: Date = new Date(),
+  calendarTitle?: string,
+): string {
+  const stamp = formatIcsDate(now);
+  const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//Rumi//Deadlines//EN",
-    "BEGIN:VEVENT",
-    `UID:${input.uid}@rumimatch.app`,
-    `DTSTAMP:${formatIcsDate(now)}`,
-    `DTSTART;VALUE=DATE:${day}`,
-    `DTEND;VALUE=DATE:${next}`,
-    `SUMMARY:${escapeIcsText(input.title)}`,
-    ...(input.description ? [`DESCRIPTION:${escapeIcsText(input.description)}`] : []),
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ]
-    .map(fold)
-    .join("\r\n") + "\r\n";
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    ...(calendarTitle ? [`X-WR-CALNAME:${escapeIcsText(calendarTitle)}`] : []),
+  ];
+  for (const e of events) {
+    const day = e.date.replace(/-/g, "");
+    const next = new Date(Date.parse(`${e.date}T00:00:00Z`) + 86_400_000)
+      .toISOString()
+      .slice(0, 10)
+      .replace(/-/g, "");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${e.uid}@rumimatch.app`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${day}`,
+      `DTEND;VALUE=DATE:${next}`,
+      `SUMMARY:${escapeIcsText(e.title)}`,
+      ...(e.description ? [`DESCRIPTION:${escapeIcsText(e.description)}`] : []),
+      "TRANSP:TRANSPARENT",
+      "END:VEVENT",
+    );
+  }
+  lines.push("END:VCALENDAR");
+  return lines.map(fold).join("\r\n") + "\r\n";
+}
+
+/** A single all-day event as a downloadable .ics. */
+export function singleEventIcs(input: AllDayEvent, now: Date = new Date()): string {
+  return allDayIcs([input], now);
 }

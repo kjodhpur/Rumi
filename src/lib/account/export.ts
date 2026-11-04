@@ -47,6 +47,25 @@ export async function collectAccountData(userId: string, mode: "student" | "staf
     ),
   ]);
 
+  // Connection status only: OAuth tokens and feed links are secrets and stay out of exports.
+  const [calendars, classSchedule] = await Promise.all([
+    all((f, t) =>
+      db
+        .from("calendar_accounts")
+        .select("provider, scope, last_sync_at, last_error, created_at")
+        .eq("user_id", id)
+        .order("provider")
+        .range(f, t),
+    ),
+    one(
+      db
+        .from("class_schedules")
+        .select("source, blocks, last_sync_at, updated_at")
+        .eq("user_id", id)
+        .maybeSingle(),
+    ),
+  ]);
+
   const [
     photos,
     media,
@@ -410,6 +429,8 @@ export async function collectAccountData(userId: string, mode: "student" | "staf
     photos: photos.map((p) => ({ ...p, url: photoUrl(p.storage_path) })),
     intro_media: media,
     spotify,
+    calendar_connections: calendars,
+    class_schedule: classSchedule,
     music,
     consents,
     notification_preferences: notificationPrefs,

@@ -22,7 +22,10 @@ export default defineConfig({
     launchOptions: executablePath ? { executablePath } : undefined,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    {
+      name: "desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
     {
       name: "mobile",
       use: { ...devices["Pixel 7"], viewport: { width: 375, height: 812 } },
@@ -31,5 +34,17 @@ export default defineConfig({
   ],
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
-    : { command: "npm run dev", url: baseURL, reuseExistingServer: true, timeout: 180_000 },
+    : {
+        command: "npm run dev",
+        url: baseURL,
+        reuseExistingServer: true,
+        timeout: 180_000,
+        // Calendar e2e runs against mocked providers; these are not real credentials.
+        env: {
+          NEXT_PUBLIC_CALENDAR_ENABLED: "true",
+          GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID || "e2e-google-client",
+          GOOGLE_CALENDAR_CLIENT_SECRET:
+            process.env.GOOGLE_CALENDAR_CLIENT_SECRET || "e2e-google-secret",
+        },
+      },
 });

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { dayLabel, formatTime, fullStamp, sameDay } from "@/lib/time";
 import { useHydrated } from "@/hooks/use-hydrated";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { ArrowDown, ArrowUp, ChevronLeft, Flag, MoreHorizontal, ShieldAlert, ShieldOff, UserRound, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, CalendarClock, ChevronLeft, Flag, MoreHorizontal, ShieldAlert, ShieldOff, UserRound, Users } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,7 @@ import { loadOlderMessages, markRead, sendMessage } from "@/app/actions/messages
 import { leaveGroup } from "@/app/actions/groups";
 import type { ChatMember, ChatMessage } from "@/lib/messages";
 import type { ChatStarter } from "@/lib/starters";
+import { MeetingTimes } from "./meeting-times";
 import { StarterChips } from "./starter-chips";
 import { cn } from "@/lib/utils";
 import { PAYMENT_SAFETY_TIP } from "@/lib/safety-copy";
@@ -69,6 +70,7 @@ export function ChatThread({
   const [showJump, setShowJump] = React.useState(false);
   const [reportOpen, setReportOpen] = React.useState(false);
   const [blockOpen, setBlockOpen] = React.useState(false);
+  const [timesOpen, setTimesOpen] = React.useState(false);
   const [blocked, setBlocked] = React.useState(thread.blocked);
 
   const scroller = React.useRef<HTMLDivElement>(null);
@@ -331,6 +333,14 @@ export function ChatThread({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                {!blocked ? (
+                  <>
+                    <DropdownMenuItem onSelect={() => setTimesOpen(true)}>
+                      <CalendarClock /> Find a time to meet
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
                 {thread.kind === "group" ? (
                   <>
                     <DropdownMenuItem asChild>
@@ -418,6 +428,16 @@ export function ChatThread({
             ) : null}
           </AnimatePresence>
         </div>
+
+        <MeetingTimes
+          conversationId={thread.id}
+          open={timesOpen}
+          onOpenChange={setTimesOpen}
+          onPick={(line) => {
+            setDraft(line);
+            composer.current?.focus();
+          }}
+        />
 
         {/* Composer */}
         <div className="glass pb-safe border-t border-[var(--glass-border)]">

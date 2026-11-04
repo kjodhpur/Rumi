@@ -41,6 +41,7 @@ export const LIMITS = {
   pushSubscriptionsPerHour: { max: 10, window: 3600 },
   phoneVerificationsPerHour: { max: 5, window: 3600 },
   calendarConnectsPerHour: { max: 10, window: 3600 },
+  calendarSuggestionsPerHour: { max: 20, window: 3600 },
   classScheduleChangesPerHour: { max: 30, window: 3600 },
   localeChangesPerHour: { max: 30, window: 3600 },
   importedAnswersPerHour: { max: 20, window: 3600 },
@@ -72,9 +73,5 @@ export async function rateLimit(key: string, limit: { max: number; window: numbe
 
 export function clientIp() {
   const h = headers();
-  return (
-    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    h.get("x-real-ip") ||
-    "unknown"
-  );
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
 }

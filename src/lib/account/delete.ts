@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { revokeCalendar, CALENDAR_PROVIDERS } from "@/lib/calendar/oauth";
 
 /**
  * Permanently deletes an account: its files in storage (photos and intro clips), direct
@@ -55,6 +56,9 @@ export async function purgeAccount(userId: string) {
       await admin.from("groups").delete().eq("id", group.group_id);
     }
   }
+
+  // Hand calendar access back to Google/Microsoft rather than leaving live grants behind.
+  for (const provider of CALENDAR_PROVIDERS) await revokeCalendar(userId, provider);
 
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) throw error;
