@@ -10,6 +10,7 @@ import { matching } from "./matching";
 import { matches } from "./matches";
 import { common } from "./common";
 import { reasons } from "./reasons";
+import { profile } from "./profile";
 
 /** English: the source of truth. Every other complete locale must match these keys. */
 export const en = {
@@ -25,6 +26,7 @@ export const en = {
   matches,
   common,
   reasons,
+  profile,
 };
 
 export type Messages = typeof en;

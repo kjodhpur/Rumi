@@ -2,28 +2,33 @@
 
 import * as React from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, CalendarDays, Home, MapPin, Music2, Repeat, Sparkle, Wallet } from "lucide-react";
 import {
-  DRINKING,
-  HOUSING_TYPES,
-  IMPORTANCE,
-  LEASE_LENGTHS,
-  PETS,
-  SCALES,
-  SMOKING,
-  STUDY,
-  labelOf,
-} from "@/lib/options";
+  AlertTriangle,
+  CalendarDays,
+  Home,
+  MapPin,
+  Music2,
+  Repeat,
+  Sparkle,
+  Wallet,
+} from "lucide-react";
+import { labelOf, type FactorKey } from "@/lib/options";
 import { formatBudget } from "@/lib/utils";
 import { formatCalendarDate } from "@/lib/time";
 import { spring } from "@/lib/motion";
 import type { ProfileDetail } from "@/lib/profile";
+import { useIntlLocale, useOptions, useT } from "@/components/providers/i18n";
 
 export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-4 text-caption font-semibold tracking-wide text-ink-3 uppercase">{children}</h2>;
+  return (
+    <h2 className="mb-4 text-caption font-semibold tracking-wide text-ink-3 uppercase">
+      {children}
+    </h2>
+  );
 }
 
 export function Reasons({ reasons, watchouts }: { reasons: string[]; watchouts: string[] }) {
+  const t = useT("profile");
   return (
     <div className="flex flex-col gap-2.5">
       {reasons.map((reason, i) => (
@@ -52,7 +57,7 @@ export function Reasons({ reasons, watchouts }: { reasons: string[]; watchouts: 
             <AlertTriangle className="size-3 text-warning" strokeWidth={2.25} aria-hidden />
           </span>
           <span>
-            <span className="sr-only">Worth talking about: </span>
+            <span className="sr-only">{t("worthTalking")} </span>
             {w}
           </span>
         </motion.p>
@@ -63,6 +68,7 @@ export function Reasons({ reasons, watchouts }: { reasons: string[]; watchouts: 
 
 /** Per-factor bars. Bars grow with scaleX (transform only) as they scroll into view. */
 export function Breakdown({ items }: { items: NonNullable<ProfileDetail["match"]>["breakdown"] }) {
+  const { FACTOR_LABELS, IMPORTANCE } = useOptions();
   const visible = items.filter((item) => item.importance > 0);
   return (
     <motion.ul
@@ -75,9 +81,12 @@ export function Breakdown({ items }: { items: NonNullable<ProfileDetail["match"]
       {visible.map((item) => {
         const pct = Math.round(item.similarity * 100);
         return (
-          <li key={item.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5">
+          <li
+            key={item.key}
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5"
+          >
             <span className="flex items-center gap-2 text-body-sm text-ink">
-              {item.label}
+              {FACTOR_LABELS[item.key as FactorKey] ?? item.label}
               {item.importance === 3 ? (
                 <span className="rounded-full bg-surface-sunken px-1.5 py-px text-micro font-medium text-ink-2">
                   {IMPORTANCE[3].short}
@@ -85,10 +94,16 @@ export function Breakdown({ items }: { items: NonNullable<ProfileDetail["match"]
               ) : null}
             </span>
             <span className="text-body-sm font-medium text-ink-2 tabular">{pct}%</span>
-            <span className="col-span-2 h-1.5 overflow-hidden rounded-full bg-surface-sunken" aria-hidden>
+            <span
+              className="col-span-2 h-1.5 overflow-hidden rounded-full bg-surface-sunken"
+              aria-hidden
+            >
               <motion.span
                 className="block h-full origin-left rounded-full bg-ink"
-                variants={{ hidden: { scaleX: 0 }, show: { scaleX: Math.max(0.02, item.similarity), transition: spring } }}
+                variants={{
+                  hidden: { scaleX: 0 },
+                  show: { scaleX: Math.max(0.02, item.similarity), transition: spring },
+                }}
                 style={{ opacity: 0.35 + item.similarity * 0.65 }}
               />
             </span>
@@ -100,15 +115,29 @@ export function Breakdown({ items }: { items: NonNullable<ProfileDetail["match"]
 }
 
 export function HousingFacts({ prefs }: { prefs: NonNullable<ProfileDetail["prefs"]> }) {
+  const t = useT("profile");
+  const intl = useIntlLocale();
+  const { HOUSING_TYPES, LEASE_LENGTHS } = useOptions();
   const facts = [
-    { icon: Wallet, label: "Budget", value: `${formatBudget(prefs.budgetMin, prefs.budgetMax)}/mo` },
+    {
+      icon: Wallet,
+      label: t("facts.budget"),
+      value: t("facts.perMonth", { budget: formatBudget(prefs.budgetMin, prefs.budgetMax) }),
+    },
     {
       icon: CalendarDays,
-      label: "Move-in",
-      value: (prefs.moveInDate && formatCalendarDate(prefs.moveInDate, { month: "short", day: "numeric", year: "numeric" })) || "Flexible",
+      label: t("facts.moveIn"),
+      value:
+        (prefs.moveInDate &&
+          formatCalendarDate(
+            prefs.moveInDate,
+            { month: "short", day: "numeric", year: "numeric" },
+            intl,
+          )) ||
+        t("facts.flexible"),
     },
-    { icon: Repeat, label: "Lease", value: labelOf(LEASE_LENGTHS, prefs.leaseLength) },
-    { icon: Home, label: "Housing", value: labelOf(HOUSING_TYPES, prefs.housingType) },
+    { icon: Repeat, label: t("facts.lease"), value: labelOf(LEASE_LENGTHS, prefs.leaseLength) },
+    { icon: Home, label: t("facts.housing"), value: labelOf(HOUSING_TYPES, prefs.housingType) },
   ];
   return (
     <div className="flex flex-col gap-4">
@@ -126,7 +155,10 @@ export function HousingFacts({ prefs }: { prefs: NonNullable<ProfileDetail["pref
       {prefs.areaNames.length > 0 ? (
         <div className="flex flex-wrap gap-1.5">
           {prefs.areaNames.map((name) => (
-            <span key={name} className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-3 py-1.5 text-body-sm text-ink-2">
+            <span
+              key={name}
+              className="inline-flex items-center gap-1 rounded-full bg-surface-sunken px-3 py-1.5 text-body-sm text-ink-2"
+            >
               <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden />
               {name}
             </span>
@@ -138,15 +170,20 @@ export function HousingFacts({ prefs }: { prefs: NonNullable<ProfileDetail["pref
 }
 
 export function LifestyleFacts({ prefs }: { prefs: NonNullable<ProfileDetail["prefs"]> }) {
+  const t = useT("profile");
+  const { DRINKING, PETS, SCALES, SMOKING, STUDY } = useOptions();
   const rows = [
-    { label: SCALES.sleep_schedule.label, value: SCALES.sleep_schedule.steps[prefs.sleepSchedule - 1] },
+    {
+      label: SCALES.sleep_schedule.label,
+      value: SCALES.sleep_schedule.steps[prefs.sleepSchedule - 1],
+    },
     { label: SCALES.cleanliness.label, value: SCALES.cleanliness.steps[prefs.cleanliness - 1] },
     { label: SCALES.noise.label, value: SCALES.noise.steps[prefs.noise - 1] },
     { label: SCALES.guests.label, value: SCALES.guests.steps[prefs.guests - 1] },
-    { label: "Smoking", value: labelOf(SMOKING, prefs.smoking) },
-    { label: "Drinking", value: labelOf(DRINKING, prefs.drinking) },
-    { label: "Pets", value: labelOf(PETS, prefs.pets) },
-    { label: "Studies", value: labelOf(STUDY, prefs.study) },
+    { label: t("facts.smoking"), value: labelOf(SMOKING, prefs.smoking) },
+    { label: t("facts.drinking"), value: labelOf(DRINKING, prefs.drinking) },
+    { label: t("facts.pets"), value: labelOf(PETS, prefs.pets) },
+    { label: t("facts.studies"), value: labelOf(STUDY, prefs.study) },
   ];
   return (
     <dl className="divide-y divide-line rounded-lg bg-surface ring-1 ring-line">
@@ -160,14 +197,21 @@ export function LifestyleFacts({ prefs }: { prefs: NonNullable<ProfileDetail["pr
   );
 }
 
-export function MusicFacts({ music, shared }: { music: NonNullable<ProfileDetail["music"]>; shared: string[] }) {
+export function MusicFacts({
+  music,
+  shared,
+}: {
+  music: NonNullable<ProfileDetail["music"]>;
+  shared: string[];
+}) {
+  const t = useT("profile");
   const sharedSet = new Set(shared);
   return (
     <div className="flex flex-col gap-4">
       {shared.length > 0 ? (
         <p className="flex items-center gap-2 text-body-sm text-ink">
           <Music2 className="size-4 text-accent" strokeWidth={2} aria-hidden />
-          You share {shared.length} {shared.length === 1 ? "artist" : "artists"}
+          {t("sharedArtists", { count: shared.length })}
         </p>
       ) : null}
       <ul className="flex flex-wrap gap-1.5">
@@ -185,16 +229,22 @@ export function MusicFacts({ music, shared }: { music: NonNullable<ProfileDetail
         ))}
       </ul>
       {music.genres.length > 0 ? (
-        <p className="text-body-sm text-ink-3">Into {music.genres.slice(0, 5).join(", ")}</p>
+        <p className="text-body-sm text-ink-3">
+          {t("into", { genres: music.genres.slice(0, 5).join(", ") })}
+        </p>
       ) : null}
     </div>
   );
 }
 
-export function lastActiveLabel(iso: string, now: number) {
+/** How recently someone was active, or null when it's been over a week. */
+export function lastActive(
+  iso: string,
+  now: number,
+): { kind: "now" | "today" | "days"; days: number } | null {
   const diff = now - Date.parse(iso);
-  if (diff < 15 * 60_000) return "Active now";
-  if (diff < 24 * 3_600_000) return "Active today";
-  if (diff < 7 * 86_400_000) return `Active ${Math.round(diff / 86_400_000)}d ago`;
+  if (diff < 15 * 60_000) return { kind: "now", days: 0 };
+  if (diff < 24 * 3_600_000) return { kind: "today", days: 0 };
+  if (diff < 7 * 86_400_000) return { kind: "days", days: Math.round(diff / 86_400_000) };
   return null;
 }

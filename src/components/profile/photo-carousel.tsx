@@ -8,6 +8,7 @@ import { Monogram } from "@/components/ui/monogram";
 import { cn } from "@/lib/utils";
 import { springSheet } from "@/lib/motion";
 import { imagePlaceholder } from "@/lib/photos";
+import { useT } from "@/components/providers/i18n";
 
 export interface CarouselPhoto {
   id: string;
@@ -39,7 +40,11 @@ export const PhotoCarousel = React.forwardRef<
     coverSizes?: string;
     priority?: boolean;
   }
->(function PhotoCarousel({ id, name, photos, className, rounded = 0, sizes = "100vw", coverSizes, priority }, ref) {
+>(function PhotoCarousel(
+  { id, name, photos, className, rounded = 0, sizes = "100vw", coverSizes, priority },
+  ref,
+) {
+  const t = useT("profile");
   const scroller = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = React.useState(0);
 
@@ -64,7 +69,10 @@ export const PhotoCarousel = React.forwardRef<
       layoutId={`photo-${id}`}
       transition={springSheet}
       style={{ borderRadius: rounded }}
-      className={cn("group/carousel relative aspect-[4/5] overflow-hidden bg-surface-sunken", className)}
+      className={cn(
+        "group/carousel relative aspect-[4/5] overflow-hidden bg-surface-sunken",
+        className,
+      )}
     >
       <div
         ref={scroller}
@@ -74,7 +82,12 @@ export const PhotoCarousel = React.forwardRef<
         aria-label={`${name}'s photos`}
       >
         {photos.length === 0 ? (
-          <Monogram name={name} seed={id} rounded="rounded-none" className="size-full shrink-0 [container-type:size]" />
+          <Monogram
+            name={name}
+            seed={id}
+            rounded="rounded-none"
+            className="[container-type:size] size-full shrink-0"
+          />
         ) : (
           photos.map((photo, i) => (
             <div
@@ -85,7 +98,16 @@ export const PhotoCarousel = React.forwardRef<
               aria-label={`Photo ${i + 1} of ${photos.length}`}
             >
               {i === 0 && coverSizes ? (
-                <Image src={photo.url} alt="" aria-hidden fill loading="eager" sizes={coverSizes} className="object-cover" draggable={false} />
+                <Image
+                  src={photo.url}
+                  alt=""
+                  aria-hidden
+                  fill
+                  loading="eager"
+                  sizes={coverSizes}
+                  className="object-cover"
+                  draggable={false}
+                />
               ) : null}
               <Image
                 src={photo.url}
@@ -120,7 +142,7 @@ export const PhotoCarousel = React.forwardRef<
             type="button"
             onClick={() => go(-1)}
             disabled={index === 0}
-            aria-label="Previous photo"
+            aria-label={t("carousel.previous")}
             className="absolute top-1/2 left-3 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-md transition-opacity group-hover/carousel:opacity-100 disabled:hidden md:flex md:opacity-0"
           >
             <ChevronLeft className="size-5" strokeWidth={2} />
@@ -129,7 +151,7 @@ export const PhotoCarousel = React.forwardRef<
             type="button"
             onClick={() => go(1)}
             disabled={index >= photos.length - 1}
-            aria-label="Next photo"
+            aria-label={t("carousel.next")}
             className="absolute top-1/2 right-3 hidden size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-ink shadow-md transition-opacity group-hover/carousel:opacity-100 disabled:hidden md:flex md:opacity-0"
           >
             <ChevronRight className="size-5" strokeWidth={2} />

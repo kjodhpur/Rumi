@@ -210,3 +210,12 @@ describe("redactSecret", () => {
     ).toBe("signature does not match secret [redacted]");
   });
 });
+
+describe("buildWhyYouMatchPrompt language", () => {
+  it("asks for Spanish only for Spanish readers", async () => {
+    const { buildWhyYouMatchPrompt: build } = await import("./why-you-match");
+    const base = { firstName: "Ana", score: 88, reasons: [], watchouts: [], breakdown: [], sharedArtists: [] };
+    expect(build({ ...base, locale: "es" }).system).toMatch(/in Spanish/);
+    expect(build(base).system).not.toMatch(/Spanish/);
+  });
+});

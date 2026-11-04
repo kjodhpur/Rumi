@@ -31,7 +31,7 @@ import { BlockSheet } from "@/components/safety/block-sheet";
 import { respondToIntro, toggleSave } from "@/app/actions/social";
 import type { MatchCardData } from "@/components/matches/types";
 import type { ProfileDetail } from "@/lib/profile";
-import { CLASS_YEARS, labelOf } from "@/lib/options";
+import { labelOf } from "@/lib/options";
 import { cn, displayName } from "@/lib/utils";
 import { useNow } from "@/hooks/use-hydrated";
 import { useIsDesktop } from "@/hooks/use-media-query";
@@ -48,8 +48,9 @@ import {
   MusicFacts,
   Reasons,
   SectionTitle,
-  lastActiveLabel,
+  lastActive,
 } from "./profile-sections";
+import { useOptions, useT } from "@/components/providers/i18n";
 
 interface ProfileViewProps {
   id: string;
@@ -90,9 +91,13 @@ export function ProfileView({
   const major = detail?.major ?? preview?.major ?? null;
   const photos =
     detail?.photos ??
-    (preview?.avatarUrl ? [{ id: "cover", url: preview.avatarUrl, placeholder: preview.placeholder }] : []);
+    (preview?.avatarUrl
+      ? [{ id: "cover", url: preview.avatarUrl, placeholder: preview.placeholder }]
+      : []);
   const isSelf = detail?.isSelf ?? false;
 
+  const t = useT("profile");
+  const { CLASS_YEARS } = useOptions();
   const [saved, setSaved] = React.useState(preview?.isSaved ?? false);
   const [intro, setIntro] = React.useState<ProfileDetail["intro"]>(null);
   const [introOpen, setIntroOpen] = React.useState(false);
@@ -117,7 +122,7 @@ export function ProfileView({
       onSavedChange?.(id, !next);
       toast.error(result.error);
     } else if (next) {
-      toast.success(`Saved ${firstName}`, { description: "Find them under Saved on Matches." });
+      toast.success(t("saved", { name: firstName }), { description: t("savedHint") });
     }
   }
 
@@ -137,9 +142,12 @@ export function ProfileView({
     }
   }
 
-  const meta = [labelOf(CLASS_YEARS, classYear), major, detail?.pronouns].filter(Boolean).join(" · ");
+  const meta = [labelOf(CLASS_YEARS, classYear), major, detail?.pronouns]
+    .filter(Boolean)
+    .join(" · ");
   const now = useNow();
-  const active = detail && now ? lastActiveLabel(detail.lastActiveAt, now) : null;
+  const recency = detail && now ? lastActive(detail.lastActiveAt, now) : null;
+  const active = recency ? t(`active.${recency.kind}`, { days: recency.days }) : null;
   const isOverlay = mode === "overlay";
   // On phones the name flies in from the card. In the desktop overlay its path would be
   // clipped by the scrolling details column, so there it fades in with the column instead.
@@ -165,7 +173,7 @@ export function ProfileView({
     >
       <div className="pointer-events-auto">
         {isOverlay ? (
-          <RoundButton label="Close profile" onClick={onClose}>
+          <RoundButton label={t("close")} onClick={onClose}>
             <span className="md:hidden">
               <ChevronLeft className="size-5" strokeWidth={2} />
             </span>
@@ -175,7 +183,7 @@ export function ProfileView({
           </RoundButton>
         ) : (
           <RoundButton
-            label="Back"
+            label={t("back")}
             onClick={() => (window.history.length > 1 ? router.back() : router.push("/matches"))}
           >
             <ChevronLeft className="size-5" strokeWidth={2} />
@@ -184,8 +192,17 @@ export function ProfileView({
       </div>
       {!isSelf ? (
         <div className="pointer-events-auto flex gap-2">
-          <RoundButton label={saved ? `Remove ${firstName} from saved` : `Save ${firstName}`} onClick={() => void onToggleSave()} pressed={saved}>
-            <motion.span key={String(saved)} initial={{ scale: saved ? 0.6 : 1 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500, damping: 15 }}>
+          <RoundButton
+            label={saved ? t("unsave", { name: firstName }) : t("save", { name: firstName })}
+            onClick={() => void onToggleSave()}
+            pressed={saved}
+          >
+            <motion.span
+              key={String(saved)}
+              initial={{ scale: saved ? 0.6 : 1 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 15 }}
+            >
               <Bookmark className={cn("size-[18px]", saved && "fill-current")} strokeWidth={2} />
             </motion.span>
           </RoundButton>
@@ -193,18 +210,18 @@ export function ProfileView({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label="More options"
-                className="flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md outline-none transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-focus"
+                aria-label={t("more")}
+                className="flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md transition-transform outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-95"
               >
                 <MoreHorizontal className="size-5" strokeWidth={2} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onSelect={() => setReportOpen(true)}>
-                <Flag /> Report {firstName}
+                <Flag /> {t("report", { name: firstName })}
               </DropdownMenuItem>
               <DropdownMenuItem destructive onSelect={() => setBlockOpen(true)}>
-                <ShieldOff /> Block {firstName}
+                <ShieldOff /> {t("block", { name: firstName })}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -252,7 +269,11 @@ export function ProfileView({
           </motion.h1>
           {verified ? (
             <motion.span {...partEnter} className="shrink-0">
-              <BadgeCheck className="size-6 text-accent" strokeWidth={2} aria-label="Verified student" />
+              <BadgeCheck
+                className="size-6 text-accent"
+                strokeWidth={2}
+                aria-label={t("verified")}
+              />
             </motion.span>
           ) : null}
         </div>
@@ -260,7 +281,9 @@ export function ProfileView({
           {meta ? <p className="mt-1 text-body text-ink-2">{meta}</p> : null}
           {active ? (
             <p className="mt-1 flex items-center gap-1.5 text-caption text-ink-3">
-              {active === "Active now" ? <span className="size-1.5 rounded-full bg-success" /> : null}
+              {recency?.kind === "now" ? (
+                <span className="size-1.5 rounded-full bg-success" />
+              ) : null}
               {active}
             </p>
           ) : null}
@@ -278,9 +301,12 @@ export function ProfileView({
     <>
       {isSelf ? (
         <div className="mt-6 flex flex-wrap gap-2 rounded-lg bg-surface-sunken p-4 text-body-sm text-ink-2">
-          This is how other students see your profile.
-          <Link href="/settings/profile" className="inline-flex items-center gap-1 font-medium text-ink underline underline-offset-4">
-            <Pencil className="size-3.5" strokeWidth={2} /> Edit profile
+          {t("selfNote")}
+          <Link
+            href="/settings/profile"
+            className="inline-flex items-center gap-1 font-medium text-ink underline underline-offset-4"
+          >
+            <Pencil className="size-3.5" strokeWidth={2} /> {t("edit")}
           </Link>
         </div>
       ) : null}
@@ -293,8 +319,8 @@ export function ProfileView({
       ) : isSelf ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface p-4 ring-1 ring-line">
           <div className="min-w-0">
-            <p className="text-body-sm font-medium text-ink">Add a short video or voice intro</p>
-            <p className="text-caption text-ink-3">Up to 30 seconds, with a transcript. Optional.</p>
+            <p className="text-body-sm font-medium text-ink">{t("addMedia")}</p>
+            <p className="text-caption text-ink-3">{t("addMediaHint")}</p>
           </div>
           <MediaUploader />
         </div>
@@ -306,7 +332,7 @@ export function ProfileView({
         <section className="mt-8" aria-labelledby={`why-${id}`}>
           <div className="flex items-center justify-between gap-3">
             <SectionTitle>
-              <span id={`why-${id}`}>Why you match</span>
+              <span id={`why-${id}`}>{t("why")}</span>
             </SectionTitle>
             {score !== null && detail?.viewerFirstName ? (
               <ShareMatchDialog
@@ -325,24 +351,30 @@ export function ProfileView({
       {loading ? (
         <DetailSkeleton />
       ) : detail ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
           {detail.bio ? (
             <section className="mt-10">
-              <SectionTitle>About</SectionTitle>
+              <SectionTitle>{t("about")}</SectionTitle>
               <p className="text-body whitespace-pre-line text-ink">{detail.bio}</p>
             </section>
           ) : null}
 
           {detail.match && detail.match.breakdown.length > 0 ? (
             <section className="mt-10">
-              <SectionTitle>Compatibility breakdown</SectionTitle>
+              <SectionTitle>{t("breakdown")}</SectionTitle>
               <Breakdown items={detail.match.breakdown} />
             </section>
           ) : null}
 
           {detail.music ? (
             <section className="mt-10">
-              <SectionTitle>{detail.match?.sharedArtists.length ? "Shared music" : "Music"}</SectionTitle>
+              <SectionTitle>
+                {detail.match?.sharedArtists.length ? t("sharedMusic") : t("music")}
+              </SectionTitle>
               <MusicFacts music={detail.music} shared={detail.match?.sharedArtists ?? []} />
             </section>
           ) : null}
@@ -350,11 +382,11 @@ export function ProfileView({
           {detail.prefs ? (
             <>
               <section className="mt-10">
-                <SectionTitle>Looking for</SectionTitle>
+                <SectionTitle>{t("lookingFor")}</SectionTitle>
                 <HousingFacts prefs={detail.prefs} />
               </section>
               <section className="mt-10">
-                <SectionTitle>Lifestyle</SectionTitle>
+                <SectionTitle>{t("lifestyle")}</SectionTitle>
                 <LifestyleFacts prefs={detail.prefs} />
               </section>
             </>
@@ -362,15 +394,19 @@ export function ProfileView({
 
           {!isSelf ? (
             <p className="mt-10 text-caption text-ink-3">
-              Never send money or deposits before you&apos;ve met and toured a place in person.{" "}
-              <button type="button" onClick={() => setReportOpen(true)} className="underline underline-offset-2 hover:text-ink-2">
-                Report a problem
+              {t("safety")}{" "}
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="underline underline-offset-2 hover:text-ink-2"
+              >
+                {t("reportProblem")}
               </button>
             </p>
           ) : null}
         </motion.div>
       ) : (
-        <p className="mt-10 text-body-sm text-ink-2">This profile isn&apos;t available anymore.</p>
+        <p className="mt-10 text-body-sm text-ink-2">{t("unavailable")}</p>
       )}
     </>
   );
@@ -383,9 +419,16 @@ export function ProfileView({
         recipientId={id}
         firstName={firstName}
         topReason={reasons[0]}
-        onSent={() => setIntro({ id: "pending", status: "pending", direction: "sent", conversationId: null })}
+        onSent={() =>
+          setIntro({ id: "pending", status: "pending", direction: "sent", conversationId: null })
+        }
       />
-      <ReportSheet open={reportOpen} onOpenChange={setReportOpen} reportedId={id} firstName={firstName} />
+      <ReportSheet
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+        reportedId={id}
+        firstName={firstName}
+      />
       <BlockSheet
         open={blockOpen}
         onOpenChange={setBlockOpen}
@@ -410,7 +453,7 @@ export function ProfileView({
           <PhotoCarousel
             ref={carouselRef}
             id={id}
-            name={firstName || "Profile"}
+            name={firstName || t("title")}
             photos={photos}
             rounded={0}
             className="md:rounded-[20px]"
@@ -445,7 +488,7 @@ export function ProfileView({
         <PhotoCarousel
           ref={carouselRef}
           id={id}
-          name={firstName || "Profile"}
+          name={firstName || t("title")}
           photos={photos}
           rounded={24}
           className="-mx-4 sm:mx-0"
@@ -478,11 +521,12 @@ function PrimaryAction({
   onIntro: () => void;
   onRespond: (accept: boolean) => void;
 }) {
+  const t = useT("profile");
   if (intro?.status === "accepted" && intro.conversationId) {
     return (
       <Button asChild size="lg" className="flex-1 md:flex-none md:px-8">
         <Link href={`/messages/${intro.conversationId}`}>
-          <MessageCircle /> Message {firstName}
+          <MessageCircle /> {t("message", { name: firstName })}
         </Link>
       </Button>
     );
@@ -490,11 +534,24 @@ function PrimaryAction({
   if (intro?.status === "pending" && intro.direction === "received") {
     return (
       <>
-        <Button variant="secondary" size="lg" className="flex-1 md:flex-none" onClick={() => onRespond(false)} loading={responding === "decline"} disabled={responding !== null}>
-          Pass
+        <Button
+          variant="secondary"
+          size="lg"
+          className="flex-1 md:flex-none"
+          onClick={() => onRespond(false)}
+          loading={responding === "decline"}
+          disabled={responding !== null}
+        >
+          {t("pass")}
         </Button>
-        <Button size="lg" className="flex-[2] md:flex-none md:px-8" onClick={() => onRespond(true)} loading={responding === "accept"} disabled={responding !== null}>
-          Accept intro
+        <Button
+          size="lg"
+          className="flex-[2] md:flex-none md:px-8"
+          onClick={() => onRespond(true)}
+          loading={responding === "accept"}
+          disabled={responding !== null}
+        >
+          {t("accept")}
         </Button>
       </>
     );
@@ -502,13 +559,13 @@ function PrimaryAction({
   if (intro?.status === "pending") {
     return (
       <Button size="lg" variant="secondary" className="flex-1 md:flex-none md:px-8" disabled>
-        Intro sent · waiting for {firstName}
+        {t("waiting", { name: firstName })}
       </Button>
     );
   }
   return (
     <Button size="lg" className="flex-1 md:flex-none md:px-8" onClick={onIntro} disabled={loading}>
-      <Send /> Send intro
+      <Send /> {t("sendIntro")}
     </Button>
   );
 }
@@ -530,7 +587,7 @@ function RoundButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed}
-      className="flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md outline-none transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-focus"
+      className="flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md transition-transform outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-95"
     >
       {children}
     </button>
@@ -538,8 +595,9 @@ function RoundButton({
 }
 
 function DetailSkeleton() {
+  const t = useT("profile");
   return (
-    <div className="mt-10 flex flex-col gap-10" aria-label="Loading profile">
+    <div className="mt-10 flex flex-col gap-10" aria-label={t("loading")}>
       <div className="flex flex-col gap-2">
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-4 w-full" />

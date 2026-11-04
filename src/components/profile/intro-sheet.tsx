@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { sendIntro } from "@/app/actions/social";
 import { offerPush } from "@/lib/push/client";
+import { useT } from "@/components/providers/i18n";
 
 export function IntroSheet({
   open,
@@ -23,6 +24,7 @@ export function IntroSheet({
   topReason?: string;
   onSent: () => void;
 }) {
+  const t = useT("profile");
   const [message, setMessage] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
@@ -38,10 +40,10 @@ export function IntroSheet({
   const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
   const starters = [
     topReason
-      ? `Hi ${firstName}! Rumi says we'd get along — ${lowerFirst(topReason)}. Want to chat about finding a place?`
-      : `Hi ${firstName}! Rumi says we'd get along. Want to chat about finding a place?`,
-    `Hey ${firstName} — still looking for a roommate? I think we'd be a good fit.`,
-    "Hi! What's your ideal setup — somewhere near campus or a bit quieter?",
+      ? t("intro.starterReason", { name: firstName, reason: lowerFirst(topReason) })
+      : t("intro.starter", { name: firstName }),
+    t("intro.starter2", { name: firstName }),
+    t("intro.starter3"),
   ];
 
   async function submit() {
@@ -58,8 +60,10 @@ export function IntroSheet({
       onOpenChange(false);
       onSent();
       setMessage("");
-      toast.success(`Intro sent to ${firstName}`, { description: "You'll be notified if they accept." });
-      window.setTimeout(() => offerPush(`Want to know when ${firstName} answers?`), 2500);
+      toast.success(t("intro.sentToast", { name: firstName }), {
+        description: t("intro.sentHint"),
+      });
+      window.setTimeout(() => offerPush(t("intro.push", { name: firstName })), 2500);
     }, 700);
   }
 
@@ -67,8 +71,8 @@ export function IntroSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={`Say hi to ${firstName}`}
-      description="Your intro arrives as a request. If they accept, your chat opens."
+      title={t("intro.title", { name: firstName })}
+      description={t("intro.description")}
       footer={
         <Button
           size="lg"
@@ -76,26 +80,34 @@ export function IntroSheet({
           onClick={() => void submit()}
           loading={pending}
           success={success}
-          successLabel="Sent"
+          successLabel={t("intro.sent")}
           disabled={message.trim().length < 10}
         >
-          Send intro
+          {t("intro.send")}
         </Button>
       }
     >
       <div className="flex flex-col gap-4">
         <Textarea
-          aria-label={`Intro message to ${firstName}`}
+          aria-label={t("intro.label", { name: firstName })}
           rows={4}
           maxLength={500}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={`Say why you think you'd get along…`}
+          placeholder={t("intro.placeholder")}
           aria-invalid={error ? true : undefined}
           autoFocus
         />
         <div className="flex items-center justify-between text-caption text-ink-3">
-          <span>{error ? <span role="alert" className="text-danger">{error}</span> : "Be specific — mention what you have in common."}</span>
+          <span>
+            {error ? (
+              <span role="alert" className="text-danger">
+                {error}
+              </span>
+            ) : (
+              t("intro.hint")
+            )}
+          </span>
           <span className="tabular">{message.length}/500</span>
         </div>
         <div className="flex flex-col gap-2">

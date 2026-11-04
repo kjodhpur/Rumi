@@ -1,4 +1,5 @@
 import type { ServerSupabase } from "@/lib/supabase/server";
+import { getLocale } from "@/lib/i18n/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWhyYouMatch } from "@/lib/bedrock/client";
 import { photoUrl } from "@/lib/photos";
@@ -189,6 +190,7 @@ export async function loadProfileDetail(
         importance: item.importance,
       })),
       sharedArtists,
+      locale: await getLocale(),
     });
     if (explained.source === "bedrock") reasons = explained.sentences;
   }

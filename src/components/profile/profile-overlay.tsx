@@ -21,7 +21,8 @@ interface OverlayContextValue {
   subscribe: (listener: OverlayListener) => () => void;
 }
 
-export type OverlayEvent = { type: "removed"; id: string } | { type: "saved"; id: string; saved: boolean };
+export type OverlayEvent =
+  { type: "removed"; id: string } | { type: "saved"; id: string; saved: boolean };
 type OverlayListener = (event: OverlayEvent) => void;
 
 const OverlayContext = React.createContext<OverlayContextValue | null>(null);
@@ -67,7 +68,11 @@ export function ProfileOverlayProvider({ children }: { children: React.ReactNode
     setCoverSizes(options?.coverSizes);
     setCard(next);
     returnUrl.current = window.location.pathname + window.location.search;
-    window.history.pushState({ ...window.history.state, rumiProfile: next.id }, "", `/profile/${next.id}`);
+    window.history.pushState(
+      { ...window.history.state, rumiProfile: next.id },
+      "",
+      `/profile/${next.id}`,
+    );
     pushedRef.current = true;
   }, []);
 
@@ -144,7 +149,9 @@ export function ProfileOverlayProvider({ children }: { children: React.ReactNode
                       transition={{ duration: 0.2 }}
                     />
                     <VisuallyHidden.Root>
-                      <Dialog.Title>{displayName(card.firstName, card.lastInitial)}&apos;s profile</Dialog.Title>
+                      <Dialog.Title>
+                        {displayName(card.firstName, card.lastInitial)}&apos;s profile
+                      </Dialog.Title>
                     </VisuallyHidden.Root>
                     <ProfileView
                       id={card.id}
@@ -167,4 +174,3 @@ export function ProfileOverlayProvider({ children }: { children: React.ReactNode
     </OverlayContext.Provider>
   );
 }
-

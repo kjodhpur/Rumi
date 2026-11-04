@@ -9,7 +9,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { respondToSuggestion } from "@/app/actions/suggestions";
-import { CLASS_YEARS, labelOf } from "@/lib/options";
+import { labelOf } from "@/lib/options";
+import { useOptions, useT } from "@/components/providers/i18n";
 
 interface Props {
   id: string;
@@ -35,6 +36,7 @@ interface Other {
 
 export function HousingSuggestion({ id, office, status, myAnswer, groupId, others }: Props) {
   const router = useRouter();
+  const t = useT("profile");
   const [pending, setPending] = React.useState<"yes" | "no" | null>(null);
 
   async function answer(accept: boolean) {
@@ -43,18 +45,16 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
     setPending(null);
     if (!result.ok) return void toast.error(result.error);
     if (result.data.state === "accepted")
-      toast.success(group ? "Everyone said yes" : "You both said yes", {
-        description: "Your group chat is open.",
+      toast.success(group ? t("suggestion.everyoneYes") : t("suggestion.bothYes"), {
+        description: t("suggestion.chatOpen"),
       });
     else if (result.data.state === "waiting")
-      toast.success("Got it", {
-        description: group
-          ? "We'll let you know when everyone answers."
-          : "We'll let you know when they answer.",
+      toast.success(t("suggestion.gotIt"), {
+        description: group ? t("suggestion.waitEveryone") : t("suggestion.waitThem"),
       });
     else if (result.data.state === "invalid")
-      toast("This suggestion closed", { description: "Someone already joined another group." });
-    else toast("Suggestion declined", { description: "They won't be told it was you." });
+      toast(t("suggestion.closed"), { description: t("suggestion.closedHint") });
+    else toast(t("suggestion.declined"), { description: t("suggestion.declinedHint") });
     router.refresh();
   }
 
@@ -62,21 +62,25 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
   const names = others.map((o) => o.firstName);
   const together =
     names.length <= 1
-      ? (names[0] ?? "your suggestion")
-      : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+      ? (names[0] ?? t("suggestion.yourSuggestion"))
+      : t("suggestion.and", {
+          list: names.slice(0, -1).join(", "),
+          last: names[names.length - 1] ?? "",
+        });
   const open = status === "sent" && myAnswer === null;
 
   return (
     <div className="mx-auto flex max-w-[560px] flex-col gap-6 pt-2 lg:pt-0">
       <p className="flex items-center gap-2 text-caption font-semibold tracking-wide text-accent-ink uppercase">
-        <Building2 className="size-4" strokeWidth={2} aria-hidden /> Suggested by {office}
+        <Building2 className="size-4" strokeWidth={2} aria-hidden />{" "}
+        {t("suggestion.by", { office })}
       </p>
       <h1 className="-mt-3 font-display text-display-md text-ink lg:text-display-lg">
-        {group ? "Meet your suggested group" : `Meet ${together}`}
+        {group ? t("suggestion.meetGroup") : t("suggestion.meet", { names: together })}
       </h1>
       {group ? (
         <p className="-mt-3 text-body text-ink-2">
-          A room of {others.length + 1} with {together}.
+          {t("suggestion.room", { size: others.length + 1, names: together })}
         </p>
       ) : null}
 
@@ -88,8 +92,8 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
         <div className="flex flex-col gap-3">
           <p className="text-body-sm text-ink-2">
             {group
-              ? "Say yes and, if everyone else says yes too, Rumi opens a group chat for all of you. Saying no is private."
-              : `Say yes and, if ${names[0] ?? "they"} says yes too, Rumi opens a group chat for the two of you. Saying no is private.`}
+              ? t("suggestion.explainGroup")
+              : t("suggestion.explain", { name: names[0] ?? t("suggestion.they") })}
           </p>
           <div className="flex gap-3">
             <Button
@@ -100,7 +104,7 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
               disabled={pending !== null}
               onClick={() => void answer(false)}
             >
-              No thanks
+              {t("suggestion.no")}
             </Button>
             <Button
               size="lg"
@@ -109,7 +113,7 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
               disabled={pending !== null}
               onClick={() => void answer(true)}
             >
-              Yes, I&apos;m interested
+              {t("suggestion.yes")}
             </Button>
           </div>
         </div>
@@ -120,25 +124,25 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
         >
           {status === "accepted" ? (
             <span className="flex flex-wrap items-center justify-between gap-3">
-              {group ? "Everyone said yes." : "You both said yes."}
+              {group ? t("suggestion.everyoneSaid") : t("suggestion.bothSaid")}
               {groupId ? (
                 <Button asChild size="sm">
-                  <Link href={`/groups/${groupId}`}>Open your group</Link>
+                  <Link href={`/groups/${groupId}`}>{t("suggestion.openGroup")}</Link>
                 </Button>
               ) : null}
             </span>
           ) : status === "declined" ? (
-            "This suggestion is closed."
+            t("suggestion.isClosed")
           ) : status === "invalid" ? (
-            "Someone joined another group, so this suggestion closed."
+            t("suggestion.invalid")
           ) : myAnswer === true ? (
             group ? (
-              "You said yes. We'll let you know when everyone has answered."
+              t("suggestion.saidYesGroup")
             ) : (
-              `You said yes. We'll let you know when ${names[0] ?? "they"} answers.`
+              t("suggestion.saidYes", { name: names[0] ?? t("suggestion.they") })
             )
           ) : (
-            "This suggestion is closed."
+            t("suggestion.isClosed")
           )}
         </div>
       )}
@@ -147,10 +151,12 @@ export function HousingSuggestion({ id, office, status, myAnswer, groupId, other
 }
 
 function OtherCard({ other, compact }: { other: Other; compact: boolean }) {
+  const t = useT("profile");
+  const { CLASS_YEARS } = useOptions();
   const name = `${other.firstName}${other.lastInitial ? ` ${other.lastInitial}.` : ""}`;
   return (
     <section
-      aria-label={`About ${name}`}
+      aria-label={t("suggestion.aboutName", { name })}
       className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line sm:p-6"
     >
       <div className="flex items-center gap-4">
@@ -175,7 +181,7 @@ function OtherCard({ other, compact }: { other: Other; compact: boolean }) {
       {other.reasons.length > 0 ? (
         <div className="mt-5">
           <h2 className="flex items-center gap-1.5 text-caption font-medium text-ink-3 uppercase">
-            <Sparkles className="size-3.5" strokeWidth={2} aria-hidden /> Why you match
+            <Sparkles className="size-3.5" strokeWidth={2} aria-hidden /> {t("why")}
           </h2>
           <ul className="mt-2 flex flex-col gap-1.5">
             {other.reasons.slice(0, compact ? 2 : 3).map((r) => (
@@ -194,8 +200,8 @@ function OtherCard({ other, compact }: { other: Other; compact: boolean }) {
       {other.watchouts.length > 0 ? (
         <div className="mt-4">
           <h2 className="flex items-center gap-1.5 text-caption font-medium text-ink-3 uppercase">
-            <MessageCircleQuestion className="size-3.5" strokeWidth={2} aria-hidden /> Worth talking
-            about
+            <MessageCircleQuestion className="size-3.5" strokeWidth={2} aria-hidden />{" "}
+            {t("suggestion.worth")}
           </h2>
           <ul className="mt-2 flex flex-col gap-1 text-body-sm text-ink-2">
             {other.watchouts.slice(0, compact ? 1 : 2).map((w) => (
@@ -205,7 +211,7 @@ function OtherCard({ other, compact }: { other: Other; compact: boolean }) {
         </div>
       ) : null}
       <Button asChild variant="link" className="mt-4 px-0">
-        <Link href={`/profile/${other.id}`}>See full profile</Link>
+        <Link href={`/profile/${other.id}`}>{t("suggestion.full")}</Link>
       </Button>
     </section>
   );

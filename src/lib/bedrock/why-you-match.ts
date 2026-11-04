@@ -39,6 +39,8 @@ export interface WhyYouMatchInput {
   watchouts: string[];
   breakdown: WhyYouMatchFactor[];
   sharedArtists: string[];
+  /** The reader's language; English when omitted. */
+  locale?: "en" | "es" | "zh" | "hi";
 }
 
 export interface WhyYouMatchPrompt {
@@ -120,7 +122,11 @@ export function buildWhyYouMatchPrompt(input: WhyYouMatchInput): WhyYouMatchProm
     }`,
   ].join("\n\n");
 
-  return { system: SYSTEM_PROMPT, user };
+  const system =
+    input.locale === "es"
+      ? `${SYSTEM_PROMPT}\nWrite the 3 sentences in Spanish, informal "tú", neutral Latin American Spanish.`
+      : SYSTEM_PROMPT;
+  return { system, user };
 }
 
 function ensurePeriod(sentence: string): string {
