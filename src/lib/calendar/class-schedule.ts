@@ -41,7 +41,10 @@ export function normalizeBlocks(blocks: ClassBlock[]): ClassBlock[] {
 }
 
 /** "Mon, Wed 9:00–10:15" style summary rows, grouped by identical times. */
-export function summarizeBlocks(blocks: ClassBlock[]): string[] {
+export function summarizeBlocks(
+  blocks: ClassBlock[],
+  dayNames: readonly string[] = DAY_NAMES,
+): string[] {
   const byTime = new Map<string, number[]>();
   for (const b of normalizeBlocks(blocks)) {
     const key = `${b.start}–${b.end}`;
@@ -51,7 +54,7 @@ export function summarizeBlocks(blocks: ClassBlock[]): string[] {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(
       ([time, days]) =>
-        `${days.map((d) => DAY_NAMES[d]).join(", ")} ${time.replace(/^0/, "").replace(/–0/, "–")}`,
+        `${days.map((d) => dayNames[d]).join(", ")} ${time.replace(/^0/, "").replace(/–0/, "–")}`,
     );
 }
 

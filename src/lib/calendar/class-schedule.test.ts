@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { classBlocksSchema, normalizeBlocks, parseClassIcs, summarizeBlocks } from "./class-schedule";
+import {
+  classBlocksSchema,
+  normalizeBlocks,
+  parseClassIcs,
+  summarizeBlocks,
+} from "./class-schedule";
 
 const TZ = "America/Phoenix";
 
@@ -73,10 +78,18 @@ describe("parseClassIcs", () => {
 
 describe("blocks", () => {
   it("validates manual entries", () => {
-    expect(classBlocksSchema.safeParse([{ day: 0, start: "09:00", end: "10:15" }]).success).toBe(true);
-    expect(classBlocksSchema.safeParse([{ day: 0, start: "10:00", end: "09:00" }]).success).toBe(false);
-    expect(classBlocksSchema.safeParse([{ day: 7, start: "09:00", end: "10:00" }]).success).toBe(false);
-    expect(classBlocksSchema.safeParse([{ day: 0, start: "9:00", end: "10:00" }]).success).toBe(false);
+    expect(classBlocksSchema.safeParse([{ day: 0, start: "09:00", end: "10:15" }]).success).toBe(
+      true,
+    );
+    expect(classBlocksSchema.safeParse([{ day: 0, start: "10:00", end: "09:00" }]).success).toBe(
+      false,
+    );
+    expect(classBlocksSchema.safeParse([{ day: 7, start: "09:00", end: "10:00" }]).success).toBe(
+      false,
+    );
+    expect(classBlocksSchema.safeParse([{ day: 0, start: "9:00", end: "10:00" }]).success).toBe(
+      false,
+    );
   });
 
   it("dedupes, sorts and summarizes", () => {

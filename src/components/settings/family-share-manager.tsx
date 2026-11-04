@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createFamilyShare, getFamilyShareStatus, revokeFamilyShare, type FamilyShareStatus } from "@/app/actions/family-share";
+import {
+  createFamilyShare,
+  getFamilyShareStatus,
+  revokeFamilyShare,
+  type FamilyShareStatus,
+} from "@/app/actions/family-share";
 
 /**
  * Family link (Phase 7.9): a read-only page with your match summary for a parent or
@@ -66,18 +71,34 @@ export function FamilyShareManager() {
   return (
     <div className="flex flex-col gap-4" aria-live="polite">
       <p className="text-body-sm text-ink-2">
-        Share a read-only page with a parent or guardian: your roommates&apos; first names (if they allow it), your match scores and top reasons. Never your messages.
+        Share a read-only page with a parent or guardian: your roommates&apos; first names (if they
+        allow it), your match scores and top reasons. Never your messages.
       </p>
       {share ? (
         <>
           <div className="flex gap-2">
-            <Input readOnly value={url} aria-label="Family link" onFocus={(e) => e.currentTarget.select()} />
-            <Button variant="secondary" size="icon" aria-label="Copy family link" onClick={() => void copy()}>
+            <Input
+              readOnly
+              value={url}
+              aria-label="Family link"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="Copy family link"
+              onClick={() => void copy()}
+            >
               {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
             </Button>
           </div>
           <p className="text-caption text-ink-3">
-            {share.includeAgreement ? "Includes your agreement status. " : ""}Works until {new Date(share.expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric" })}.
+            {share.includeAgreement ? "Includes your agreement status. " : ""}Works until{" "}
+            {new Date(share.expiresAt).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+            })}
+            .
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="ghost" size="sm" asChild>
@@ -85,7 +106,12 @@ export function FamilyShareManager() {
                 <ExternalLink aria-hidden /> Preview
               </a>
             </Button>
-            <Button variant="danger-ghost" size="sm" loading={pending} onClick={() => void revoke()}>
+            <Button
+              variant="danger-ghost"
+              size="sm"
+              loading={pending}
+              onClick={() => void revoke()}
+            >
               <Link2Off aria-hidden /> Turn off
             </Button>
           </div>
@@ -94,7 +120,11 @@ export function FamilyShareManager() {
         <>
           <label className="flex items-center justify-between gap-3 text-body-sm text-ink">
             Include whether our agreement is signed
-            <Switch checked={includeAgreement} onCheckedChange={setIncludeAgreement} aria-label="Include agreement status" />
+            <Switch
+              checked={includeAgreement}
+              onCheckedChange={setIncludeAgreement}
+              aria-label="Include agreement status"
+            />
           </label>
           <Button className="self-start" loading={pending} onClick={() => void create()}>
             Create family link

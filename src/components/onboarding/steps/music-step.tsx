@@ -18,13 +18,14 @@ export function MusicStep({
   returnTo: string;
 }) {
   const t = useT("onboarding");
+  const ta = useT("accounts");
   React.useEffect(() => {
     const url = new URL(window.location.href);
-    if (showSpotifyStatus(url.searchParams.get("spotify"))) {
+    if (showSpotifyStatus(url.searchParams.get("spotify"), ta)) {
       url.searchParams.delete("spotify");
       window.history.replaceState(window.history.state, "", url);
     }
-  }, []);
+  }, [ta]);
 
   if (connected) {
     return (

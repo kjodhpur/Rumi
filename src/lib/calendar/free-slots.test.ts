@@ -6,12 +6,21 @@ const TZ = "America/Phoenix";
 const now = Date.parse("2026-11-09T15:00:00Z");
 const phx = (date: string, time: string) => Date.parse(`${date}T${time}:00-07:00`);
 const label = (ms: number) =>
-  new Date(ms).toLocaleString("en-US", { timeZone: TZ, weekday: "short", hour: "numeric", minute: "2-digit" });
+  new Date(ms).toLocaleString("en-US", {
+    timeZone: TZ,
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 
 describe("suggestSlots", () => {
   it("starts two hours out, inside waking hours, one per day", () => {
     const slots = suggestSlots([], [], { now, timeZone: TZ });
-    expect(slots.map((s) => label(s.start))).toEqual(["Mon 10:00 AM", "Tue 9:00 AM", "Wed 9:00 AM"]);
+    expect(slots.map((s) => label(s.start))).toEqual([
+      "Mon 10:00 AM",
+      "Tue 9:00 AM",
+      "Wed 9:00 AM",
+    ]);
     for (const s of slots) expect(s.end - s.start).toBe(3_600_000);
   });
 
@@ -28,7 +37,11 @@ describe("suggestSlots", () => {
   it("fills from the same days when the week is packed, 2 hours apart", () => {
     const busy = [{ start: phx("2026-11-10", "00:00"), end: phx("2026-11-17", "00:00") }];
     const slots = suggestSlots(busy, [], { now, timeZone: TZ });
-    expect(slots.map((s) => label(s.start))).toEqual(["Mon 10:00 AM", "Mon 12:00 PM", "Mon 2:00 PM"]);
+    expect(slots.map((s) => label(s.start))).toEqual([
+      "Mon 10:00 AM",
+      "Mon 12:00 PM",
+      "Mon 2:00 PM",
+    ]);
   });
 
   it("returns nothing when no hour works", () => {

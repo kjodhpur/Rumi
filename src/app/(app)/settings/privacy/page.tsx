@@ -4,10 +4,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { photoUrl } from "@/lib/photos";
 import { verifiedUntil } from "@/lib/verification";
 import { PrivacySettings } from "@/components/settings/privacy-settings";
-import { CONSENT_COPY, consentTitle, isConsentKind, visibleConsents } from "@/lib/consent";
+import { isConsentKind, visibleConsents, type ConsentKind } from "@/lib/consent";
+import { getT } from "@/lib/i18n/server";
 import { decrypt } from "@/lib/crypto";
 
-export const metadata: Metadata = { title: "Privacy & safety" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("privacy"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function PrivacySettingsPage() {
@@ -50,6 +53,8 @@ export default async function PrivacySettingsPage() {
     }
   }
   const active = new Set((consentRows ?? []).filter((c) => !c.revoked_at).map((c) => c.kind));
+  const [tc, tp] = await Promise.all([getT("consent"), getT("privacy")]);
+  const title = (kind: ConsentKind) => tc(`${kind}.title`, { office: office ?? tp("yourOffice") });
 
   const ids = (blocks ?? []).map((b) => b.blocked_id);
   // Blocked people are hidden by the profile policy, so read their names with the service role.
@@ -77,8 +82,8 @@ export default async function PrivacySettingsPage() {
       verifiedUntil={verifiedUntil(profile?.student_verified_at)}
       consents={visibleConsents(office).map((kind) => ({
         kind,
-        title: consentTitle(kind, office),
-        shares: CONSENT_COPY[kind].shares,
+        title: title(kind),
+        shares: tc(`${kind}.shares`),
         granted: active.has(kind),
       }))}
       consentHistory={(consentRows ?? []).flatMap((c) =>
@@ -86,7 +91,7 @@ export default async function PrivacySettingsPage() {
           ? [
               {
                 id: c.id,
-                title: consentTitle(c.kind, office),
+                title: title(c.kind),
                 grantedAt: c.granted_at,
                 revokedAt: c.revoked_at,
               },

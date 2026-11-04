@@ -15,6 +15,8 @@ import { starters } from "./starters";
 import { chat } from "./chat";
 import { notifications } from "./notifications";
 import { email } from "./email";
+import { accounts } from "./accounts";
+import { privacy } from "./privacy";
 
 /** English: the source of truth. Every other complete locale must match these keys. */
 export const en = {
@@ -35,6 +37,8 @@ export const en = {
   chat,
   notifications,
   email,
+  accounts,
+  privacy,
 };
 
 export type Messages = typeof en;

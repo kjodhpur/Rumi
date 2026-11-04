@@ -34,7 +34,11 @@ export function DeleteAccount() {
         </ul>
         <p className="mt-4 text-body-sm text-ink-2">
           Want a copy first?{" "}
-          <a href="/api/account/export" download className="font-medium text-ink underline underline-offset-4">
+          <a
+            href="/api/account/export"
+            download
+            className="font-medium text-ink underline underline-offset-4"
+          >
             Download your data
           </a>
           . Just need a break? You can hide your profile in Privacy instead.
@@ -60,7 +64,13 @@ export function DeleteAccount() {
             />
           )}
         </Field>
-        <Button type="submit" variant="danger" size="lg" loading={pending} disabled={confirm.trim().toUpperCase() !== "DELETE"}>
+        <Button
+          type="submit"
+          variant="danger"
+          size="lg"
+          loading={pending}
+          disabled={confirm.trim().toUpperCase() !== "DELETE"}
+        >
           Permanently delete my account
         </Button>
       </form>
