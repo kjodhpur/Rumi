@@ -14,8 +14,12 @@ import {
   type RoomMemberView,
 } from "@/components/groups/home/room-home-view";
 import type { ChoreCadence } from "@/lib/chores/rotation";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Chores & expenses" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("room");
+  return { title: t("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function RoomHomePage({ params }: { params: { id: string } }) {
@@ -52,12 +56,8 @@ export default async function RoomHomePage({ params }: { params: { id: string } 
       .eq("group_id", params.id),
   ]);
   if (chores.error || instances.error || expenses.error || settlements.error) {
-    return (
-      <ErrorState
-        title="Couldn't load chores and expenses"
-        description="Refresh the page to try again."
-      />
-    );
+    const [t, tc] = await Promise.all([getT("room"), getT("common")]);
+    return <ErrorState title={t("loadError")} description={tc("refresh")} />;
   }
 
   const active = (expenses.data ?? []).filter((e) => !e.deleted_at);

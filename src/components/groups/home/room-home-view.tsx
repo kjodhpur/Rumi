@@ -4,7 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, ChevronLeft, HandCoins, ListChecks, Plus, Receipt, ShieldAlert, Sparkles, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  HandCoins,
+  ListChecks,
+  Plus,
+  Receipt,
+  ShieldAlert,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { Field } from "@/components/ui/field";
@@ -14,10 +24,19 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ChoiceChips, MultiChips } from "@/components/ui/choice";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { addChore, addExpense, completeChore, deleteExpense, recordSettlement, removeChore, seedChores } from "@/app/actions/room-hub";
-import { CADENCE_LABEL, type ChoreCadence } from "@/lib/chores/rotation";
-import { PAYMENT_SAFETY_TIP } from "@/lib/safety-copy";
+import {
+  addChore,
+  addExpense,
+  completeChore,
+  deleteExpense,
+  recordSettlement,
+  removeChore,
+  seedChores,
+} from "@/app/actions/room-hub";
+import { CADENCES, type ChoreCadence } from "@/lib/chores/rotation";
 import { cn } from "@/lib/utils";
+import { useIntlLocale, useMessages, useT } from "@/components/providers/i18n";
+import { choreTitle } from "@/lib/i18n/room";
 
 export interface RoomMemberView {
   id: string;
@@ -52,15 +71,23 @@ export interface SettleUp {
   amountCents: number;
 }
 
-const money = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+const money = (cents: number) =>
+  (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 const toCents = (value: string) => {
   const n = Number(value.replace(/[$,\s]/g, ""));
   return Number.isFinite(n) ? Math.round(n * 100) : NaN;
 };
-const due = (iso: string, today: string) => {
-  if (iso < today) return "Overdue";
-  if (iso === today) return "Due today";
-  return `Due ${new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}`;
+const due = (iso: string, today: string, t: ReturnType<typeof useT<"room">>, intl: string) => {
+  if (iso < today) return t("chores.overdue");
+  if (iso === today) return t("chores.dueToday");
+  return t("chores.due", {
+    date: new Date(`${iso}T12:00:00Z`).toLocaleDateString(intl, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }),
+  });
 };
 
 export function RoomHomeView({
@@ -88,14 +115,23 @@ export function RoomHomeView({
   hasAgreement: boolean;
 }) {
   const router = useRouter();
+  const t = useT("room");
+  const intl = useIntlLocale();
+  const safetyBody = useMessages().chat.safetyBody;
   const [pending, setPending] = React.useState<string | null>(null);
   const [sheet, setSheet] = React.useState<"chore" | "expense" | "settle" | null>(null);
   const name = (id: string) => {
     const m = members.find((x) => x.id === id);
-    return id === userId ? "You" : m ? `${m.firstName}${m.current ? "" : " (left)"}` : "Former roommate";
+    if (id === userId) return t("you");
+    if (!m) return t("former");
+    return m.current ? m.firstName : t("left", { name: m.firstName });
   };
 
-  async function run(key: string, action: () => Promise<{ ok: true } | { ok: false; error: string }>, success: string) {
+  async function run(
+    key: string,
+    action: () => Promise<{ ok: true } | { ok: false; error: string }>,
+    success: string,
+  ) {
     setPending(key);
     const result = await action();
     setPending(null);
@@ -110,32 +146,41 @@ export function RoomHomeView({
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6">
       <div>
-        <Link href={`/groups/${groupId}`} className="-ml-2 inline-flex h-9 items-center gap-1 rounded-full px-2 text-body-sm font-medium text-ink-2 hover:bg-surface-hover hover:text-ink">
+        <Link
+          href={`/groups/${groupId}`}
+          className="-ml-2 inline-flex h-9 items-center gap-1 rounded-full px-2 text-body-sm font-medium text-ink-2 hover:bg-surface-hover hover:text-ink"
+        >
           <ChevronLeft className="size-4" aria-hidden /> {groupName}
         </Link>
-        <h1 className="mt-2 font-display text-display-md text-ink lg:text-display-lg">Chores &amp; expenses</h1>
-        <p className="mt-1.5 text-body-sm text-ink-2">Whose turn it is, and who owes what. Only your roommates see this.</p>
+        <h1 className="mt-2 font-display text-display-md text-ink lg:text-display-lg">
+          {t("title")}
+        </h1>
+        <p className="mt-1.5 text-body-sm text-ink-2">{t("intro")}</p>
       </div>
 
       <Tabs defaultValue="chores">
         <TabsList className="mb-6">
-          <TabsTrigger value="chores">Chores</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          <TabsTrigger value="chores">{t("tabChores")}</TabsTrigger>
+          <TabsTrigger value="expenses">{t("tabExpenses")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="chores" className="flex flex-col gap-4 outline-none">
           {chores.length === 0 ? (
             <EmptyState
               icon={<ListChecks strokeWidth={1.75} />}
-              title="No chores yet"
-              description={hasAgreement ? "Start with the chores from your roommate agreement, or add your own." : "Start with a few common ones, or add your own."}
+              title={t("chores.none")}
+              description={hasAgreement ? t("chores.noneAgreement") : t("chores.noneDefault")}
               action={
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Button loading={pending === "seed"} onClick={() => void run("seed", () => seedChores(groupId), "Chores added")}>
-                    <Sparkles aria-hidden /> {hasAgreement ? "Use our agreement" : "Add common chores"}
+                  <Button
+                    loading={pending === "seed"}
+                    onClick={() => void run("seed", () => seedChores(groupId), t("chores.seeded"))}
+                  >
+                    <Sparkles aria-hidden />{" "}
+                    {hasAgreement ? t("chores.useAgreement") : t("chores.addCommon")}
                   </Button>
                   <Button variant="secondary" onClick={() => setSheet("chore")}>
-                    <Plus aria-hidden /> Add a chore
+                    <Plus aria-hidden /> {t("chores.add")}
                   </Button>
                 </div>
               }
@@ -145,21 +190,30 @@ export function RoomHomeView({
               <ul className="divide-y divide-line overflow-hidden rounded-lg bg-surface ring-1 ring-line">
                 {chores.map((c) => {
                   const myTurn = c.next?.assigneeId === userId;
+                  const title = choreTitle(c.title, t);
                   return (
                     <li key={c.id} className="flex items-center gap-3 p-4">
                       <div className="min-w-0 flex-1">
-                        <p className="text-body-sm font-medium text-ink">{c.title}</p>
+                        <p className="text-body-sm font-medium text-ink">{title}</p>
                         <p className="mt-0.5 text-caption text-ink-2">
-                          {CADENCE_LABEL[c.cadence]}
+                          {t(`cadence.${c.cadence}`)}
                           {c.next ? (
                             <>
                               {" · "}
-                              <span className={cn(c.next.dueOn < today && "font-medium text-warning")}>{due(c.next.dueOn, today)}</span>
+                              <span
+                                className={cn(c.next.dueOn < today && "font-medium text-warning")}
+                              >
+                                {due(c.next.dueOn, today, t, intl)}
+                              </span>
                               {" · "}
-                              {myTurn ? <span className="font-medium text-ink">Your turn</span> : `${name(c.next.assigneeId)}'s turn`}
+                              {myTurn ? (
+                                <span className="font-medium text-ink">{t("chores.yourTurn")}</span>
+                              ) : (
+                                t("chores.turn", { name: name(c.next.assigneeId) })
+                              )}
                             </>
                           ) : null}
-                          {c.fromAgreement ? " · From your agreement" : ""}
+                          {c.fromAgreement ? t("chores.fromAgreement") : ""}
                         </p>
                       </div>
                       {c.next ? (
@@ -167,12 +221,30 @@ export function RoomHomeView({
                           size="sm"
                           variant={myTurn ? "primary" : "secondary"}
                           loading={pending === c.next.id}
-                          onClick={() => void run(c.next!.id, () => completeChore(groupId, c.next!.id), `${c.title} done. Next up: the next person in the rotation.`)}
+                          onClick={() =>
+                            void run(
+                              c.next!.id,
+                              () => completeChore(groupId, c.next!.id),
+                              t("chores.doneToast", { title }),
+                            )
+                          }
                         >
-                          <Check aria-hidden /> Done
+                          <Check aria-hidden /> {t("chores.done")}
                         </Button>
                       ) : null}
-                      <Button variant="ghost" size="icon-sm" aria-label={`Remove ${c.title}`} loading={pending === `rm-${c.id}`} onClick={() => void run(`rm-${c.id}`, () => removeChore(groupId, c.id), "Chore removed")}>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={t("chores.remove", { title })}
+                        loading={pending === `rm-${c.id}`}
+                        onClick={() =>
+                          void run(
+                            `rm-${c.id}`,
+                            () => removeChore(groupId, c.id),
+                            t("chores.removed"),
+                          )
+                        }
+                      >
                         <Trash2 aria-hidden />
                       </Button>
                     </li>
@@ -180,7 +252,7 @@ export function RoomHomeView({
                 })}
               </ul>
               <Button variant="secondary" className="self-start" onClick={() => setSheet("chore")}>
-                <Plus aria-hidden /> Add a chore
+                <Plus aria-hidden /> {t("chores.add")}
               </Button>
             </>
           )}
@@ -188,36 +260,60 @@ export function RoomHomeView({
 
         <TabsContent value="expenses" className="flex flex-col gap-5 outline-none">
           <div className="rounded-lg bg-surface p-5 ring-1 ring-line">
-            <p className="text-caption text-ink-3">Your balance</p>
-            <p className={cn("mt-1 font-display text-display-sm tabular-nums", mine > 0 ? "text-success" : mine < 0 ? "text-ink" : "text-ink-2")}>
-              {mine === 0 ? "All square" : mine > 0 ? `You're owed ${money(mine)}` : `You owe ${money(-mine)}`}
+            <p className="text-caption text-ink-3">{t("expenses.balance")}</p>
+            <p
+              className={cn(
+                "mt-1 font-display text-display-sm tabular-nums",
+                mine > 0 ? "text-success" : mine < 0 ? "text-ink" : "text-ink-2",
+              )}
+            >
+              {mine === 0
+                ? t("expenses.square")
+                : mine > 0
+                  ? t("expenses.owed", { amount: money(mine) })
+                  : t("expenses.owe", { amount: money(-mine) })}
             </p>
             {settleUps.length ? (
               <ul className="mt-4 flex flex-col gap-1.5 text-body-sm text-ink-2">
                 {settleUps.map((s) => (
                   <li key={`${s.fromUserId}-${s.toUserId}`}>
-                    {name(s.fromUserId)} {s.fromUserId === userId ? "pay" : "pays"} {s.toUserId === userId ? "you" : name(s.toUserId)} <span className="font-medium text-ink tabular-nums">{money(s.amountCents)}</span>
+                    {s.fromUserId === userId
+                      ? t("expenses.youPay", { to: name(s.toUserId) })
+                      : s.toUserId === userId
+                        ? t("expenses.paysYou", { from: name(s.fromUserId) })
+                        : t("expenses.pays", {
+                            from: name(s.fromUserId),
+                            to: name(s.toUserId),
+                          })}{" "}
+                    <span className="font-medium text-ink tabular-nums">
+                      {money(s.amountCents)}
+                    </span>
                   </li>
                 ))}
               </ul>
             ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Button onClick={() => setSheet("expense")}>
-                <Plus aria-hidden /> Add expense
+                <Plus aria-hidden /> {t("expenses.add")}
               </Button>
               {current.length > 1 ? (
                 <Button variant="secondary" onClick={() => setSheet("settle")}>
-                  <HandCoins aria-hidden /> I paid someone back
+                  <HandCoins aria-hidden /> {t("expenses.paidBack")}
                 </Button>
               ) : null}
             </div>
             <p className="mt-4 flex gap-2 text-caption text-ink-3">
-              <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden /> Rumi only keeps track. Pay each other however you like. {PAYMENT_SAFETY_TIP}
+              <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />{" "}
+              {t("expenses.tracking")} {safetyBody}
             </p>
           </div>
 
           {expenses.length === 0 ? (
-            <EmptyState icon={<Receipt strokeWidth={1.75} />} title="No shared expenses yet" description="Add groceries, supplies or bills and Rumi splits them to the cent." />
+            <EmptyState
+              icon={<Receipt strokeWidth={1.75} />}
+              title={t("expenses.none")}
+              description={t("expenses.noneBody")}
+            />
           ) : (
             <ul className="divide-y divide-line overflow-hidden rounded-lg bg-surface ring-1 ring-line">
               {expenses.map((e) => (
@@ -225,14 +321,32 @@ export function RoomHomeView({
                   <div className="min-w-0 flex-1">
                     <p className="text-body-sm font-medium text-ink">{e.description}</p>
                     <p className="mt-0.5 text-caption text-ink-2">
-                      {name(e.payerId)} paid · {new Date(e.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {(() => {
+                        const date = new Date(e.createdAt).toLocaleDateString(intl, {
+                          month: "short",
+                          day: "numeric",
+                        });
+                        return e.payerId === userId
+                          ? t("expenses.youPaid", { date })
+                          : t("expenses.paid", { name: name(e.payerId), date });
+                      })()}
                       {" · "}
                       {e.shares.map((s) => `${name(s.userId)} ${money(s.cents)}`).join(", ")}
                     </p>
                   </div>
-                  <span className="text-body-sm font-medium text-ink tabular-nums">{money(e.amountCents)}</span>
+                  <span className="text-body-sm font-medium text-ink tabular-nums">
+                    {money(e.amountCents)}
+                  </span>
                   {e.payerId === userId ? (
-                    <Button variant="ghost" size="icon-sm" aria-label={`Remove ${e.description}`} loading={pending === e.id} onClick={() => void run(e.id, () => deleteExpense(groupId, e.id), "Expense removed")}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t("expenses.remove", { description: e.description })}
+                      loading={pending === e.id}
+                      onClick={() =>
+                        void run(e.id, () => deleteExpense(groupId, e.id), t("expenses.removed"))
+                      }
+                    >
                       <Trash2 aria-hidden />
                     </Button>
                   ) : null}
@@ -243,8 +357,20 @@ export function RoomHomeView({
         </TabsContent>
       </Tabs>
 
-      <ChoreSheet open={sheet === "chore"} onOpenChange={(o) => setSheet(o ? "chore" : null)} groupId={groupId} onSaved={() => router.refresh()} />
-      <ExpenseSheet open={sheet === "expense"} onOpenChange={(o) => setSheet(o ? "expense" : null)} groupId={groupId} userId={userId} members={current} onSaved={() => router.refresh()} />
+      <ChoreSheet
+        open={sheet === "chore"}
+        onOpenChange={(o) => setSheet(o ? "chore" : null)}
+        groupId={groupId}
+        onSaved={() => router.refresh()}
+      />
+      <ExpenseSheet
+        open={sheet === "expense"}
+        onOpenChange={(o) => setSheet(o ? "expense" : null)}
+        groupId={groupId}
+        userId={userId}
+        members={current}
+        onSaved={() => router.refresh()}
+      />
       <SettleSheet
         open={sheet === "settle"}
         onOpenChange={(o) => setSheet(o ? "settle" : null)}
@@ -257,7 +383,18 @@ export function RoomHomeView({
   );
 }
 
-function ChoreSheet({ open, onOpenChange, groupId, onSaved }: { open: boolean; onOpenChange: (o: boolean) => void; groupId: string; onSaved: () => void }) {
+function ChoreSheet({
+  open,
+  onOpenChange,
+  groupId,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  groupId: string;
+  onSaved: () => void;
+}) {
+  const t = useT("room");
   const [title, setTitle] = React.useState("");
   const [cadence, setCadence] = React.useState<ChoreCadence>("weekly");
   const [error, setError] = React.useState<string | null>(null);
@@ -271,15 +408,44 @@ function ChoreSheet({ open, onOpenChange, groupId, onSaved }: { open: boolean; o
     setTitle("");
     setError(null);
     onOpenChange(false);
-    toast.success("Chore added. It rotates through everyone in the room.");
+    toast.success(t("choreSheet.added"));
     onSaved();
   }
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Add a chore" description="It rotates through everyone in the room." footer={<Button type="submit" form="chore-form" block loading={pending}>Add chore</Button>}>
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("choreSheet.title")}
+      description={t("choreSheet.description")}
+      footer={
+        <Button type="submit" form="chore-form" block loading={pending}>
+          {t("choreSheet.submit")}
+        </Button>
+      }
+    >
       <form id="chore-form" onSubmit={submit} className="flex flex-col gap-5" noValidate>
-        <Field label="Chore" error={error}>{({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Water the plants" />}</Field>
-        <Field label="How often">
-          {({ id }) => <ChoiceChips aria-labelledby={id} value={cadence} onValueChange={setCadence} options={(Object.keys(CADENCE_LABEL) as ChoreCadence[]).map((c) => ({ value: c, label: CADENCE_LABEL[c] }))} />}
+        <Field label={t("choreSheet.chore")} error={error}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              maxLength={100}
+              placeholder={t("choreSheet.placeholder")}
+            />
+          )}
+        </Field>
+        <Field label={t("choreSheet.often")}>
+          {({ id }) => (
+            <ChoiceChips
+              aria-labelledby={id}
+              value={cadence}
+              onValueChange={setCadence}
+              options={CADENCES.map((c) => ({ value: c, label: t(`cadence.${c}`) }))}
+            />
+          )}
         </Field>
       </form>
     </Sheet>
@@ -301,6 +467,7 @@ function ExpenseSheet({
   members: RoomMemberView[];
   onSaved: () => void;
 }) {
+  const t = useT("room");
   const [description, setDescription] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [mode, setMode] = React.useState<"equal" | "custom">("equal");
@@ -318,13 +485,22 @@ function ExpenseSheet({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!Number.isInteger(total) || total <= 0) return setError("Enter an amount.");
+    if (!Number.isInteger(total) || total <= 0) return setError(t("amountError"));
     setPending(true);
     const result = await addExpense({
       groupId,
       description,
       amountCents: total,
-      split: mode === "equal" ? { kind: "equal", memberIds: who } : { kind: "custom", shares: members.map((m) => ({ userId: m.id, cents: toCents(custom[m.id] ?? "0") || 0 })) },
+      split:
+        mode === "equal"
+          ? { kind: "equal", memberIds: who }
+          : {
+              kind: "custom",
+              shares: members.map((m) => ({
+                userId: m.id,
+                cents: toCents(custom[m.id] ?? "0") || 0,
+              })),
+            },
     });
     setPending(false);
     if (!result.ok) return setError(result.error);
@@ -333,35 +509,110 @@ function ExpenseSheet({
     setCustom({});
     setError(null);
     onOpenChange(false);
-    toast.success("Expense added");
+    toast.success(t("expenseSheet.added"));
     onSaved();
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Add an expense" description="You paid; Rumi splits it to the cent. Any leftover cent stays with you." footer={<Button type="submit" form="expense-form" block loading={pending}>Add expense</Button>}>
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("expenseSheet.title")}
+      description={t("expenseSheet.description")}
+      footer={
+        <Button type="submit" form="expense-form" block loading={pending}>
+          {t("expenses.add")}
+        </Button>
+      }
+    >
       <form id="expense-form" onSubmit={submit} className="flex flex-col gap-5" noValidate>
-        <Field label="What for">{({ id }) => <Input id={id} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} placeholder="Groceries" />}</Field>
-        <Field label="Amount">{({ id }) => <Input id={id} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="$0.00" />}</Field>
-        <SegmentedControl aria-label="How to split" value={mode} onValueChange={setMode} options={[{ value: "equal", label: "Split evenly" }, { value: "custom", label: "Custom amounts" }]} />
+        <Field label={t("expenseSheet.what")}>
+          {({ id }) => (
+            <Input
+              id={id}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              maxLength={200}
+              placeholder={t("expenseSheet.whatPlaceholder")}
+            />
+          )}
+        </Field>
+        <Field label={t("amount")}>
+          {({ id }) => (
+            <Input
+              id={id}
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="$0.00"
+            />
+          )}
+        </Field>
+        <SegmentedControl
+          aria-label={t("expenseSheet.how")}
+          value={mode}
+          onValueChange={setMode}
+          options={[
+            { value: "equal", label: t("expenseSheet.even") },
+            { value: "custom", label: t("expenseSheet.custom") },
+          ]}
+        />
         {mode === "equal" ? (
-          <Field label="Split between">
+          <Field label={t("expenseSheet.between")}>
             {({ id }) => (
-              <MultiChips aria-labelledby={id} value={who} onValueChange={setWho} options={members.map((m) => ({ value: m.id, label: m.id === userId ? "You" : m.firstName, icon: <Avatar src={m.avatarUrl} firstName={m.firstName} lastInitial={m.lastInitial} size={20} /> }))} />
+              <MultiChips
+                aria-labelledby={id}
+                value={who}
+                onValueChange={setWho}
+                options={members.map((m) => ({
+                  value: m.id,
+                  label: m.id === userId ? t("you") : m.firstName,
+                  icon: (
+                    <Avatar
+                      src={m.avatarUrl}
+                      firstName={m.firstName}
+                      lastInitial={m.lastInitial}
+                      size={20}
+                    />
+                  ),
+                }))}
+              />
             )}
           </Field>
         ) : (
           <div className="flex flex-col gap-3">
             {members.map((m) => (
-              <Field key={m.id} label={m.id === userId ? "You" : m.firstName}>
-                {({ id }) => <Input id={id} inputMode="decimal" value={custom[m.id] ?? ""} onChange={(e) => setCustom((c) => ({ ...c, [m.id]: e.target.value }))} placeholder="$0.00" />}
+              <Field key={m.id} label={m.id === userId ? t("you") : m.firstName}>
+                {({ id }) => (
+                  <Input
+                    id={id}
+                    inputMode="decimal"
+                    value={custom[m.id] ?? ""}
+                    onChange={(e) => setCustom((c) => ({ ...c, [m.id]: e.target.value }))}
+                    placeholder="$0.00"
+                  />
+                )}
               </Field>
             ))}
-            <p className={cn("text-caption tabular-nums", Number.isInteger(total) && customTotal !== total ? "text-warning" : "text-ink-3")} aria-live="polite">
-              {money(customTotal)} of {Number.isInteger(total) && total > 0 ? money(total) : "$0.00"}
+            <p
+              className={cn(
+                "text-caption tabular-nums",
+                Number.isInteger(total) && customTotal !== total ? "text-warning" : "text-ink-3",
+              )}
+              aria-live="polite"
+            >
+              {t("expenseSheet.of", {
+                sum: money(customTotal),
+                total: money(Number.isInteger(total) && total > 0 ? total : 0),
+              })}
             </p>
           </div>
         )}
-        {error ? <p role="alert" className="text-body-sm text-danger">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-body-sm text-danger">
+            {error}
+          </p>
+        ) : null}
       </form>
     </Sheet>
   );
@@ -382,6 +633,7 @@ function SettleSheet({
   suggested: SettleUp[];
   onSaved: () => void;
 }) {
+  const t = useT("room");
   const [receiver, setReceiver] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -398,22 +650,58 @@ function SettleSheet({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const cents = toCents(amount);
-    if (!Number.isInteger(cents) || cents <= 0) return setError("Enter an amount.");
+    if (!Number.isInteger(cents) || cents <= 0) return setError(t("amountError"));
     setPending(true);
     const result = await recordSettlement({ groupId, receiverId: receiver, amountCents: cents });
     setPending(false);
     if (!result.ok) return setError(result.error);
     onOpenChange(false);
-    toast.success("Recorded");
+    toast.success(t("settle.recorded"));
     onSaved();
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="I paid someone back" description="Record a payment you already made. Rumi doesn't move money." footer={<Button type="submit" form="settle-form" block loading={pending}>Record payment</Button>}>
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("settle.title")}
+      description={t("settle.description")}
+      footer={
+        <Button type="submit" form="settle-form" block loading={pending}>
+          {t("settle.submit")}
+        </Button>
+      }
+    >
       <form id="settle-form" onSubmit={submit} className="flex flex-col gap-5" noValidate>
-        <Field label="Who you paid">{({ id }) => <ChoiceChips aria-labelledby={id} value={receiver} onValueChange={setReceiver} options={others.map((m) => ({ value: m.id, label: `${m.firstName}${m.current ? "" : " (left)"}` }))} />}</Field>
-        <Field label="Amount">{({ id }) => <Input id={id} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="$0.00" />}</Field>
-        {error ? <p role="alert" className="text-body-sm text-danger">{error}</p> : null}
+        <Field label={t("settle.who")}>
+          {({ id }) => (
+            <ChoiceChips
+              aria-labelledby={id}
+              value={receiver}
+              onValueChange={setReceiver}
+              options={others.map((m) => ({
+                value: m.id,
+                label: m.current ? m.firstName : t("left", { name: m.firstName }),
+              }))}
+            />
+          )}
+        </Field>
+        <Field label={t("amount")}>
+          {({ id }) => (
+            <Input
+              id={id}
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="$0.00"
+            />
+          )}
+        </Field>
+        {error ? (
+          <p role="alert" className="text-body-sm text-danger">
+            {error}
+          </p>
+        ) : null}
       </form>
     </Sheet>
   );

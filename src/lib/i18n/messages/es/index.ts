@@ -23,6 +23,7 @@ import { safety } from "./safety";
 import { share } from "./share";
 import { groups } from "./groups";
 import { agreement } from "./agreement";
+import { room } from "./room";
 
 /** Spanish: complete for student flows. The type makes a missing key a compile error. */
 export const es: Messages = {
@@ -50,4 +51,5 @@ export const es: Messages = {
   share,
   groups,
   agreement,
+  room,
 };

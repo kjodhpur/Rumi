@@ -2,40 +2,45 @@
 
 export type ChoreCadence = "daily" | "weekly" | "biweekly" | "monthly";
 
-export const CADENCE_LABEL: Record<ChoreCadence, string> = {
-  daily: "Every day",
-  weekly: "Every week",
-  biweekly: "Every two weeks",
-  monthly: "Every month",
-};
+export const CADENCES: ChoreCadence[] = ["daily", "weekly", "biweekly", "monthly"];
+
+/** Chores Rumi suggests; the title is stored in the language of whoever added them. */
+export type ChoreKey = "trash" | "bathroom" | "kitchen" | "vacuum" | "tidy";
 
 export interface ChoreTemplate {
-  title: string;
+  key: ChoreKey;
   cadence: ChoreCadence;
 }
 
 /** Used when the room has no agreement yet. */
 export const DEFAULT_CHORE_TEMPLATES: ChoreTemplate[] = [
-  { title: "Trash and recycling", cadence: "weekly" },
-  { title: "Bathroom", cadence: "weekly" },
-  { title: "Kitchen and counters", cadence: "weekly" },
-  { title: "Vacuum the shared space", cadence: "weekly" },
+  { key: "trash", cadence: "weekly" },
+  { key: "bathroom", cadence: "weekly" },
+  { key: "kitchen", cadence: "weekly" },
+  { key: "vacuum", cadence: "weekly" },
 ];
 
 /**
  * Chores seeded from the agreement's cleaning section ("We rotate bathroom, kitchen and
- * trash weekly", "a quick tidy every day"). Falls back to the defaults.
+ * trash weekly", "a quick tidy every day", or the same in Spanish). Falls back to the defaults.
  */
 export function choresFromAgreement(section: string | null | undefined): ChoreTemplate[] {
   if (!section) return DEFAULT_CHORE_TEMPLATES;
   const text = section.toLowerCase();
-  const cadence: ChoreCadence = /\bevery two weeks|biweekly|fortnight/.test(text) ? "biweekly" : /\bmonthly|every month/.test(text) ? "monthly" : "weekly";
+  const cadence: ChoreCadence =
+    /\bevery two weeks|biweekly|fortnight|cada dos semanas|quincenal/.test(text)
+      ? "biweekly"
+      : /\bmonthly|every month|cada mes|mensual/.test(text)
+        ? "monthly"
+        : "weekly";
   const out: ChoreTemplate[] = [];
-  if (/\bbathroom/.test(text)) out.push({ title: "Bathroom", cadence });
-  if (/\bkitchen|dishes/.test(text)) out.push({ title: "Kitchen and counters", cadence });
-  if (/\btrash|recycling|garbage/.test(text)) out.push({ title: "Trash and recycling", cadence });
-  if (/\bvacuum|floors?\b|sweep/.test(text)) out.push({ title: "Vacuum the shared space", cadence });
-  if (/\btidy every day|daily tidy|quick tidy every day/.test(text)) out.push({ title: "Quick tidy of shared spaces", cadence: "daily" });
+  if (/\bbathroom|baño/.test(text)) out.push({ key: "bathroom", cadence });
+  if (/\bkitchen|dishes|cocina|platos/.test(text)) out.push({ key: "kitchen", cadence });
+  if (/\btrash|recycling|garbage|basura|reciclaje/.test(text)) out.push({ key: "trash", cadence });
+  if (/\bvacuum|floors?\b|sweep|aspiradora|pisos?\b|barrer/.test(text))
+    out.push({ key: "vacuum", cadence });
+  if (/\btidy every day|daily tidy|quick tidy every day|ordenan un poco todos los días/.test(text))
+    out.push({ key: "tidy", cadence: "daily" });
   return out.length ? out : DEFAULT_CHORE_TEMPLATES;
 }
 

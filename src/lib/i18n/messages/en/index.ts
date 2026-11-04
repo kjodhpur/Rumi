@@ -22,6 +22,7 @@ import { safety } from "./safety";
 import { share } from "./share";
 import { groups } from "./groups";
 import { agreement } from "./agreement";
+import { room } from "./room";
 
 /** English: the source of truth. Every other complete locale must match these keys. */
 export const en = {
@@ -49,6 +50,7 @@ export const en = {
   share,
   groups,
   agreement,
+  room,
 };
 
 export type Messages = typeof en;

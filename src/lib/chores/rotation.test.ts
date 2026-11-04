@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CHORE_TEMPLATES, choresFromAgreement, firstDueDate, nextInRotation } from "./rotation";
+import {
+  DEFAULT_CHORE_TEMPLATES,
+  choresFromAgreement,
+  firstDueDate,
+  nextInRotation,
+} from "./rotation";
 
 describe("chore rotation", () => {
   it("cycles through the rotation and wraps around", () => {
@@ -20,13 +25,22 @@ describe("chore rotation", () => {
 
 describe("chores from the agreement", () => {
   it("reads the agreement's cleaning section", () => {
-    expect(choresFromAgreement("Dishes are washed within a day. We rotate bathroom, kitchen and trash weekly.").map((c) => c.title)).toEqual([
-      "Bathroom",
-      "Kitchen and counters",
-      "Trash and recycling",
-    ]);
-    const tidy = choresFromAgreement("Shared spaces get a quick tidy every day and dishes are washed the same day. We rotate bathroom, kitchen and trash weekly.");
-    expect(tidy.find((c) => c.cadence === "daily")?.title).toBe("Quick tidy of shared spaces");
+    expect(
+      choresFromAgreement(
+        "Dishes are washed within a day. We rotate bathroom, kitchen and trash weekly.",
+      ).map((c) => c.key),
+    ).toEqual(["bathroom", "kitchen", "trash"]);
+    const tidy = choresFromAgreement(
+      "Shared spaces get a quick tidy every day and dishes are washed the same day. We rotate bathroom, kitchen and trash weekly.",
+    );
+    expect(tidy.find((c) => c.cadence === "daily")?.key).toBe("tidy");
+  });
+
+  it("reads a Spanish agreement too", () => {
+    const tidy = choresFromAgreement(
+      "Los espacios compartidos se ordenan un poco todos los días y los platos se lavan el mismo día. Rotamos baño, cocina y basura cada semana.",
+    );
+    expect(tidy.map((c) => c.key)).toEqual(["bathroom", "kitchen", "trash", "tidy"]);
   });
 
   it("falls back to sensible defaults", () => {

@@ -1,8 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { getT } from "@/lib/i18n/server";
 
-export default function MessagesLoading() {
+export default async function MessagesLoading() {
+  const t = await getT("common");
   return (
-    <div className="mx-auto max-w-[760px]" aria-label="Loading messages" aria-busy>
+    <div className="mx-auto max-w-[760px]" aria-label={t("loadingPage.messages")} aria-busy>
       <Skeleton className="h-9 w-44 lg:h-11" />
       <Skeleton className="mt-3 h-4 w-64" />
       <div className="mt-8 flex gap-6 border-b border-line pb-3">

@@ -10,6 +10,7 @@ import { firstError } from "@/lib/validation";
 import { CAMPUS_TZ } from "@/lib/time";
 import { calculateEqualSplits } from "@/lib/expenses/balances";
 import { choresFromAgreement, firstDueDate } from "@/lib/chores/rotation";
+import { getT } from "@/lib/i18n/server";
 
 const uuid = z.string().uuid();
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: CAMPUS_TZ });
@@ -85,14 +86,16 @@ export async function seedChores(groupId: string): Promise<ActionResult<{ added:
           .maybeSingle()
       : { data: null };
   const templates = choresFromAgreement(section?.content);
+  // Suggested chores are named in the language of whoever adds them.
+  const t = await getT("room");
   let added = 0;
-  for (const t of templates) {
+  for (const chore of templates) {
     const { error } = await supabase.rpc("add_chore", {
       p_group: groupId,
-      p_title: t.title,
-      p_cadence: t.cadence,
+      p_title: t(`defaults.${chore.key}`),
+      p_cadence: chore.cadence,
       p_rotation: [],
-      p_first_due: firstDueDate(today(), t.cadence),
+      p_first_due: firstDueDate(today(), chore.cadence),
       p_from_agreement: Boolean(section),
     });
     if (error) return fail(friendlyDbError(error.message));

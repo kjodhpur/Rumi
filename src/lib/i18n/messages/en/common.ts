@@ -12,4 +12,17 @@ export const common = {
   back: "Back",
   optional: "Optional",
   loading: "Loading",
+  refresh: "Refresh the page to try again.",
+  /** Screen-reader labels for loading skeletons. */
+  loadingPage: {
+    groups: "Loading groups",
+    messages: "Loading messages",
+    agreement: "Loading the roommate agreement",
+    room: "Loading your room",
+    calendar: "Loading the room calendar",
+    survey: "Loading the survey",
+    checkIns: "Loading check-ins",
+    match: "Loading the match card",
+    family: "Loading",
+  },
 };
