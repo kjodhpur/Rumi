@@ -18,6 +18,7 @@ export interface AgreementSection {
   updatedAt: string;
   /** The text before the latest edit, when someone changed the prefilled draft. */
   previous: string | null;
+  comments: { id: string; authorId: string | null; body: string; createdAt: string }[];
 }
 
 export interface AgreementView {
@@ -63,23 +64,29 @@ export async function loadAgreement(groupId: string): Promise<AgreementView | nu
     .maybeSingle();
   if (!agreement) return { groupId, groupName: group.name, members, agreement: null };
 
-  const [{ data: sections }, { data: signatures }, { data: edits }] = await Promise.all([
-    supabase
-      .from("agreement_sections")
-      .select("key, title, position, content, proposed_by, accepted_by, updated_at")
-      .eq("agreement_id", agreement.id)
-      .order("position"),
-    supabase
-      .from("agreement_signatures")
-      .select("user_id, typed_name, signed_at, version")
-      .eq("agreement_id", agreement.id),
-    supabase
-      .from("agreement_events")
-      .select("section_key, before, created_at")
-      .eq("agreement_id", agreement.id)
-      .eq("kind", "edited")
-      .order("created_at", { ascending: false }),
-  ]);
+  const [{ data: sections }, { data: signatures }, { data: edits }, { data: comments }] =
+    await Promise.all([
+      supabase
+        .from("agreement_sections")
+        .select("key, title, position, content, proposed_by, accepted_by, updated_at")
+        .eq("agreement_id", agreement.id)
+        .order("position"),
+      supabase
+        .from("agreement_signatures")
+        .select("user_id, typed_name, signed_at, version")
+        .eq("agreement_id", agreement.id),
+      supabase
+        .from("agreement_events")
+        .select("section_key, before, created_at")
+        .eq("agreement_id", agreement.id)
+        .eq("kind", "edited")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("agreement_comments")
+        .select("id, section_key, author_id, body, created_at")
+        .eq("agreement_id", agreement.id)
+        .order("created_at"),
+    ]);
   const previousOf = new Map<string, string>();
   for (const e of edits ?? [])
     if (e.section_key && e.before !== null && !previousOf.has(e.section_key))
@@ -96,6 +103,9 @@ export async function loadAgreement(groupId: string): Promise<AgreementView | nu
     accepted: sectionAccepted({ key: s.key, acceptedBy: s.accepted_by }, memberIds),
     updatedAt: s.updated_at,
     previous: previousOf.get(s.key) ?? null,
+    comments: (comments ?? [])
+      .filter((c) => c.section_key === s.key)
+      .map((c) => ({ id: c.id, authorId: c.author_id, body: c.body, createdAt: c.created_at })),
   }));
 
   return {

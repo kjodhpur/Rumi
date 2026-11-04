@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildDraft } from "@/lib/agreements/template";
+import { applyTemplate, buildDraft, parseTemplate } from "@/lib/agreements/template";
 import {
   afterAccept,
   afterEdit,
@@ -15,6 +15,7 @@ import {
 import { cleanName, cleanText } from "@/lib/sanitize";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { fail, ok, type ActionResult } from "@/lib/action";
+import { dispatchMany } from "@/lib/notifications/dispatch";
 
 const uuid = z.string().uuid();
 
@@ -91,6 +92,23 @@ export async function startAgreement(groupId: string): Promise<ActionResult> {
     ),
   );
 
+  // The school's current template decides sections, order, titles and its own notes.
+  const { data: group } = await db
+    .from("groups")
+    .select("school_id")
+    .eq("id", groupId)
+    .maybeSingle();
+  const { data: template } = group
+    ? await db
+        .from("agreement_templates")
+        .select("version, sections")
+        .eq("school_id", group.school_id)
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+  const sections = applyTemplate(draft, parseTemplate(template?.sections ?? null));
+
   // A stale agreement (members changed) is replaced; its history goes with it.
   if (existing) await db.from("agreements").delete().eq("id", existing.id);
   const { data: agreement, error } = await db
@@ -99,12 +117,13 @@ export async function startAgreement(groupId: string): Promise<ActionResult> {
       group_id: groupId,
       member_ids: memberIds,
       version: existing ? existing.version + 1 : 1,
+      template_version: template?.version ?? null,
     })
     .select("id")
     .single();
   if (error || !agreement) return fail("Couldn't start the agreement.");
   await db.from("agreement_sections").insert(
-    draft.map((s, position) => ({
+    sections.map((s, position) => ({
       agreement_id: agreement.id,
       key: s.key,
       title: s.title,
@@ -343,4 +362,74 @@ export async function acceptAllSections(
   }
   refresh(groupId);
   return ok({ accepted: pending.length });
+}
+
+const commentInput = z.object({
+  groupId: uuid,
+  key: z.string().regex(/^[a-z_]{2,32}$/),
+  body: z.string().max(500),
+});
+
+/** A comment on one section while the agreement is open (Phase 4). Other members are told. */
+export async function addAgreementComment(
+  raw: z.input<typeof commentInput>,
+): Promise<ActionResult> {
+  const parsed = commentInput.safeParse(raw);
+  if (!parsed.success) return fail("Comments can be up to 500 characters.");
+  const userId = await memberOf(parsed.data.groupId);
+  if (!userId) return fail("You're not in this group.");
+  if (!(await rateLimit(`agreement-comment:${userId}`, LIMITS.agreementCommentsPerHour)))
+    return fail("Lots of comments. Try again in a bit.");
+  const body = cleanText(parsed.data.body);
+  if (!body) return fail("Write a comment first.");
+  const live = await liveAgreement(parsed.data.groupId);
+  if ("error" in live) return fail(live.error!);
+  if (live.agreement.status === "signed")
+    return fail("This agreement is signed. Reopen it to discuss changes.");
+  // Through the member's own session: RLS checks membership and that the agreement is open.
+  const { error } = await createClient()
+    .from("agreement_comments")
+    .insert({
+      agreement_id: live.agreement.id,
+      section_key: parsed.data.key,
+      author_id: userId,
+      body,
+    });
+  if (error) return fail("Couldn't post the comment.");
+  const others = (await groupMembers(parsed.data.groupId)).filter((id) => id !== userId);
+  const { data: me } = await createAdminClient()
+    .from("profiles")
+    .select("first_name")
+    .eq("id", userId)
+    .maybeSingle();
+  await dispatchMany(
+    "agreements",
+    others.map((id) => ({
+      userId: id,
+      type: "agreement_reminder" as const,
+      actorId: userId,
+      entityId: live.agreement.id,
+      title: `${me?.first_name ?? "A roommate"} commented on your agreement`,
+      body: body.slice(0, 120),
+      href: `/groups/${parsed.data.groupId}/agreement`,
+    })),
+  );
+  refresh(parsed.data.groupId);
+  return ok();
+}
+
+export async function deleteAgreementComment(
+  groupId: string,
+  commentId: string,
+): Promise<ActionResult> {
+  const userId = await memberOf(groupId);
+  if (!userId || !uuid.safeParse(commentId).success) return fail("That comment isn't available.");
+  const { error } = await createClient()
+    .from("agreement_comments")
+    .delete()
+    .eq("id", commentId)
+    .eq("author_id", userId);
+  if (error) return fail("Couldn't delete the comment.");
+  refresh(groupId);
+  return ok();
 }

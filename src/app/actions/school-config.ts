@@ -16,6 +16,7 @@ import { validChoices } from "@/lib/matching/scenarios";
 import { parseTermConfig } from "@/lib/staff/term-config";
 import { DEADLINE_KEYS } from "@/lib/notifications/deadline-nudges";
 import { FACTORS } from "@/lib/options";
+import { parseTemplate } from "@/lib/agreements/template";
 import type { Json } from "@/types/database";
 
 const schoolId = z.string().regex(/^[a-z0-9-]{2,32}$/);
@@ -437,4 +438,68 @@ export async function startNextTerm(raw: z.input<typeof nextTermInput>): Promise
   });
   revalidatePath("/staff", "layout");
   return ok();
+}
+
+const templateInput = z.object({
+  schoolId,
+  sections: z
+    .array(
+      z.object({
+        key: z.string().regex(/^[a-z_]{2,32}$/),
+        title: z
+          .string()
+          .transform((v) => cleanText(v, { multiline: false }))
+          .pipe(z.string().min(2, "Give every section a title.").max(80)),
+        enabled: z.boolean(),
+        text: z
+          .string()
+          .transform((v) => cleanText(v))
+          .pipe(z.string().max(1500)),
+        custom: z.boolean(),
+      }),
+    )
+    .min(1)
+    .max(24),
+});
+
+/** A new template version for roommate agreements (Phase 4). Agreements already started keep theirs. */
+export async function saveAgreementTemplate(
+  raw: z.input<typeof templateInput>,
+): Promise<ActionResult<{ version: number }>> {
+  const parsed = templateInput.safeParse(raw);
+  if (!parsed.success) return fail(firstError(parsed.error));
+  const actorId = await housingAdmin(parsed.data.schoolId);
+  if (!actorId || actorId === "limited") return deny(actorId);
+  const sections = parseTemplate(parsed.data.sections);
+  if (!sections) return fail("Keep at least one section.");
+  if (sections.some((s) => s.custom && s.enabled && !s.text.trim()))
+    return fail("Your own sections need some text.");
+  const db = createAdminClient();
+  const { data: latest } = await db
+    .from("agreement_templates")
+    .select("version")
+    .eq("school_id", parsed.data.schoolId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const version = (latest?.version ?? 0) + 1;
+  const { error } = await db
+    .from("agreement_templates")
+    .insert({
+      school_id: parsed.data.schoolId,
+      version,
+      sections: sections as unknown as NonNullable<Json>,
+      updated_by: actorId,
+    });
+  if (error) return fail("Couldn't save the template.");
+  await logAudit({
+    actorId,
+    schoolId: parsed.data.schoolId,
+    action: "agreement_template_saved",
+    entity: "agreement_template",
+    entityId: String(version),
+    meta: { sections: sections.length },
+  });
+  revalidatePath("/staff/settings/agreements");
+  return ok({ version });
 }

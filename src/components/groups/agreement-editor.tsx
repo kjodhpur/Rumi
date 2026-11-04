@@ -11,6 +11,7 @@ import {
   CircleCheck,
   FileSignature,
   History,
+  MessageSquare,
   Pencil,
   Printer,
   RotateCcw,
@@ -23,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   acceptAllSections,
   acceptSection,
+  addAgreementComment,
+  deleteAgreementComment,
   editSection,
   reopenAgreement,
   signAgreement,
@@ -30,6 +33,7 @@ import {
 } from "@/app/actions/agreements";
 import type { AgreementSection, AgreementView } from "@/lib/agreements/load";
 import { spring } from "@/lib/motion";
+import { wordDiff } from "@/lib/agreements/diff";
 import { cn } from "@/lib/utils";
 
 export function AgreementEditor({ userId, view }: { userId: string; view: AgreementView }) {
@@ -266,7 +270,9 @@ function SectionCard({
 }) {
   const [editing, setEditing] = React.useState(false);
   const [text, setText] = React.useState(section.content);
-  const [showPrevious, setShowPrevious] = React.useState(false);
+  // A change waiting on someone's acceptance shows its highlights until they hide it.
+  const [showPrevious, setShowPrevious] = React.useState<boolean | null>(null);
+  const showChanges = showPrevious ?? (!section.accepted && section.previous !== null);
   const [pending, setPending] = React.useState<"save" | "accept" | null>(null);
   React.useEffect(() => setText(section.content), [section.content]);
   const iAccepted = section.acceptedBy.includes(userId);
@@ -356,29 +362,54 @@ function SectionCard({
           {section.previous ? (
             <button
               type="button"
-              onClick={() => setShowPrevious((s) => !s)}
-              aria-expanded={showPrevious}
+              onClick={() => setShowPrevious(!showChanges)}
+              aria-expanded={showChanges}
               className="inline-flex items-center gap-1 rounded-sm font-medium text-ink-2 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
             >
               <History className="size-3.5" strokeWidth={2} aria-hidden />{" "}
-              {showPrevious ? "Hide previous" : "See previous"}
+              {showChanges ? "Hide changes" : "Show changes"}
             </button>
           ) : null}
         </p>
       ) : null}
       <AnimatePresence initial={false}>
-        {showPrevious && section.previous ? (
+        {showChanges && section.previous !== null ? (
           <motion.p
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={spring}
-            className="mt-2 overflow-hidden rounded-md bg-surface-sunken px-3 py-2 text-caption whitespace-pre-line text-ink-3 line-through decoration-ink-3/50"
+            aria-label="What changed"
+            className="mt-2 overflow-hidden rounded-md bg-surface-sunken px-3 py-2 text-caption whitespace-pre-line text-ink-2"
           >
-            {section.previous}
+            {wordDiff(section.previous, section.content).map((part, i) =>
+              part.kind === "same" ? (
+                <span key={i}>{part.text}</span>
+              ) : part.kind === "added" ? (
+                <ins key={i} className="rounded-sm bg-accent-soft px-0.5 text-ink no-underline">
+                  <span className="sr-only">Added: </span>
+                  {part.text}
+                </ins>
+              ) : (
+                <del key={i} className="text-ink-3 decoration-ink-3/60">
+                  <span className="sr-only">Removed: </span>
+                  {part.text}
+                </del>
+              ),
+            )}
           </motion.p>
         ) : null}
       </AnimatePresence>
+
+      <SectionComments
+        groupId={groupId}
+        sectionKey={section.key}
+        comments={section.comments}
+        userId={userId}
+        nameOf={nameOf}
+        locked={locked}
+        onDone={onDone}
+      />
 
       {!locked && !editing ? (
         <div className="mt-4 flex flex-wrap gap-2">
@@ -477,5 +508,105 @@ function SignPanel({
         </form>
       )}
     </section>
+  );
+}
+
+function SectionComments({
+  groupId,
+  sectionKey,
+  comments,
+  userId,
+  nameOf,
+  locked,
+  onDone,
+}: {
+  groupId: string;
+  sectionKey: string;
+  comments: AgreementSection["comments"];
+  userId: string;
+  nameOf: Map<string, string>;
+  locked: boolean;
+  onDone: () => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [body, setBody] = React.useState("");
+  const [pending, setPending] = React.useState(false);
+  if (locked && !comments.length) return null;
+
+  async function post() {
+    setPending(true);
+    const result = await addAgreementComment({ groupId, key: sectionKey, body });
+    setPending(false);
+    if (!result.ok) return void toast.error(result.error);
+    setBody("");
+    onDone();
+  }
+  async function remove(id: string) {
+    const result = await deleteAgreementComment(groupId, id);
+    if (!result.ok) return void toast.error(result.error);
+    onDone();
+  }
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 rounded-sm text-caption font-medium text-ink-2 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <MessageSquare className="size-3.5" strokeWidth={2} aria-hidden />
+        {comments.length
+          ? `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`
+          : "Comment"}
+      </button>
+      {open ? (
+        <div className="mt-2 flex flex-col gap-2 rounded-md bg-surface-sunken p-3">
+          {comments.map((c) => (
+            <div key={c.id} className="text-body-sm">
+              <p className="text-ink">
+                <span className="font-medium">
+                  {c.authorId ? (nameOf.get(c.authorId) ?? "A former member") : "A former member"}
+                </span>{" "}
+                <span className="whitespace-pre-line text-ink-2">{c.body}</span>
+              </p>
+              {c.authorId === userId && !locked ? (
+                <button
+                  type="button"
+                  onClick={() => void remove(c.id)}
+                  className="text-caption text-ink-3 underline-offset-4 hover:underline"
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
+          ))}
+          {!locked ? (
+            <form
+              className="flex flex-col gap-2"
+              onSubmit={(e) => (e.preventDefault(), void post())}
+            >
+              <Textarea
+                aria-label="Add a comment"
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder="Ask a question or suggest a tweak"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                className="self-start"
+                loading={pending}
+                disabled={!body.trim()}
+              >
+                Post
+              </Button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }

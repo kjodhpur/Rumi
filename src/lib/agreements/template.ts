@@ -117,3 +117,98 @@ export function buildDraft(members: MemberPrefs[], watchouts: string[]): DraftSe
   }
   return sections;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// School templates (Phase 4): which sections appear, their order and titles, the school's
+// own guidance under a section, and fixed sections such as hall policies.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const BUILT_IN_SECTIONS = [
+  { key: "sleep", title: "Sleep and quiet hours" },
+  { key: "cleaning", title: "Cleaning and chores" },
+  { key: "guests", title: "Guests and overnights" },
+  { key: "noise", title: "Noise" },
+  { key: "shared", title: "Shared items and food" },
+  { key: "substances", title: "Smoking, drinking and pets" },
+  { key: "study", title: "Study time" },
+  { key: "temperature", title: "Temperature" },
+  { key: "conflict", title: "When something bugs us" },
+  { key: "talk", title: "Talk about this" },
+] as const;
+
+export interface TemplateSection {
+  key: string;
+  title: string;
+  enabled: boolean;
+  /** Built-in sections: the school's note added under the prefilled text. Custom: the text. */
+  text: string;
+  custom: boolean;
+}
+
+export function defaultTemplate(): TemplateSection[] {
+  return BUILT_IN_SECTIONS.map((s) => ({
+    key: s.key,
+    title: s.title,
+    enabled: true,
+    text: "",
+    custom: false,
+  }));
+}
+
+const BUILT_IN_KEYS = new Set<string>(BUILT_IN_SECTIONS.map((s) => s.key));
+
+/** A stored template, or null when it isn't one. Unknown or duplicate keys are dropped. */
+export function parseTemplate(value: unknown): TemplateSection[] | null {
+  if (!Array.isArray(value)) return null;
+  const seen = new Set<string>();
+  const out: TemplateSection[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const key = typeof r.key === "string" ? r.key : "";
+    if (!/^[a-z_]{2,32}$/.test(key) || seen.has(key)) continue;
+    const custom = r.custom === true;
+    if (!custom && !BUILT_IN_KEYS.has(key)) continue;
+    seen.add(key);
+    out.push({
+      key,
+      custom,
+      title:
+        typeof r.title === "string" && r.title.trim()
+          ? r.title.trim().slice(0, 80)
+          : (BUILT_IN_SECTIONS.find((s) => s.key === key)?.title ?? key),
+      enabled: r.enabled !== false,
+      text: typeof r.text === "string" ? r.text.slice(0, 1500) : "",
+    });
+  }
+  return out.length ? out : null;
+}
+
+/**
+ * The draft for a group under its school's template. Built-in sections keep the text prefilled
+ * from the members' profiles; any built-in the template doesn't mention (added to Rumi later)
+ * goes at the end so nothing is silently lost.
+ */
+export function applyTemplate(
+  draft: DraftSection[],
+  template: TemplateSection[] | null,
+): DraftSection[] {
+  if (!template) return draft;
+  const out: DraftSection[] = [];
+  for (const t of template) {
+    if (!t.enabled) continue;
+    if (t.custom) {
+      if (t.text.trim()) out.push({ key: t.key, title: t.title, content: t.text.trim() });
+      continue;
+    }
+    const d = draft.find((x) => x.key === t.key);
+    if (d)
+      out.push({
+        key: d.key,
+        title: t.title || d.title,
+        content: t.text.trim() ? `${d.content}\n\n${t.text.trim()}` : d.content,
+      });
+  }
+  const mentioned = new Set(template.map((t) => t.key));
+  return [...out, ...draft.filter((d) => !mentioned.has(d.key))];
+}

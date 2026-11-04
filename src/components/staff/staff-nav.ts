@@ -20,6 +20,7 @@ import {
   Shuffle,
   GraduationCap,
   KeyRound,
+  FileSignature,
   type LucideIcon,
 } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
@@ -84,6 +85,12 @@ export const STAFF_NAV: StaffNavSection[] = [
         label: "Accommodations",
         icon: Accessibility,
         capability: "manageAccommodations",
+      },
+      {
+        href: "/staff/agreements",
+        label: "Agreements",
+        icon: FileSignature,
+        capability: "raWorkspace",
       },
       { href: "/staff/ra", label: "Check-ins", icon: ClipboardCheck, capability: "raWorkspace" },
       {
