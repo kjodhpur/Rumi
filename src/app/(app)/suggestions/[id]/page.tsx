@@ -22,7 +22,11 @@ export default async function SuggestionPage({ params }: { params: { id: string 
   const otherId = proposal.member_ids.find((id) => id !== user.id)!;
   const [detail, { data: school }] = await Promise.all([
     loadProfileDetail(supabase, user.id, otherId),
-    supabase.from("schools").select("housing_office_name").eq("id", proposal.school_id).maybeSingle(),
+    supabase
+      .from("schools")
+      .select("housing_office_name")
+      .eq("id", proposal.school_id)
+      .maybeSingle(),
   ]);
   const responses = (proposal.responses ?? {}) as Record<string, boolean>;
 

@@ -14,7 +14,10 @@ export default async function SurveyPage() {
   const context = await loadSurveyContext(user.id);
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-6">
-      <PageHeader title="End of term" description="How the year went, and whether to keep your group for next year." />
+      <PageHeader
+        title="End of term"
+        description="How the year went, and whether to keep your group for next year."
+      />
       <RoomAgainSurvey context={context} userId={user.id} />
     </div>
   );

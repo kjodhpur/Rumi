@@ -8,7 +8,11 @@ export const dynamic = "force-dynamic";
 
 const NO_INDEX = { index: false, follow: false } as const;
 
-export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: {
+  params: { token: string };
+}): Promise<Metadata> {
   const record = await findMatchShare(params.token);
   const card = record?.ready ? await buildMatchCard(record) : null;
   if (!card) return { title: "Match on Rumi", robots: NO_INDEX };

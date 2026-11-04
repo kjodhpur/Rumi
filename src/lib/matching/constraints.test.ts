@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classSimilarity, evaluateMatch, hardFilterFailure, scenarioSimilarities } from "./engine";
 import { accommodationConflict, isAccommodationKey } from "./accommodations";
+import { blockingRule, describeFailure } from "./blocking";
 import type { MatchPreferences, MatchProfile, ScenarioAnswer } from "./types";
 
 function prefs(overrides: Partial<MatchPreferences> = {}): MatchPreferences {
@@ -219,5 +220,31 @@ describe("class schedule", () => {
     expect(classSimilarity(person("a", { classDay: early }), person("b", { classDay: late }))).toBe(
       0,
     );
+  });
+});
+
+describe("auto-pair blocking rule", () => {
+  it("names the filter that blocks the most waiting students, never an accommodation detail", () => {
+    expect(describeFailure({ kind: "dealbreaker", who: "a", dealbreaker: "smoking" })).toBe(
+      "Dealbreaker: no smokers",
+    );
+    expect(
+      describeFailure({ kind: "accommodation", who: "a", constraintKey: "allergen_free" }),
+    ).toBe("A housing constraint");
+    expect(
+      describeFailure({ kind: "school_rule", who: "a", ruleType: "same_residential_college" }),
+    ).toBe("School rule: same residential college");
+    const smoker = person("s", {}, { smoking: "regularly" });
+    const others = [
+      person("a", {}, { dealbreakers: ["smoking"] }),
+      person("b", {}, { dealbreakers: ["smoking"] }),
+      person("c", { gender: "man" }, { genderPref: ["man"] }),
+    ];
+    expect(blockingRule(smoker, [smoker, ...others])).toEqual({
+      label: "Dealbreaker: no smokers",
+      blocked: 2,
+      of: 3,
+    });
+    expect(blockingRule(person("z"), [person("y")])).toBeNull();
   });
 });

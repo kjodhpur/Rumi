@@ -12,7 +12,10 @@ export default async function CheckInPage() {
   const home = await loadCheckinHome(user!.id);
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-6">
-      <PageHeader title="Check-in" description="A short pulse after you move in, so a rough week doesn't sit until it's a crisis." />
+      <PageHeader
+        title="Check-in"
+        description="A short pulse after you move in, so a rough week doesn't sit until it's a crisis."
+      />
       <CheckInPanel home={home} />
     </div>
   );

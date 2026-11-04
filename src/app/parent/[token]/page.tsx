@@ -6,7 +6,10 @@ import { buildParentSummary, parseScope } from "@/lib/family/scope";
 import { photoUrl } from "@/lib/photos";
 import { ParentView } from "@/components/family/parent-view";
 
-export const metadata: Metadata = { title: "Your student on Rumi", robots: { index: false, follow: false } };
+export const metadata: Metadata = {
+  title: "Your student on Rumi",
+  robots: { index: false, follow: false },
+};
 export const dynamic = "force-dynamic";
 
 /**
@@ -23,10 +26,18 @@ export default async function ParentSharePage({ params }: { params: { token: str
     .maybeSingle();
   if (!share || share.revoked_at || Date.parse(share.expires_at) <= Date.now()) notFound();
 
-  const { data: student } = await db.from("profiles").select("id, first_name, avatar_path, banned_at").eq("id", share.user_id).maybeSingle();
+  const { data: student } = await db
+    .from("profiles")
+    .select("id, first_name, avatar_path, banned_at")
+    .eq("id", share.user_id)
+    .maybeSingle();
   if (!student || student.banned_at) notFound();
 
-  const { data: membership } = await db.from("group_members").select("group_id, groups(name)").eq("user_id", student.id).maybeSingle();
+  const { data: membership } = await db
+    .from("group_members")
+    .select("group_id, groups(name)")
+    .eq("user_id", student.id)
+    .maybeSingle();
   let roommates: Parameters<typeof buildParentSummary>[0]["roommates"] = [];
   let agreementStatus: string | null = null;
   if (membership) {
@@ -37,8 +48,23 @@ export default async function ParentSharePage({ params }: { params: { token: str
       .neq("user_id", student.id);
     const ids = (others ?? []).map((o) => o.user_id);
     const [{ data: consents }, { data: scores }, { data: agreement }] = await Promise.all([
-      ids.length ? db.from("consents").select("user_id").eq("kind", "family_view").is("revoked_at", null).in("user_id", ids) : Promise.resolve({ data: [] as { user_id: string }[] }),
-      ids.length ? db.from("match_scores").select("candidate_id, score, reasons").eq("viewer_id", student.id).in("candidate_id", ids) : Promise.resolve({ data: [] as { candidate_id: string; score: number; reasons: unknown }[] }),
+      ids.length
+        ? db
+            .from("consents")
+            .select("user_id")
+            .eq("kind", "family_view")
+            .is("revoked_at", null)
+            .in("user_id", ids)
+        : Promise.resolve({ data: [] as { user_id: string }[] }),
+      ids.length
+        ? db
+            .from("match_scores")
+            .select("candidate_id, score, reasons")
+            .eq("viewer_id", student.id)
+            .in("candidate_id", ids)
+        : Promise.resolve({
+            data: [] as { candidate_id: string; score: number; reasons: unknown }[],
+          }),
       db.from("agreements").select("status").eq("group_id", membership.group_id).maybeSingle(),
     ]);
     const consented = new Set((consents ?? []).map((c) => c.user_id));

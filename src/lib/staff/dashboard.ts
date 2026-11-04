@@ -6,9 +6,16 @@ import type { Term } from "./terms";
 
 export { DEADLINE_LABELS, nextDeadline, type Term } from "./terms";
 
-function toTerm(row: { id: string; name: string; starts_on: string; ends_on: string; deadlines: unknown }): Term {
+function toTerm(row: {
+  id: string;
+  name: string;
+  starts_on: string;
+  ends_on: string;
+  deadlines: unknown;
+}): Term {
   const d = (row.deadlines ?? {}) as Record<string, unknown>;
-  const date = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined);
+  const date = (v: unknown) =>
+    typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined;
   return {
     id: row.id,
     name: row.name,
@@ -35,7 +42,10 @@ export async function loadActiveTerm(schoolId: string): Promise<Term | null> {
 
 /** Role is enforced inside the SQL function (has_role), so this runs as the signed-in staff member. */
 export async function loadOverview(schoolId: string, weeks: number): Promise<Overview | null> {
-  const { data, error } = await createClient().rpc("staff_overview", { p_school: schoolId, p_weeks: weeks });
+  const { data, error } = await createClient().rpc("staff_overview", {
+    p_school: schoolId,
+    p_weeks: weeks,
+  });
   if (error) {
     console.error("[staff] overview failed", error);
     return null;
@@ -110,23 +120,31 @@ export async function loadPairings(schoolId: string): Promise<Pairing[] | null> 
     return null;
   }
   return (data ?? []).map((r) => {
-    const members = ((r.members ?? []) as {
-      id: string;
-      shared: boolean;
-      firstName: string | null;
-      lastInitial: string | null;
-      classYear: string | null;
-      hidden: boolean;
-    }[]).map((m) => ({
+    const members = (
+      (r.members ?? []) as {
+        id: string;
+        shared: boolean;
+        firstName: string | null;
+        lastInitial: string | null;
+        classYear: string | null;
+        hidden: boolean;
+      }[]
+    ).map((m) => ({
       id: m.id,
       shared: m.shared,
-      name: m.shared && m.firstName ? `${m.firstName}${m.lastInitial ? ` ${m.lastInitial}.` : ""}` : "Student (not shared)",
+      name:
+        m.shared && m.firstName
+          ? `${m.firstName}${m.lastInitial ? ` ${m.lastInitial}.` : ""}`
+          : "Student (not shared)",
       classYear: m.shared ? m.classYear : null,
       hidden: m.hidden,
     }));
     const pairScores = (r.pair_scores ?? []) as { a: string; b: string; score: number | null }[];
     const scored = pairScores.filter((p) => p.score !== null).map((p) => p.score!);
-    const current = members.map((m) => m.id).sort().join(",");
+    const current = members
+      .map((m) => m.id)
+      .sort()
+      .join(",");
     const snapshot = (r.snapshot ?? []).slice().sort().join(",");
     const membersChanged = r.status === "approved" && snapshot !== current;
     return {
@@ -140,7 +158,9 @@ export async function loadPairings(schoolId: string): Promise<Pairing[] | null> 
       membersChanged,
       notes: r.staff_notes,
       approvedAt: r.approved_at,
-      combinedScore: scored.length ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length) : null,
+      combinedScore: scored.length
+        ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length)
+        : null,
       dealbreaker: pairScores.some((p) => p.score === null),
       agreement: (r.agreement_status as Pairing["agreement"]) ?? null,
     };
@@ -161,7 +181,13 @@ export interface AutoPairRun {
   createdAt: string;
   createdBy: string | null;
   params: { minScore?: number };
-  stats: { candidates?: number; feasible?: number; paired?: number; averageScore?: number | null; unpaired?: { id: string; name: string; reason: string }[] };
+  stats: {
+    candidates?: number;
+    feasible?: number;
+    paired?: number;
+    averageScore?: number | null;
+    unpaired?: { id: string; name: string; reason: string; detail?: string | null }[];
+  };
   proposals: ProposalRow[];
 }
 
@@ -184,7 +210,14 @@ export async function loadLatestRun(schoolId: string): Promise<AutoPairRun | nul
   const ids = [...new Set((proposals ?? []).flatMap((p) => p.member_ids))];
   const { data: people } = ids.length
     ? await db.from("profiles").select("id, first_name, last_initial, class_year").in("id", ids)
-    : { data: [] as { id: string; first_name: string; last_initial: string; class_year: string | null }[] };
+    : {
+        data: [] as {
+          id: string;
+          first_name: string;
+          last_initial: string;
+          class_year: string | null;
+        }[],
+      };
   const byId = new Map((people ?? []).map((p) => [p.id, p]));
   return {
     id: run.id,
@@ -198,12 +231,18 @@ export async function loadLatestRun(schoolId: string): Promise<AutoPairRun | nul
         const person = byId.get(id);
         return {
           id,
-          name: person ? `${person.first_name}${person.last_initial ? ` ${person.last_initial}.` : ""}` : "Former student",
+          name: person
+            ? `${person.first_name}${person.last_initial ? ` ${person.last_initial}.` : ""}`
+            : "Former student",
           classYear: person?.class_year ?? null,
         };
       }),
       score: p.score,
-      reasons: Array.isArray(p.reasons) ? (p.reasons as { label?: string; text?: string }[]).map((r) => r.text ?? r.label ?? "").filter(Boolean) : [],
+      reasons: Array.isArray(p.reasons)
+        ? (p.reasons as { label?: string; text?: string }[])
+            .map((r) => r.text ?? r.label ?? "")
+            .filter(Boolean)
+        : [],
       status: p.status,
       responses: (p.responses ?? {}) as Record<string, boolean>,
     })),

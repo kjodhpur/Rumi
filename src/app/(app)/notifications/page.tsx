@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { photoUrl } from "@/lib/photos";
-import { NotificationList, type NotificationItem } from "@/components/notifications/notification-list";
+import {
+  NotificationList,
+  type NotificationItem,
+} from "@/components/notifications/notification-list";
 
 export const metadata: Metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
@@ -16,10 +19,22 @@ export default async function NotificationsPage() {
     .order("created_at", { ascending: false })
     .limit(100);
 
-  const actorIds = [...new Set((data ?? []).map((n) => n.actor_id).filter((id): id is string => Boolean(id)))];
+  const actorIds = [
+    ...new Set((data ?? []).map((n) => n.actor_id).filter((id): id is string => Boolean(id))),
+  ];
   const { data: actors } = actorIds.length
-    ? await supabase.from("profiles").select("id, first_name, last_initial, avatar_path").in("id", actorIds)
-    : { data: [] as { id: string; first_name: string; last_initial: string; avatar_path: string | null }[] };
+    ? await supabase
+        .from("profiles")
+        .select("id, first_name, last_initial, avatar_path")
+        .in("id", actorIds)
+    : {
+        data: [] as {
+          id: string;
+          first_name: string;
+          last_initial: string;
+          avatar_path: string | null;
+        }[],
+      };
   const actorBy = new Map((actors ?? []).map((a) => [a.id, a]));
 
   const items: NotificationItem[] = (data ?? []).map((n) => {
@@ -32,7 +47,13 @@ export default async function NotificationsPage() {
       href: n.href,
       readAt: n.read_at,
       createdAt: n.created_at,
-      actor: actor ? { firstName: actor.first_name, lastInitial: actor.last_initial, avatarUrl: photoUrl(actor.avatar_path) } : null,
+      actor: actor
+        ? {
+            firstName: actor.first_name,
+            lastInitial: actor.last_initial,
+            avatarUrl: photoUrl(actor.avatar_path),
+          }
+        : null,
     };
   });
 

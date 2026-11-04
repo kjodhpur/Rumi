@@ -19,7 +19,10 @@ import { cn } from "@/lib/utils";
 
 const MIN_SCORES = [50, 60, 70, 80];
 
-const STATUS: Record<string, { label: string; variant: "neutral" | "success" | "warning" | "danger" | "accent" | "outline" }> = {
+const STATUS: Record<
+  string,
+  { label: string; variant: "neutral" | "success" | "warning" | "danger" | "accent" | "outline" }
+> = {
   proposed: { label: "Proposed", variant: "neutral" },
   approved: { label: "Approved", variant: "accent" },
   rejected: { label: "Rejected", variant: "outline" },
@@ -30,19 +33,29 @@ const STATUS: Record<string, { label: string; variant: "neutral" | "success" | "
 };
 
 const REASON_COPY: Record<string, string> = {
-  no_partner: "No compatible partner: every pairing breaks a dealbreaker",
+  no_partner: "No compatible partner among the students waiting",
   below_min: "Only matches below the minimum score",
   odd_one_out: "Compatible, but their best options were paired with others",
 };
 
-export function AutoPair({ schoolId, office, run }: { schoolId: string; office: string | null; run: AutoPairRun | null }) {
+export function AutoPair({
+  schoolId,
+  office,
+  run,
+}: {
+  schoolId: string;
+  office: string | null;
+  run: AutoPairRun | null;
+}) {
   const router = useRouter();
   const [minScore, setMinScore] = React.useState(run?.params.minScore ?? 60);
   const [running, setRunning] = React.useState(false);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [busy, setBusy] = React.useState<string | null>(null);
   const proposals = run?.proposals ?? [];
-  const decidable = proposals.filter((p) => ["proposed", "approved", "rejected"].includes(p.status));
+  const decidable = proposals.filter((p) =>
+    ["proposed", "approved", "rejected"].includes(p.status),
+  );
   const approvedCount = proposals.filter((p) => p.status === "approved").length;
 
   async function startRun() {
@@ -50,7 +63,9 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
     const result = await runAutoPair({ schoolId, minScore });
     setRunning(false);
     if (!result.ok) return void toast.error(result.error);
-    toast.success(result.data.pairs ? `${result.data.pairs} pairs proposed` : "No pairs met the minimum score");
+    toast.success(
+      result.data.pairs ? `${result.data.pairs} pairs proposed` : "No pairs met the minimum score",
+    );
     setSelected(new Set());
     router.refresh();
   }
@@ -69,9 +84,12 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
     const result = await sendApprovedProposals({ schoolId });
     setBusy(null);
     if (!result.ok) return void toast.error(result.error);
-    toast.success(`${result.data.sent} ${result.data.sent === 1 ? "suggestion" : "suggestions"} sent`, {
-      description: "Each student is notified. A pair only forms if both say yes.",
-    });
+    toast.success(
+      `${result.data.sent} ${result.data.sent === 1 ? "suggestion" : "suggestions"} sent`,
+      {
+        description: "Each student is notified. A pair only forms if both say yes.",
+      },
+    );
     router.refresh();
   }
 
@@ -91,18 +109,26 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
         className="pb-0 lg:pb-0"
       />
 
-      <section aria-labelledby="run-title" className="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line sm:flex-row sm:items-end">
+      <section
+        aria-labelledby="run-title"
+        className="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line sm:flex-row sm:items-end"
+      >
         <div className="flex-1">
           <h2 id="run-title" className="text-body font-semibold text-ink">
             New run
           </h2>
           <p className="mt-1 text-body-sm text-ink-2">
-            Pairs as many students as possible, then picks the highest total compatibility. Pairs that break a dealbreaker are never proposed. A new run replaces unsent proposals.
+            Pairs as many students as possible, then picks the highest total compatibility. Pairs
+            that break a dealbreaker are never proposed. A new run replaces unsent proposals.
           </p>
         </div>
         <label className="flex flex-col gap-1.5">
           <span className="text-caption font-medium text-ink-2">Minimum score</span>
-          <Select value={String(minScore)} onChange={(e) => setMinScore(Number(e.target.value))} className="w-44">
+          <Select
+            value={String(minScore)}
+            onChange={(e) => setMinScore(Number(e.target.value))}
+            className="w-44"
+          >
             {MIN_SCORES.map((s) => (
               <option key={s} value={s}>
                 {s} or higher
@@ -133,12 +159,21 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
             </h2>
             <p className="mb-3 text-caption text-ink-3">
               Run <RelativeTime iso={run.createdAt} />
-              {run.createdBy ? ` by ${run.createdBy}` : ""} · minimum score {run.params.minScore ?? "—"}
+              {run.createdBy ? ` by ${run.createdBy}` : ""} · minimum score{" "}
+              {run.params.minScore ?? "—"}
             </p>
             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               <Stat label="Students waiting" value={run.stats.candidates ?? 0} />
               <Stat label="With a compatible partner" value={run.stats.feasible ?? 0} />
-              <Stat label="Paired" value={run.stats.paired ?? 0} note={run.stats.feasible ? `${Math.round(((run.stats.paired ?? 0) / run.stats.feasible) * 100)}% of compatible` : undefined} />
+              <Stat
+                label="Paired"
+                value={run.stats.paired ?? 0}
+                note={
+                  run.stats.feasible
+                    ? `${Math.round(((run.stats.paired ?? 0) / run.stats.feasible) * 100)}% of compatible`
+                    : undefined
+                }
+              />
               <Stat label="Average score" value={run.stats.averageScore ?? null} />
             </ul>
           </section>
@@ -150,13 +185,27 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
                   Proposed pairs
                 </h2>
                 <div className="ml-auto flex flex-wrap gap-2">
-                  <Button variant="ghost" disabled={selected.size === 0} loading={busy === "rejected"} onClick={() => void decide([...selected], "rejected")}>
+                  <Button
+                    variant="ghost"
+                    disabled={selected.size === 0}
+                    loading={busy === "rejected"}
+                    onClick={() => void decide([...selected], "rejected")}
+                  >
                     Reject
                   </Button>
-                  <Button variant="secondary" disabled={selected.size === 0} loading={busy === "approved"} onClick={() => void decide([...selected], "approved")}>
+                  <Button
+                    variant="secondary"
+                    disabled={selected.size === 0}
+                    loading={busy === "approved"}
+                    onClick={() => void decide([...selected], "approved")}
+                  >
                     Approve
                   </Button>
-                  <Button disabled={approvedCount === 0} loading={busy === "send"} onClick={() => void send()}>
+                  <Button
+                    disabled={approvedCount === 0}
+                    loading={busy === "send"}
+                    onClick={() => void send()}
+                  >
                     <Send aria-hidden /> Send {approvedCount || ""} to students
                   </Button>
                 </div>
@@ -164,8 +213,16 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
               {decidable.length > 0 ? (
                 <label className="flex items-center gap-2.5 text-body-sm text-ink">
                   <Checkbox
-                    checked={selected.size === decidable.length ? true : selected.size > 0 ? "indeterminate" : false}
-                    onCheckedChange={(v) => setSelected(v === true ? new Set(decidable.map((p) => p.id)) : new Set())}
+                    checked={
+                      selected.size === decidable.length
+                        ? true
+                        : selected.size > 0
+                          ? "indeterminate"
+                          : false
+                    }
+                    onCheckedChange={(v) =>
+                      setSelected(v === true ? new Set(decidable.map((p) => p.id)) : new Set())
+                    }
                     aria-label="Select all proposals still open"
                   />
                   {selected.size > 0 ? `${selected.size} selected` : "Select all open proposals"}
@@ -193,7 +250,9 @@ export function AutoPair({ schoolId, office, run }: { schoolId: string; office: 
             </section>
           ) : null}
 
-          {run.stats.unpaired && run.stats.unpaired.length > 0 ? <Unpaired rows={run.stats.unpaired} /> : null}
+          {run.stats.unpaired && run.stats.unpaired.length > 0 ? (
+            <Unpaired rows={run.stats.unpaired} />
+          ) : null}
         </>
       )}
     </div>
@@ -204,7 +263,9 @@ function Stat({ label, value, note }: { label: string; value: number | null; not
   return (
     <li className="flex flex-col gap-1 rounded-lg bg-surface p-3.5 shadow-xs ring-1 ring-line sm:p-4">
       <span className="text-caption text-ink-3">{label}</span>
-      <span className="text-title font-semibold text-ink sm:text-display-sm">{value === null ? "—" : value.toLocaleString("en-US")}</span>
+      <span className="text-title font-semibold text-ink sm:text-display-sm">
+        {value === null ? "—" : value.toLocaleString("en-US")}
+      </span>
       {note ? <span className="text-caption text-ink-3">{note}</span> : null}
     </li>
   );
@@ -226,9 +287,19 @@ function ProposalItem({
   const status = STATUS[proposal.status] ?? STATUS.proposed;
   const names = proposal.members.map((m) => m.name).join(" & ");
   return (
-    <li className={cn("flex items-start gap-3 rounded-xl bg-surface p-4 shadow-xs ring-1 ring-line sm:px-5", proposal.status === "rejected" && "opacity-60")}>
+    <li
+      className={cn(
+        "flex items-start gap-3 rounded-xl bg-surface p-4 shadow-xs ring-1 ring-line sm:px-5",
+        proposal.status === "rejected" && "opacity-60",
+      )}
+    >
       {selectable ? (
-        <Checkbox className="mt-0.5" checked={selected} onCheckedChange={(v) => onSelect(v === true)} aria-label={`Select ${names}`} />
+        <Checkbox
+          className="mt-0.5"
+          checked={selected}
+          onCheckedChange={(v) => onSelect(v === true)}
+          aria-label={`Select ${names}`}
+        />
       ) : (
         <span className="size-5 shrink-0" aria-hidden />
       )}
@@ -240,12 +311,17 @@ function ProposalItem({
           </Badge>
         </div>
         <p className="mt-0.5 text-caption text-ink-3">
-          {proposal.members.map((m) => (m.classYear ? labelOf(CLASS_YEARS, m.classYear) : "Year not set")).join(" · ")}
+          {proposal.members
+            .map((m) => (m.classYear ? labelOf(CLASS_YEARS, m.classYear) : "Year not set"))
+            .join(" · ")}
         </p>
         {proposal.reasons.length > 0 ? (
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Why they match">
             {proposal.reasons.slice(0, 3).map((r) => (
-              <li key={r} className="rounded-full bg-surface-sunken px-2.5 py-1 text-caption text-ink-2">
+              <li
+                key={r}
+                className="rounded-full bg-surface-sunken px-2.5 py-1 text-caption text-ink-2"
+              >
                 {r}
               </li>
             ))}
@@ -253,7 +329,10 @@ function ProposalItem({
         ) : null}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
-        <span className="text-title font-semibold text-ink tabular-nums" aria-label={`Score ${proposal.score}`}>
+        <span
+          className="text-title font-semibold text-ink tabular-nums"
+          aria-label={`Score ${proposal.score}`}
+        >
           {proposal.score}
         </span>
         {selectable ? (
@@ -261,7 +340,9 @@ function ProposalItem({
             <Button
               variant={proposal.status === "rejected" ? "subtle" : "ghost"}
               size="icon-sm"
-              aria-label={proposal.status === "rejected" ? `Undo reject for ${names}` : `Reject ${names}`}
+              aria-label={
+                proposal.status === "rejected" ? `Undo reject for ${names}` : `Reject ${names}`
+              }
               aria-pressed={proposal.status === "rejected"}
               onClick={() => onDecide(proposal.status === "rejected" ? "proposed" : "rejected")}
             >
@@ -270,7 +351,9 @@ function ProposalItem({
             <Button
               variant={proposal.status === "approved" ? "primary" : "secondary"}
               size="icon-sm"
-              aria-label={proposal.status === "approved" ? `Undo approval for ${names}` : `Approve ${names}`}
+              aria-label={
+                proposal.status === "approved" ? `Undo approval for ${names}` : `Approve ${names}`
+              }
               aria-pressed={proposal.status === "approved"}
               onClick={() => onDecide(proposal.status === "approved" ? "proposed" : "approved")}
             >
@@ -283,10 +366,17 @@ function ProposalItem({
   );
 }
 
-function Unpaired({ rows }: { rows: { id: string; name: string; reason: string }[] }) {
+function Unpaired({
+  rows,
+}: {
+  rows: { id: string; name: string; reason: string; detail?: string | null }[];
+}) {
   const [open, setOpen] = React.useState(false);
   return (
-    <section aria-labelledby="unpaired-title" className="rounded-xl bg-surface shadow-xs ring-1 ring-line">
+    <section
+      aria-labelledby="unpaired-title"
+      className="rounded-xl bg-surface shadow-xs ring-1 ring-line"
+    >
       <h2 id="unpaired-title">
         <button
           type="button"
@@ -297,15 +387,28 @@ function Unpaired({ rows }: { rows: { id: string; name: string; reason: string }
           <span className="text-body font-semibold text-ink">
             Not paired <span className="font-normal text-ink-3">({rows.length})</span>
           </span>
-          <ChevronDown className={cn("size-5 text-ink-3 transition-transform duration-200", open && "rotate-180")} strokeWidth={1.75} aria-hidden />
+          <ChevronDown
+            className={cn(
+              "size-5 text-ink-3 transition-transform duration-200",
+              open && "rotate-180",
+            )}
+            strokeWidth={1.75}
+            aria-hidden
+          />
         </button>
       </h2>
       {open ? (
         <ul className="divide-y divide-line border-t border-line">
           {rows.map((r) => (
-            <li key={r.id} className="flex flex-col gap-0.5 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <li
+              key={r.id}
+              className="flex flex-col gap-0.5 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <span className="text-body-sm font-medium text-ink">{r.name}</span>
-              <span className="text-caption text-ink-3">{REASON_COPY[r.reason] ?? r.reason}</span>
+              <span className="text-caption text-ink-3 sm:text-right">
+                {REASON_COPY[r.reason] ?? r.reason}
+                {r.detail ? <span className="block text-ink-2">{r.detail}</span> : null}
+              </span>
             </li>
           ))}
         </ul>

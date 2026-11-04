@@ -17,7 +17,11 @@ export default async function MatchesPage({
   const supabase = createClient();
   const filters = parseFilters(searchParams);
 
-  const { data: me } = await supabase.from("profiles").select("school_id").eq("id", user!.id).single();
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("school_id")
+    .eq("id", user!.id)
+    .single();
   const { areas, names } = await loadAreaNames(supabase, me?.school_id);
 
   let initial;
@@ -25,7 +29,13 @@ export default async function MatchesPage({
     initial = await fetchFeed(supabase, filters, 0, names);
   } catch (error) {
     console.error("[matches] feed failed", error);
-    return <ErrorState title="We couldn't load your matches" description="Check your connection and try again." retryHref="/matches" />;
+    return (
+      <ErrorState
+        title="We couldn't load your matches"
+        description="Check your connection and try again."
+        retryHref="/matches"
+      />
+    );
   }
 
   return (

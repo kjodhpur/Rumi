@@ -6,7 +6,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 
 /** Errors inside the app keep the navigation around them. */
-export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function AppError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
   React.useEffect(() => {
     console.error(error);
   }, [error]);
@@ -18,7 +24,9 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
       description={
         <>
           Check your connection and try again.
-          {error.digest ? <span className="mt-2 block text-caption text-ink-3">Reference: {error.digest}</span> : null}
+          {error.digest ? (
+            <span className="mt-2 block text-caption text-ink-3">Reference: {error.digest}</span>
+          ) : null}
         </>
       }
       action={

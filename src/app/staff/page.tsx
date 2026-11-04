@@ -8,7 +8,11 @@ export const metadata: Metadata = { title: "Overview" };
 
 const WEEKS = [8, 16, 52];
 
-export default async function StaffHomePage({ searchParams }: { searchParams: { weeks?: string } }) {
+export default async function StaffHomePage({
+  searchParams,
+}: {
+  searchParams: { weeks?: string };
+}) {
   const context = await requireStaffPage("home");
   const admin = can(context, "manageTeam");
   const weeks = WEEKS.includes(Number(searchParams.weeks)) ? Number(searchParams.weeks) : 16;
@@ -35,7 +39,9 @@ export default async function StaffHomePage({ searchParams }: { searchParams: { 
       overview={overview}
       weeks={weeks}
       canSeeStudents={can(context, "viewStudents")}
-      members={team.members.filter((m) => !m.disabled).map((m) => ({ id: m.id, name: m.name, role: m.role }))}
+      members={team.members
+        .filter((m) => !m.disabled)
+        .map((m) => ({ id: m.id, name: m.name, role: m.role }))}
       recent={(audit?.rows ?? []).slice(0, 6)}
     />
   );

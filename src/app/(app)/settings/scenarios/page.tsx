@@ -16,7 +16,10 @@ export default async function ScenariosSettingsPage() {
   const supabase = createClient();
   const [{ data: me }, { data: rows, error }] = await Promise.all([
     supabase.from("profiles").select("school_id").eq("id", user.id).maybeSingle(),
-    supabase.from("school_question_answers").select("question_key, question_version, choice_key").eq("user_id", user.id),
+    supabase
+      .from("school_question_answers")
+      .select("question_key, question_version, choice_key")
+      .eq("user_id", user.id),
   ]);
   if (!me) redirect("/onboarding");
   const questions = await loadActiveQuestions(me.school_id);
@@ -38,7 +41,10 @@ export default async function ScenariosSettingsPage() {
         description="Everyday situations, from dishes to overnight guests. Your answers sharpen the matching factor they speak to and can show up in “why you match”."
       />
       {error ? (
-        <ErrorState title="Couldn't load your answers" description="Refresh the page to try again." />
+        <ErrorState
+          title="Couldn't load your answers"
+          description="Refresh the page to try again."
+        />
       ) : (
         <ScenarioQuestions
           initialAnswers={answers}

@@ -7,19 +7,43 @@ import { AccountsSettings } from "@/components/settings/accounts-settings";
 export const metadata: Metadata = { title: "Connected accounts" };
 export const dynamic = "force-dynamic";
 
-export default async function AccountsSettingsPage({ searchParams }: { searchParams: { spotify?: string } }) {
+export default async function AccountsSettingsPage({
+  searchParams,
+}: {
+  searchParams: { spotify?: string };
+}) {
   const user = (await getUser())!;
   const supabase = createClient();
-  const [{ data: profile }, { data: settings }, { data: spotify }, { data: music }, { data: socialLinks }] = await Promise.all([
+  const [
+    { data: profile },
+    { data: settings },
+    { data: spotify },
+    { data: music },
+    { data: socialLinks },
+  ] = await Promise.all([
     supabase.from("profiles").select("student_verified_at").eq("id", user.id).single(),
     supabase.from("user_settings").select("email").eq("user_id", user.id).single(),
-    supabase.from("spotify_accounts").select("display_name, last_synced_at").eq("user_id", user.id).maybeSingle(),
-    supabase.from("music_profiles").select("top_artists, top_genres").eq("user_id", user.id).maybeSingle(),
-    supabase.from("social_links").select("platform, handle, verification_code, verified_at").eq("user_id", user.id),
+    supabase
+      .from("spotify_accounts")
+      .select("display_name, last_synced_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("music_profiles")
+      .select("top_artists, top_genres")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("social_links")
+      .select("platform, handle, verification_code, verified_at")
+      .eq("user_id", user.id),
   ]);
 
   const artists = Array.isArray(music?.top_artists)
-    ? (music!.top_artists as { name: string; image?: string | null }[]).map((a) => ({ name: a.name, image: a.image ?? null }))
+    ? (music!.top_artists as { name: string; image?: string | null }[]).map((a) => ({
+        name: a.name,
+        image: a.image ?? null,
+      }))
     : [];
 
   const ig = (socialLinks ?? []).find((s) => s.platform === "instagram");

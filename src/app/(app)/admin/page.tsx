@@ -24,8 +24,12 @@ export default async function AdminPage({
 }) {
   if (!(await requireAdmin())) notFound();
 
-  const tab = TABS.includes(searchParams.tab as AdminTab) ? (searchParams.tab as AdminTab) : "reports";
-  const reportFilter = FILTERS.includes(searchParams.status as ReportFilter) ? (searchParams.status as ReportFilter) : "open";
+  const tab = TABS.includes(searchParams.tab as AdminTab)
+    ? (searchParams.tab as AdminTab)
+    : "reports";
+  const reportFilter = FILTERS.includes(searchParams.status as ReportFilter)
+    ? (searchParams.status as ReportFilter)
+    : "open";
   const peopleFilter = searchParams.filter === "banned" ? "banned" : "recent";
   const query = (searchParams.q ?? "").trim().slice(0, 80);
 

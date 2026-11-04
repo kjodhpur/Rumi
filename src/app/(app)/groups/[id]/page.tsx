@@ -15,13 +15,27 @@ export default async function GroupPage({ params }: { params: { id: string } }) 
   const supabase = createClient();
   const [group, { data: agreement }] = await Promise.all([
     loadGroup(supabase, user!.id, params.id),
-    supabase.from("agreements").select("status, member_ids").eq("group_id", params.id).maybeSingle(),
+    supabase
+      .from("agreements")
+      .select("status, member_ids")
+      .eq("group_id", params.id)
+      .maybeSingle(),
   ]);
   if (!group) redirect("/groups");
-  const current = agreement && [...agreement.member_ids].sort().join(",") === group.members.map((m) => m.id).sort().join(",");
+  const current =
+    agreement &&
+    [...agreement.member_ids].sort().join(",") ===
+      group.members
+        .map((m) => m.id)
+        .sort()
+        .join(",");
   return (
     <SwipeBack fallbackHref="/matches">
-      <GroupDetailView userId={user!.id} group={group} agreementStatus={current ? (agreement.status as "draft" | "signed" | "reopened") : null} />
+      <GroupDetailView
+        userId={user!.id}
+        group={group}
+        agreementStatus={current ? (agreement.status as "draft" | "signed" | "reopened") : null}
+      />
     </SwipeBack>
   );
 }

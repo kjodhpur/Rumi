@@ -13,6 +13,8 @@ import { cleanText } from "@/lib/sanitize";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { firstError } from "@/lib/validation";
 import { fail, ok, type ActionResult } from "@/lib/action";
+import { loadSchoolPool } from "@/lib/matching/recompute";
+import { blockingRule } from "@/lib/matching/blocking";
 import type { Json } from "@/types/database";
 
 const schoolId = z.string().regex(/^[a-z0-9-]{2,32}$/);
@@ -401,6 +403,18 @@ export async function runAutoPair(
     { minScore },
   );
   const reasonsOf = new Map(edges.map((e) => [`${e.a}|${e.b}`, e.reasons]));
+  // For anyone with no feasible partner, name the rule that blocks the most of the others.
+  const blocked = new Map<string, string>();
+  const stuck = result.unpaired.filter((u) => u.reason === "no_partner").map((u) => u.id);
+  if (stuck.length) {
+    const { pool, context } = await loadSchoolPool(school);
+    const waiting = pool.filter((p) => candidateIds.includes(p.id));
+    for (const id of stuck) {
+      const me = waiting.find((p) => p.id === id);
+      const why = me ? blockingRule(me, waiting, context) : null;
+      if (why) blocked.set(id, `${why.label} (${why.blocked} of ${why.of})`);
+    }
+  }
   // Proposals list members by sign-up order; the lookup key is ordered by id.
   const pairKey = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
   const nameOf = new Map(
@@ -431,6 +445,7 @@ export async function runAutoPair(
           id: u.id,
           name: nameOf.get(u.id) ?? "Student",
           reason: u.reason,
+          detail: blocked.get(u.id) ?? null,
         })),
       } as unknown as NonNullable<Json>,
       created_by: actorId,

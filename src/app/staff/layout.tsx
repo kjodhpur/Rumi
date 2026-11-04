@@ -10,7 +10,10 @@ import { Wordmark } from "@/components/brand/wordmark";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/app/actions/auth";
 
-export const metadata: Metadata = { title: { default: "Staff", template: "%s · Rumi staff" }, robots: { index: false } };
+export const metadata: Metadata = {
+  title: { default: "Staff", template: "%s · Rumi staff" },
+  robots: { index: false },
+};
 export const dynamic = "force-dynamic";
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
@@ -39,11 +42,15 @@ export default async function StaffLayout({ children }: { children: React.ReactN
 
 function NoAccess({ email }: { email: string }) {
   return (
-    <main id="main" className="flex min-h-dvh flex-col items-center justify-center bg-bg px-4 py-16 text-center">
+    <main
+      id="main"
+      className="flex min-h-dvh flex-col items-center justify-center bg-bg px-4 py-16 text-center"
+    >
       <Wordmark height={28} className="text-ink" />
       <h1 className="mt-10 font-display text-display-md text-ink">No staff access</h1>
       <p className="mt-3 max-w-[420px] text-body text-ink-2">
-        {email} isn&apos;t on a housing team, or its access was turned off. Ask your housing admin for an invite.
+        {email} isn&apos;t on a housing team, or its access was turned off. Ask your housing admin
+        for an invite.
       </p>
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <Button asChild variant="secondary">

@@ -86,7 +86,7 @@ export default async function SchoolLandingPage({ params, searchParams }: PagePr
         <h1 className="mt-3 max-w-[760px] font-display text-[44px] !leading-[1.04] text-ink sm:text-display-xl lg:text-display-2xl">
           Find a roommate you&apos;d <span className="italic">actually</span> live well with.
         </h1>
-        <p className="lg:text-body-lg mt-5 max-w-[560px] text-body text-ink-2">
+        <p className="mt-5 max-w-[560px] text-body text-ink-2 lg:text-body">
           Answer a few questions about sleep, cleanliness, guests and budget. Rumi ranks everyone by
           how well you&apos;d fit, and tells you why. Free for students.
         </p>

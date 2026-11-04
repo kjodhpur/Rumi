@@ -18,7 +18,10 @@ export default async function RoomCalendarPage({ params }: { params: { id: strin
   const room = await loadRoomContext(supabase, user.id, params.id);
   if (!room) notFound();
   const events = await loadRoomEvents(supabase, params.id);
-  if (!events) return <ErrorState title="Couldn't load the calendar" description="Refresh the page to try again." />;
+  if (!events)
+    return (
+      <ErrorState title="Couldn't load the calendar" description="Refresh the page to try again." />
+    );
 
   return (
     <RoomCalendarView

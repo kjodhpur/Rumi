@@ -3,7 +3,14 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/email/send";
 import { inactivityWarningEmail } from "@/lib/email/templates";
 import { logAudit } from "@/lib/staff/audit";
-import { cutoff, effectivePolicy, planInactive, RETENTION_DEFAULTS, type RetentionPolicy } from "./policy";
+import { recomputeSchool } from "@/lib/matching/recompute";
+import {
+  cutoff,
+  effectivePolicy,
+  planInactive,
+  RETENTION_DEFAULTS,
+  type RetentionPolicy,
+} from "./policy";
 
 export interface RetentionReport {
   school: string;
@@ -12,10 +19,100 @@ export interface RetentionReport {
   deleted: number;
   cleared: number;
   auditPurged: number;
+  checkinNotesCleared: number;
+  importFilesDeleted: number;
+  heldImportsDeleted: number;
+  accommodationsExpired: number;
+}
+
+const IMPORT_FILE_DAYS = 30;
+const HELD_IMPORTED_ANSWER_DAYS = 60;
+
+/** Private check-in notes, N days after their term ends (0.2). Scores and tags stay. */
+async function clearCheckinNotes(schoolId: string, policy: RetentionPolicy, now: Date) {
+  const db = createAdminClient();
+  const ended = cutoff(now, policy.checkin_notes).toISOString().slice(0, 10);
+  const { data: terms } = await db
+    .from("terms")
+    .select("id")
+    .eq("school_id", schoolId)
+    .lt("ends_on", ended);
+  if (!terms?.length) return 0;
+  const { count, error } = await db
+    .from("checkins")
+    .update({ note_enc: null }, { count: "exact" })
+    .in(
+      "term_id",
+      terms.map((t) => t.id),
+    )
+    .not("note_enc", "is", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Uploaded StarRez files after 30 days; the import job row (counts, errors) stays. */
+async function deleteImportFiles(schoolId: string, now: Date) {
+  const db = createAdminClient();
+  const { data: jobs } = await db
+    .from("import_jobs")
+    .select("id, file_path")
+    .eq("school_id", schoolId)
+    .not("file_path", "is", null)
+    .lt("created_at", cutoff(now, IMPORT_FILE_DAYS).toISOString())
+    .limit(500);
+  const paths = (jobs ?? []).map((j) => j.file_path).filter((p): p is string => Boolean(p));
+  if (!paths.length) return 0;
+  const { error } = await db.storage.from("imports").remove(paths);
+  if (error) throw error;
+  await db
+    .from("import_jobs")
+    .update({ file_path: null })
+    .in(
+      "id",
+      (jobs ?? []).map((j) => j.id),
+    );
+  return paths.length;
+}
+
+/** Imported questionnaire answers held for a student who never signed up (2d). */
+async function deleteHeldImports(schoolId: string, now: Date) {
+  const { count, error } = await createAdminClient()
+    .from("imported_answers")
+    .delete({ count: "exact" })
+    .eq("school_id", schoolId)
+    .is("user_id", null)
+    .lt("created_at", cutoff(now, HELD_IMPORTED_ANSWER_DAYS).toISOString());
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Accommodations past their end date go (unless on legal hold), and matching re-runs without them. */
+async function expireAccommodations(schoolId: string, now: Date) {
+  const { count, error } = await createAdminClient()
+    .from("accommodation_constraints")
+    .delete({ count: "exact" })
+    .eq("school_id", schoolId)
+    .eq("legal_hold", false)
+    .lt("expires_on", now.toISOString().slice(0, 10));
+  if (error) throw error;
+  if (count) {
+    await logAudit({
+      actorId: null,
+      schoolId,
+      action: "retention_accommodations_expired",
+      entity: "accommodation_constraint",
+      meta: { count },
+    });
+    await recomputeSchool(schoolId);
+  }
+  return count ?? 0;
 }
 
 async function policyFor(schoolId: string): Promise<RetentionPolicy> {
-  const { data } = await createAdminClient().from("retention_policies").select("entity, days").eq("school_id", schoolId);
+  const { data } = await createAdminClient()
+    .from("retention_policies")
+    .select("entity, days")
+    .eq("school_id", schoolId);
   return effectivePolicy(data ?? []);
 }
 
@@ -28,7 +125,9 @@ async function purgeOrphanedConversations(policy: RetentionPolicy, now: Date) {
     .select("id, created_at, last_message_at, conversation_members(user_id)")
     .or(`last_message_at.lt.${before},and(last_message_at.is.null,created_at.lt.${before})`)
     .limit(500);
-  const orphaned = (stale ?? []).filter((c) => (c.conversation_members ?? []).length === 0).map((c) => c.id);
+  const orphaned = (stale ?? [])
+    .filter((c) => (c.conversation_members ?? []).length === 0)
+    .map((c) => c.id);
   if (orphaned.length === 0) return 0;
   const { error } = await db.from("conversations").delete().in("id", orphaned);
   if (error) throw error;
@@ -64,11 +163,17 @@ async function handleInactive(schoolId: string, policy: RetentionPolicy, now: Da
   }
 
   if (plan.warn.length > 0) {
-    const { data: settings } = await db.from("user_settings").select("user_id, email").in("user_id", plan.warn);
+    const { data: settings } = await db
+      .from("user_settings")
+      .select("user_id, email")
+      .in("user_id", plan.warn);
     for (const row of settings ?? []) {
       await sendEmail({ to: row.email, ...inactivityWarningEmail(policy.inactive_warning) });
     }
-    await db.from("profiles").update({ inactivity_warned_at: now.toISOString() }).in("id", plan.warn);
+    await db
+      .from("profiles")
+      .update({ inactivity_warned_at: now.toISOString() })
+      .in("id", plan.warn);
   }
 
   for (const id of plan.remove) {
@@ -105,6 +210,13 @@ export async function runRetention(now = new Date()): Promise<RetentionReport[]>
   for (const [index, school] of (schools ?? []).entries()) {
     const policy = policies[index];
     const inactive = await handleInactive(school.id, policy, now);
+    const [checkinNotesCleared, importFilesDeleted, heldImportsDeleted, accommodationsExpired] =
+      await Promise.all([
+        clearCheckinNotes(school.id, policy, now),
+        deleteImportFiles(school.id, now),
+        deleteHeldImports(school.id, now),
+        expireAccommodations(school.id, now),
+      ]);
     const { data: purged } = await db.rpc("purge_audit_log", {
       p_school: school.id,
       p_before: cutoff(now, policy.audit_log).toISOString(),
@@ -114,8 +226,14 @@ export async function runRetention(now = new Date()): Promise<RetentionReport[]>
       orphanedConversations: index === 0 ? orphaned : 0,
       ...inactive,
       auditPurged: purged ?? 0,
+      checkinNotesCleared,
+      importFilesDeleted,
+      heldImportsDeleted,
+      accommodationsExpired,
     });
   }
+  // Expired phone verification codes are never needed again.
+  await db.from("phone_verifications").delete().lt("expires_at", now.toISOString());
   // Platform-level rows (no school) follow the default window.
   await db.rpc("purge_audit_log", {
     p_school: null as unknown as string,
