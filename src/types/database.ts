@@ -2789,11 +2789,6 @@ isOneToOne: false
 "staff_exported_students":
 { Args: { "p_school": string }; Returns: number
                            },
-"staff_outcomes":
-{ Args: { "p_school": string }; Returns: {
-              "agreements_signed": number,"checkin_score_sum": number,"checkins_submitted": number,"groups_confirmed": number
-            }[]
-                           },
 "staff_overview":
 { Args: { "p_school": string,"p_weeks"?: number }; Returns: Json
                            },
