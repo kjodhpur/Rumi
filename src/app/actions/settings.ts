@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient, getUser } from "@/lib/supabase/server";
@@ -9,6 +10,8 @@ import { recomputeMatchesFor } from "@/lib/matching/recompute";
 import { runInBackground } from "@/lib/background";
 import { fail, ok, type ActionResult } from "@/lib/action";
 import { purgeAccount } from "@/lib/account/delete";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { LOCALE_COOKIE, isSelectableLocale } from "@/lib/i18n/config";
 
 const privacySchema = z.object({ is_hidden: z.boolean(), verified_only: z.boolean() }).partial();
 
@@ -74,5 +77,30 @@ export async function disconnectSpotify(): Promise<ActionResult> {
   ]);
   runInBackground("recompute", () => recomputeMatchesFor(user.id));
   revalidatePath("/settings/accounts");
+  return ok();
+}
+
+/** Saves the student's language and remembers it on this device. */
+export async function setLocale(locale: string): Promise<ActionResult> {
+  if (!isSelectableLocale(locale)) return fail("Couldn't save.");
+  const user = await getUser();
+  if (user) {
+    if (!(await rateLimit(`locale:${user.id}`, LIMITS.localeChangesPerHour)))
+      return fail("Too many changes. Try again in a bit.");
+    const { error } = await createClient()
+      .from("user_settings")
+      .update({ locale })
+      .eq("user_id", user.id);
+    if (error) return fail("Couldn't save.");
+    // Match reasons are written in the viewer's language.
+    runInBackground("recompute-locale", () => recomputeMatchesFor(user.id));
+  }
+  cookies().set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  revalidatePath("/", "layout");
   return ok();
 }

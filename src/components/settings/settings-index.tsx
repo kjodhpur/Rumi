@@ -29,6 +29,8 @@ import { updateTheme } from "@/app/actions/settings";
 import { SettingsLinkRow, SettingsSection } from "./settings-ui";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 import { LinkSchoolEmail } from "./link-school-email";
+import { LanguagePicker } from "./language-picker";
+import { useT } from "@/components/providers/i18n";
 
 export function SettingsIndex({
   user,
@@ -47,10 +49,11 @@ export function SettingsIndex({
 }) {
   const { theme, setTheme } = useTheme();
   const hydrated = useHydrated();
+  const t = useT("settings");
 
   return (
     <div className="mx-auto flex max-w-[680px] flex-col gap-8">
-      <PageHeader title="Settings" />
+      <PageHeader title={t("title")} />
 
       <Link
         href={`/profile/${user.id}`}
@@ -68,7 +71,7 @@ export function SettingsIndex({
           </span>
           <span className="block truncate text-body-sm text-ink-3">{user.email}</span>
         </span>
-        <span className="hidden text-body-sm text-ink-2 sm:inline">View profile</span>
+        <span className="hidden text-body-sm text-ink-2 sm:inline">{t("viewProfile")}</span>
         <ChevronRight className="size-4 text-ink-3" strokeWidth={2} aria-hidden />
       </Link>
 
@@ -76,44 +79,53 @@ export function SettingsIndex({
         <LinkSchoolEmail domain={user.schoolDomain ?? LAUNCH_SCHOOL.domain} />
       ) : null}
 
-      <SettingsSection title="Profile">
+      <SettingsSection title={t("sections.profile")}>
         <SettingsLinkRow
           href="/settings/profile"
           icon={<SlidersHorizontal />}
-          label="Profile & preferences"
-          detail="Photos, budget, lifestyle"
+          label={t("rows.profile")}
+          detail={t("rows.profileDetail")}
         />
         <SettingsLinkRow
           href="/settings/scenarios"
           icon={<Sparkles />}
-          label="Roommate scenarios"
-          detail="Optional everyday situations"
+          label={t("rows.scenarios")}
+          detail={t("rows.scenariosDetail")}
         />
       </SettingsSection>
 
-      <SettingsSection title="Living together">
+      <SettingsSection title={t("sections.living")}>
         <SettingsLinkRow
           href="/check-in"
           icon={<ClipboardCheck />}
-          label="Check-ins & room changes"
-          detail="After you move in"
+          label={t("rows.checkins")}
+          detail={t("rows.checkinsDetail")}
         />
         <SettingsLinkRow
           href="/survey"
           icon={<CalendarCheck />}
-          label="End of term"
-          detail="Room again? Keep your group?"
+          label={t("rows.survey")}
+          detail={t("rows.surveyDetail")}
         />
       </SettingsSection>
 
-      <SettingsSection title="Preferences">
-        <SettingsLinkRow href="/settings/notifications" icon={<Bell />} label="Notifications" />
-        <SettingsLinkRow href="/settings/privacy" icon={<ShieldCheck />} label="Privacy & safety" />
-        <SettingsLinkRow href="/settings/accounts" icon={<Link2 />} label="Connected accounts" />
+      <SettingsSection title={t("sections.preferences")}>
+        <SettingsLinkRow
+          href="/settings/notifications"
+          icon={<Bell />}
+          label={t("rows.notifications")}
+        />
+        <SettingsLinkRow
+          href="/settings/privacy"
+          icon={<ShieldCheck />}
+          label={t("rows.privacy")}
+        />
+        <SettingsLinkRow href="/settings/accounts" icon={<Link2 />} label={t("rows.accounts")} />
+        <LanguagePicker />
         <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-body-sm font-medium text-ink">Appearance</span>
+          <span className="text-body-sm font-medium text-ink">{t("appearance")}</span>
           <SegmentedControl
-            aria-label="Theme"
+            aria-label={t("themeLabel")}
             size="sm"
             className="sm:w-[300px]"
             value={(hydrated ? theme : "system") as "system" | "light" | "dark"}
@@ -126,7 +138,7 @@ export function SettingsIndex({
                 value: "system",
                 label: (
                   <>
-                    <Monitor className="size-3.5" strokeWidth={2} aria-hidden /> System
+                    <Monitor className="size-3.5" strokeWidth={2} aria-hidden /> {t("theme.system")}
                   </>
                 ),
               },
@@ -134,7 +146,7 @@ export function SettingsIndex({
                 value: "light",
                 label: (
                   <>
-                    <Sun className="size-3.5" strokeWidth={2} aria-hidden /> Light
+                    <Sun className="size-3.5" strokeWidth={2} aria-hidden /> {t("theme.light")}
                   </>
                 ),
               },
@@ -142,7 +154,7 @@ export function SettingsIndex({
                 value: "dark",
                 label: (
                   <>
-                    <Moon className="size-3.5" strokeWidth={2} aria-hidden /> Dark
+                    <Moon className="size-3.5" strokeWidth={2} aria-hidden /> {t("theme.dark")}
                   </>
                 ),
               },
@@ -152,29 +164,26 @@ export function SettingsIndex({
       </SettingsSection>
 
       {user.isAdmin ? (
-        <SettingsSection title="Team">
+        <SettingsSection title={t("sections.team")}>
           <SettingsLinkRow
             href="/admin"
             icon={<ShieldAlert />}
-            label="Safety admin"
-            detail="Reports & accounts"
+            label={t("rows.admin")}
+            detail={t("rows.adminDetail")}
           />
         </SettingsSection>
       ) : null}
 
-      <SettingsSection
-        title="Your data"
-        footer="A JSON file with everything Rumi stores about you."
-      >
+      <SettingsSection title={t("sections.data")} footer={t("rows.downloadFooter")}>
         <SettingsLinkRow
           href="/api/account/export"
           icon={<Download />}
-          label="Download your data"
+          label={t("rows.download")}
           download
         />
       </SettingsSection>
 
-      <SettingsSection title="Account">
+      <SettingsSection title={t("sections.account")}>
         <form action={signOut}>
           <button
             type="submit"
@@ -183,20 +192,25 @@ export function SettingsIndex({
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-2">
               <LogOut className="size-[18px]" strokeWidth={1.75} aria-hidden />
             </span>
-            <span className="text-body-sm font-medium">Sign out</span>
+            <span className="text-body-sm font-medium">{t("rows.signOut")}</span>
           </button>
         </form>
-        <SettingsLinkRow href="/settings/account" icon={<Trash2 />} label="Delete account" danger />
+        <SettingsLinkRow
+          href="/settings/account"
+          icon={<Trash2 />}
+          label={t("rows.delete")}
+          danger
+        />
       </SettingsSection>
 
       <p className="flex flex-wrap justify-center gap-x-4 gap-y-1 pb-4 text-caption text-ink-3">
         <Link href="/terms" className="hover:text-ink-2">
-          Terms
+          {t("footer.terms")}
         </Link>
         <Link href="/privacy" className="hover:text-ink-2">
-          Privacy
+          {t("footer.privacy")}
         </Link>
-        <span>Rumi · Not affiliated with {LAUNCH_SCHOOL.shortName}</span>
+        <span>{t("footer.notAffiliated", { school: LAUNCH_SCHOOL.shortName })}</span>
       </p>
     </div>
   );

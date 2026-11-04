@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { getBadgeCounts } from "@/app/actions/badges";
 import { photoUrl } from "@/lib/photos";
+import { WithI18n } from "@/components/providers/with-i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -38,18 +39,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <AppShell
-      user={{
-        id: profile.id,
-        firstName: profile.first_name,
-        lastInitial: profile.last_initial,
-        avatarUrl: photoUrl(profile.avatar_path),
-        isAdmin: Boolean(admin),
-        theme: (settings?.theme as "system" | "light" | "dark" | undefined) ?? "system",
-      }}
-      initialCounts={counts}
-    >
-      {children}
-    </AppShell>
+    <WithI18n>
+      <AppShell
+        user={{
+          id: profile.id,
+          firstName: profile.first_name,
+          lastInitial: profile.last_initial,
+          avatarUrl: photoUrl(profile.avatar_path),
+          isAdmin: Boolean(admin),
+          theme: (settings?.theme as "system" | "light" | "dark" | undefined) ?? "system",
+        }}
+        initialCounts={counts}
+      >
+        {children}
+      </AppShell>
+    </WithI18n>
   );
 }

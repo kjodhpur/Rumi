@@ -1,0 +1,23 @@
+export const shell = {
+  skip: "Skip to content",
+  nav: {
+    matches: "Matches",
+    messages: "Messages",
+    groups: "Groups",
+    saved: "Saved",
+    notifications: "Notifications",
+    admin: "Admin",
+    you: "You",
+    main: "Main",
+    primary: "Primary",
+  },
+  homeLabel: "Rumi — matches",
+  newCount: "({count} new)",
+  account: "Your account",
+  viewProfile: "View your profile",
+  settings: "Settings",
+  appearance: "Appearance",
+  theme: { light: "Light", dark: "Dark", system: "System" },
+  signOut: "Sign out",
+  notificationsUnread: "Notifications, {count} unread",
+};
