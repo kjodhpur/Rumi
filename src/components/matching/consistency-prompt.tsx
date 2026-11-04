@@ -9,6 +9,8 @@ import {
   visibleFlags,
   type ConsistencyInput,
 } from "@/lib/matching/consistency";
+import { useT } from "@/components/providers/i18n";
+import { en } from "@/lib/i18n/messages/en";
 
 /**
  * Gentle inline prompts for answers that pull in different directions (1.D). Private,
@@ -21,8 +23,17 @@ export function ConsistencyPrompt({
   input: ConsistencyInput;
   dismissed: { ruleKey: string; signature: string }[];
 }) {
+  const t = useT("matching");
   const [dismissed, setDismissed] = React.useState(initial);
-  const flags = visibleFlags(checkAnswerConsistency(input), dismissed);
+  const flags = visibleFlags(checkAnswerConsistency(input), dismissed).map((flag) =>
+    Object.hasOwn(en.matching.consistency, flag.ruleKey)
+      ? {
+          ...flag,
+          title: t(`consistency.${flag.ruleKey as keyof typeof en.matching.consistency}.title`),
+          message: t(`consistency.${flag.ruleKey as keyof typeof en.matching.consistency}.message`),
+        }
+      : flag,
+  );
 
   function dismiss(ruleKey: string, signature: string) {
     setDismissed((d) => [...d.filter((x) => x.ruleKey !== ruleKey), { ruleKey, signature }]);
@@ -44,15 +55,13 @@ export function ConsistencyPrompt({
             <div className="min-w-0 flex-1">
               <p className="text-body-sm font-medium text-ink">{flag.title}</p>
               <p className="mt-0.5 text-body-sm text-ink-2">{flag.message}</p>
-              <p className="mt-1.5 text-caption text-ink-3">
-                Only you see this. It doesn&apos;t change your score.
-              </p>
+              <p className="mt-1.5 text-caption text-ink-3">{t("onlyYou")}</p>
             </div>
             <button
               type="button"
               onClick={() => dismiss(flag.ruleKey, flag.signature)}
               className="-m-1 flex size-8 shrink-0 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-surface-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
-              aria-label={`Dismiss: ${flag.title}`}
+              aria-label={t("dismiss", { title: flag.title })}
             >
               <X className="size-4" aria-hidden />
             </button>

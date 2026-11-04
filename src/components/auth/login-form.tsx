@@ -257,6 +257,7 @@ export function LoginForm({
                 disabled={pending || success}
                 invalid={Boolean(error)}
                 autoFocus
+                label={tr("codeLabel")}
                 aria-describedby={error ? "otp-error" : undefined}
               />
               <AnimatePresence initial={false}>

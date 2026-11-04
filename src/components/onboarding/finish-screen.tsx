@@ -6,6 +6,7 @@ import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 
 import { Button } from "@/components/ui/button";
 import { Monogram } from "@/components/ui/monogram";
 import { spring } from "@/lib/motion";
+import { useT } from "@/components/providers/i18n";
 
 /**
  * The payoff moment after onboarding: your photo, a ring that sweeps while we
@@ -23,6 +24,7 @@ export function FinishScreen({
   onContinue: () => void;
 }) {
   const reduce = useReducedMotion();
+  const t = useT("onboarding");
   const count = useMotionValue(0);
   const rounded = useTransform(count, (v) => Math.round(v));
   const [done, setDone] = React.useState(false);
@@ -86,12 +88,12 @@ export function FinishScreen({
         {matches > 0 ? (
           <>
             <motion.span className="tabular">{rounded}</motion.span>{" "}
-            {matches === 1 ? "person fits" : "people fit"}
+            {t("finish.fits", { count: matches })}
             <br />
-            how you live.
+            {t("finish.howYouLive")}
           </>
         ) : (
-          <>You&apos;re all set{firstName ? `, ${firstName}` : ""}.</>
+          <>{firstName ? t("finish.allSetName", { name: firstName }) : t("finish.allSet")}</>
         )}
       </motion.h1>
       <motion.p
@@ -100,9 +102,7 @@ export function FinishScreen({
         transition={{ delay: 0.4 }}
         className="mt-3 max-w-sm text-body text-ink-2"
       >
-        {matches > 0
-          ? "Ranked by compatibility, each with the reasons you'd get along."
-          : "We'll let you know as soon as compatible people join."}
+        {matches > 0 ? t("finish.ranked") : t("finish.waiting")}
       </motion.p>
       <motion.div
         initial={false}
@@ -111,7 +111,7 @@ export function FinishScreen({
         className="mt-10 w-full max-w-xs"
       >
         <Button size="lg" block onClick={onContinue} disabled={!done}>
-          See my matches
+          {t("finish.see")}
         </Button>
       </motion.div>
     </div>

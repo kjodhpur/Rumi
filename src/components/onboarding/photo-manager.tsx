@@ -22,6 +22,7 @@ import { registerPhoto, removePhoto, reorderPhotos, type PhotoRecord } from "@/a
 import { imagePlaceholder, photoUrl } from "@/lib/photos";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/motion";
+import { useT } from "@/components/providers/i18n";
 
 const MAX_PHOTOS = 6;
 const ASPECT = 4 / 5;
@@ -44,6 +45,7 @@ export function PhotoManager({
   onChange: (photos: PhotoRecord[]) => void;
   error?: string;
 }) {
+  const t = useT("onboarding");
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [source, setSource] = React.useState<string | null>(null);
   const [crop, setCrop] = React.useState({ x: 0, y: 0 });
@@ -64,11 +66,11 @@ export function PhotoManager({
     event.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("That file isn't an image.");
+      toast.error(t("photos.notImage"));
       return;
     }
     if (file.size > MAX_INPUT_BYTES) {
-      toast.error("That photo is over 20 MB. Try a smaller one.");
+      toast.error(t("photos.tooBig"));
       return;
     }
     setCrop({ x: 0, y: 0 });
@@ -89,7 +91,7 @@ export function PhotoManager({
       rendered = await renderCrop(source, area);
     } catch {
       setProcessing(false);
-      toast.error("Couldn't read that photo. Try another one.");
+      toast.error(t("photos.unreadable"));
       return;
     }
     setProcessing(false);
@@ -119,7 +121,7 @@ export function PhotoManager({
       if (!result.ok) throw new Error(result.error);
       onChange([...photos, result.data]);
     } catch (err) {
-      toast.error(err instanceof Error && err.message ? err.message : "Upload failed. Try again.");
+      toast.error(err instanceof Error && err.message ? err.message : t("photos.failed"));
     } finally {
       setUploading((u) => u.filter((x) => x.key !== key));
       URL.revokeObjectURL(preview);
@@ -154,7 +156,7 @@ export function PhotoManager({
   return (
     <div className="flex flex-col gap-4">
       <LayoutGroup>
-        <ul className="grid grid-cols-3 gap-2 sm:gap-3" aria-label="Your photos">
+        <ul className="grid grid-cols-3 gap-2 sm:gap-3" aria-label={t("photos.list")}>
           <AnimatePresence initial={false} mode="popLayout">
             {sorted.map((photo, index) => (
               <motion.li
@@ -168,7 +170,7 @@ export function PhotoManager({
               >
                 <Image
                   src={photoUrl(photo.storage_path)!}
-                  alt={index === 0 ? "Your cover photo" : `Photo ${index + 1}`}
+                  alt={index === 0 ? t("photos.cover") : t("photos.photoN", { n: index + 1 })}
                   fill
                   sizes="(min-width: 640px) 180px, 33vw"
                   className="object-cover"
@@ -176,12 +178,12 @@ export function PhotoManager({
                 />
                 {index === 0 ? (
                   <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-micro font-semibold text-white">
-                    Cover
+                    {t("photos.coverBadge")}
                   </span>
                 ) : null}
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    aria-label={`Options for photo ${index + 1}`}
+                    aria-label={t("photos.options", { n: index + 1 })}
                     className="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-full bg-black/50 text-white transition-colors hover:bg-black/65 focus-visible:ring-2 focus-visible:ring-white"
                   >
                     <MoreHorizontal className="size-4" strokeWidth={2} />
@@ -189,22 +191,22 @@ export function PhotoManager({
                   <DropdownMenuContent>
                     {index > 0 ? (
                       <DropdownMenuItem onSelect={() => void move(photo.id, 0)}>
-                        <Star /> Make cover photo
+                        <Star /> {t("photos.makeCover")}
                       </DropdownMenuItem>
                     ) : null}
                     {index > 0 ? (
                       <DropdownMenuItem onSelect={() => void move(photo.id, index - 1)}>
-                        <ArrowLeft /> Move earlier
+                        <ArrowLeft /> {t("photos.earlier")}
                       </DropdownMenuItem>
                     ) : null}
                     {index < sorted.length - 1 ? (
                       <DropdownMenuItem onSelect={() => void move(photo.id, index + 1)}>
-                        <ArrowRight /> Move later
+                        <ArrowRight /> {t("photos.later")}
                       </DropdownMenuItem>
                     ) : null}
                     {sorted.length > 1 ? <DropdownMenuSeparator /> : null}
                     <DropdownMenuItem destructive onSelect={() => void remove(photo.id)}>
-                      <Trash2 /> Remove
+                      <Trash2 /> {t("photos.remove")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -219,7 +221,7 @@ export function PhotoManager({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={u.preview} alt="" className="size-full object-cover opacity-60" />
               <span className="absolute inset-0 flex items-center justify-center text-white">
-                <Spinner className="size-6" label="Uploading photo" />
+                <Spinner className="size-6" label={t("photos.uploading")} />
               </span>
             </li>
           ))}
@@ -233,10 +235,12 @@ export function PhotoManager({
                   "transition-colors duration-150 hover:border-ink-3 hover:bg-surface hover:text-ink-2 focus-visible:ring-2 focus-visible:ring-focus",
                   error && i === 0 ? "border-danger text-danger" : "border-line-strong",
                 )}
-                aria-label="Add a photo"
+                aria-label={t("photos.add")}
               >
                 <ImagePlus className="size-6" strokeWidth={1.5} aria-hidden />
-                {i === 0 ? <span className="text-caption font-medium">Add photo</span> : null}
+                {i === 0 ? (
+                  <span className="text-caption font-medium">{t("photos.addShort")}</span>
+                ) : null}
               </button>
             </li>
           ))}
@@ -248,20 +252,18 @@ export function PhotoManager({
           {error}
         </p>
       ) : (
-        <p className="text-body-sm text-ink-3">
-          Clear, recent photos of you. Group shots are fine after the first. Up to {MAX_PHOTOS}.
-        </p>
+        <p className="text-body-sm text-ink-3">{t("photos.hint", { max: MAX_PHOTOS })}</p>
       )}
 
       <Sheet
         open={Boolean(source)}
         onOpenChange={(open) => !open && closeCropper()}
-        title="Crop your photo"
-        description="Drag to reposition. Pinch or use the slider to zoom."
+        title={t("photos.crop")}
+        description={t("photos.cropHint")}
         footer={
           <div className="flex gap-3">
             <Button variant="secondary" size="lg" className="flex-1" onClick={closeCropper}>
-              Cancel
+              {t("photos.cancel")}
             </Button>
             <Button
               size="lg"
@@ -269,7 +271,7 @@ export function PhotoManager({
               onClick={() => void confirmCrop()}
               loading={processing}
             >
-              Use photo
+              {t("photos.use")}
             </Button>
           </div>
         }
@@ -295,7 +297,7 @@ export function PhotoManager({
               step={0.01}
               value={[zoom]}
               onValueChange={([z]) => setZoom(z)}
-              thumbLabels={["Zoom"]}
+              thumbLabels={[t("photos.zoom")]}
               className="mx-auto max-w-[360px]"
             />
           </div>

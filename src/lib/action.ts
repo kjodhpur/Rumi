@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
-import { LOCALE_COOKIE, localizeError, requestLocale } from "@/lib/i18n/errors";
+import { LOCALE_COOKIE, requestLocale } from "@/lib/i18n/errors";
+import { localizeError } from "@/lib/i18n/errors-server";
 
 /** Uniform result shape for Server Actions consumed by client components. */
 export type ActionResult<T = undefined> =

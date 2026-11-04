@@ -5,6 +5,7 @@ import { Check, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { springSnappy } from "@/lib/motion";
 import type { AreaOption, StepProps } from "../types";
+import { useT } from "@/components/providers/i18n";
 
 export function AreasStep({
   prefs,
@@ -12,6 +13,7 @@ export function AreasStep({
   errors,
   areas,
 }: StepProps & { areas: AreaOption[] }) {
+  const t = useT("onboarding");
   const toggle = (slug: string) => {
     const next = prefs.areas.includes(slug)
       ? prefs.areas.filter((a) => a !== slug)
@@ -20,7 +22,7 @@ export function AreasStep({
   };
   return (
     <div className="flex flex-col gap-4">
-      <div role="group" aria-label="Neighborhoods" className="grid gap-2 sm:grid-cols-2">
+      <div role="group" aria-label={t("areas.label")} className="grid gap-2 sm:grid-cols-2">
         {areas.map((area) => {
           const selected = prefs.areas.includes(area.slug);
           return (
@@ -66,8 +68,8 @@ export function AreasStep({
       ) : (
         <p className="text-body-sm text-ink-3" aria-live="polite">
           {prefs.areas.length === 0
-            ? "Pick as many as you'd honestly consider."
-            : `${prefs.areas.length} selected`}
+            ? t("areas.pick")
+            : t("areas.selected", { count: prefs.areas.length })}
         </p>
       )}
     </div>

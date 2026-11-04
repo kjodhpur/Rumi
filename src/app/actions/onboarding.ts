@@ -266,6 +266,16 @@ export async function savePreferences(input: {
   return result;
 }
 
+/** The onboarding step to send the student back to for a complete_onboarding error. */
+function incompleteStep(message: string) {
+  if (message.includes("missing_photo")) return "photos";
+  if (message.includes("missing_areas")) return "areas";
+  if (message.includes("missing_move_in")) return "housing";
+  if (message.includes("missing_first_name") || message.includes("missing_class_year"))
+    return "basics";
+  return "";
+}
+
 export async function completeOnboarding(): Promise<ActionResult<{ matches: number }>> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
@@ -283,10 +293,10 @@ export async function completeOnboarding(): Promise<ActionResult<{ matches: numb
       Boolean(me0.pre_arrival),
     );
     if (school.required.some((q) => !school.answers[q.key]))
-      return fail("Answer your housing office's questions first.");
+      return fail("Answer your housing office's questions first.", { step: "questions" });
   }
   const { error } = await supabase.rpc("complete_onboarding");
-  if (error) return fail(friendlyDbError(error.message));
+  if (error) return fail(friendlyDbError(error.message), { step: incompleteStep(error.message) });
   const { data: me } = await supabase
     .from("profiles")
     .select("school_id")

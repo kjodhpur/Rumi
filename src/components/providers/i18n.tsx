@@ -4,6 +4,8 @@ import * as React from "react";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_INFO, type Locale } from "@/lib/i18n/config";
 import { createTranslator, type Namespace, type Translator } from "@/lib/i18n/core";
 import { en, type Messages } from "@/lib/i18n/messages/en";
+import { localizeOptions } from "@/lib/i18n/options";
+import { localizeErrorWith } from "@/lib/i18n/errors";
 
 const Context = React.createContext<{ locale: Locale; messages: Messages }>({
   locale: DEFAULT_LOCALE,
@@ -45,5 +47,20 @@ export function useT<N extends Namespace>(namespace: N): Translator<N> {
   return React.useMemo(
     () => createTranslator(locale, messages, en, namespace),
     [locale, messages, namespace],
+  );
+}
+
+/** lib/options lists with labels in the reader's language. */
+export function useOptions() {
+  const t = useT("options");
+  return React.useMemo(() => localizeOptions(t), [t]);
+}
+
+/** Translates a known English validation or server message into the reader's language. */
+export function useLocalizeError() {
+  const { locale, messages } = React.useContext(Context);
+  return React.useCallback(
+    (message: string) => (locale === "en" ? message : localizeErrorWith(message, messages.errors)),
+    [locale, messages],
   );
 }

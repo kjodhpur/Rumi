@@ -27,6 +27,7 @@ export const auth = {
   checkInbox: "Check your inbox.",
   enterCode: "Enter the code we sent to",
   signedIn: "Signed in",
+  codeLabel: "6-digit code",
   verify: "Verify and continue",
   spam: "Didn't get it? Check spam.",
   resendIn: "Resend in {seconds}s",

@@ -24,8 +24,14 @@ test("new student completes onboarding and lands on ranked matches", async ({ pa
   await page.getByLabel("Major").fill("Nursing");
   await next(page);
 
+  // The campus step shows only when the school has option lists; everything on it is optional.
+  const photos = page.getByText("Add a few photos.");
+  const campus = page.getByText("Where you'll be on campus.");
+  await expect(photos.or(campus)).toBeVisible();
+  if (await campus.isVisible()) await next(page);
+
   // Photos — upload, crop, confirm.
-  await expect(page.getByText("Add a few photos.")).toBeVisible();
+  await expect(photos).toBeVisible();
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Add a photo" }).first().click();
   await (await chooser).setFiles(path.join(__dirname, "fixtures", "portrait.jpg"));

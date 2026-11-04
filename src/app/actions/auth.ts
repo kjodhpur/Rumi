@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { LOCALE_COOKIE, isSelectableLocale } from "@/lib/i18n/config";
 import type { EmailOtpType, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -51,6 +53,17 @@ export async function afterSignIn(user: User) {
       .from("profiles")
       .update({ student_verified_at: now, last_active_at: now, inactivity_warned_at: null })
       .eq("id", user.id);
+  }
+  // A language picked on the login page carries over to a new account.
+  const cookieLocale = cookies().get(LOCALE_COOKIE)?.value;
+  if (isSelectableLocale(cookieLocale) && cookieLocale !== "en") {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("onboarding_completed_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profile && !profile.onboarding_completed_at)
+      await admin.from("user_settings").update({ locale: cookieLocale }).eq("user_id", user.id);
   }
   if (serverEnv.adminEmails.includes(email)) {
     await admin.from("admins").upsert({ user_id: user.id }, { onConflict: "user_id" });

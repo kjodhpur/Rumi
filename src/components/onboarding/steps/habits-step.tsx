@@ -1,40 +1,42 @@
 "use client";
 
 import { OptionCards } from "@/components/ui/choice";
-import { DRINKING, PETS, SMOKING, STUDY } from "@/lib/options";
+import { useOptions, useT } from "@/components/providers/i18n";
 import type { StepProps } from "../types";
 import { Section } from "./section";
 
 export function HabitsStep({ prefs, updatePrefs }: StepProps) {
+  const t = useT("onboarding");
+  const { DRINKING, PETS, SMOKING, STUDY } = useOptions();
   return (
     <div className="flex flex-col gap-9">
-      <Section label="Smoking or vaping">
+      <Section label={t("habits.smoking")}>
         <OptionCards
-          aria-label="Smoking or vaping"
+          aria-label={t("habits.smoking")}
           value={prefs.smoking}
           onValueChange={(smoking) => updatePrefs({ smoking })}
           options={SMOKING}
         />
       </Section>
-      <Section label="Drinking">
+      <Section label={t("habits.drinking")}>
         <OptionCards
-          aria-label="Drinking"
+          aria-label={t("habits.drinking")}
           value={prefs.drinking}
           onValueChange={(drinking) => updatePrefs({ drinking })}
           options={DRINKING}
         />
       </Section>
-      <Section label="Pets">
+      <Section label={t("habits.pets")}>
         <OptionCards
-          aria-label="Pets"
+          aria-label={t("habits.pets")}
           value={prefs.pets}
           onValueChange={(pets) => updatePrefs({ pets })}
           options={PETS}
         />
       </Section>
-      <Section label="Where do you study?">
+      <Section label={t("habits.study")}>
         <OptionCards
-          aria-label="Where do you study"
+          aria-label={t("habits.studyLabel")}
           value={prefs.study}
           onValueChange={(study) => updatePrefs({ study })}
           options={STUDY}

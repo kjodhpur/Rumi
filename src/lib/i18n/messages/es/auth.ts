@@ -29,6 +29,7 @@ export const auth: Messages["auth"] = {
   checkInbox: "Revisa tu correo.",
   enterCode: "Escribe el código que enviamos a",
   signedIn: "Sesión iniciada",
+  codeLabel: "Código de 6 dígitos",
   verify: "Verificar y continuar",
   spam: "¿No te llegó? Revisa el correo no deseado.",
   resendIn: "Reenviar en {seconds} s",

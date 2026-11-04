@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { ChoiceChips, MultiChips } from "@/components/ui/choice";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { HOUSING_TYPES, LEASE_LENGTHS, ROOMMATE_GENDERS } from "@/lib/options";
+import { useOptions, useT } from "@/components/providers/i18n";
 import { formatMoney } from "@/lib/utils";
 import type { StepProps } from "../types";
 import { Section } from "./section";
@@ -18,12 +18,14 @@ function today() {
 }
 
 export function HousingStep({ prefs, updatePrefs, errors }: StepProps) {
+  const t = useT("onboarding");
+  const { HOUSING_TYPES, LEASE_LENGTHS, ROOMMATE_GENDERS } = useOptions();
   return (
     <div className="flex flex-col gap-9">
-      <Section label="Monthly budget for your share of rent" error={errors.budgetMax}>
+      <Section label={t("housing.budget")} error={errors.budgetMax}>
         <p className="font-display text-display-sm text-ink tabular" aria-live="polite">
           {formatMoney(prefs.budgetMin)} – {formatMoney(prefs.budgetMax)}
-          <span className="ml-1.5 font-sans text-body-sm text-ink-3">/ month</span>
+          <span className="ml-1.5 font-sans text-body-sm text-ink-3">{t("housing.perMonth")}</span>
         </p>
         <Slider
           min={BUDGET_MIN}
@@ -32,7 +34,7 @@ export function HousingStep({ prefs, updatePrefs, errors }: StepProps) {
           minStepsBetweenThumbs={2}
           value={[prefs.budgetMin, prefs.budgetMax]}
           onValueChange={([budgetMin, budgetMax]) => updatePrefs({ budgetMin, budgetMax })}
-          thumbLabels={["Minimum budget", "Maximum budget"]}
+          thumbLabels={[t("housing.minBudget"), t("housing.maxBudget")]}
         />
         <div className="flex justify-between text-caption text-ink-3">
           <span>{formatMoney(BUDGET_MIN)}</span>
@@ -40,7 +42,7 @@ export function HousingStep({ prefs, updatePrefs, errors }: StepProps) {
         </div>
       </Section>
 
-      <Field label="Ideal move-in date" error={errors.moveInDate}>
+      <Field label={t("housing.moveIn")} error={errors.moveInDate}>
         {({ id, describedBy, invalid }) => (
           <Input
             id={id}
@@ -55,18 +57,18 @@ export function HousingStep({ prefs, updatePrefs, errors }: StepProps) {
         )}
       </Field>
 
-      <Section label="Lease length">
+      <Section label={t("housing.lease")}>
         <ChoiceChips
-          aria-label="Lease length"
+          aria-label={t("housing.lease")}
           value={prefs.leaseLength}
           onValueChange={(leaseLength) => updatePrefs({ leaseLength })}
           options={LEASE_LENGTHS}
         />
       </Section>
 
-      <Section label="On or off campus?">
+      <Section label={t("housing.campus")}>
         <SegmentedControl
-          aria-label="On or off campus"
+          aria-label={t("housing.campusLabel")}
           value={prefs.housingType}
           onValueChange={(housingType) => updatePrefs({ housingType })}
           options={HOUSING_TYPES.map((o) => ({ value: o.value, label: o.label }))}
@@ -74,15 +76,11 @@ export function HousingStep({ prefs, updatePrefs, errors }: StepProps) {
       </Section>
 
       <Section
-        label="I'm open to living with"
-        hint={
-          prefs.genderPref.length === 0
-            ? "Anyone — leave all unselected."
-            : "Only people who are open to living with you, too."
-        }
+        label={t("housing.openTo")}
+        hint={prefs.genderPref.length === 0 ? t("housing.anyone") : t("housing.mutual")}
       >
         <MultiChips
-          aria-label="Open to living with"
+          aria-label={t("housing.openToLabel")}
           value={prefs.genderPref}
           onValueChange={(genderPref) => updatePrefs({ genderPref })}
           options={ROOMMATE_GENDERS}

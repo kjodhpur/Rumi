@@ -51,6 +51,7 @@ export default async function ScenariosSettingsPage() {
           questions={questions.map((q) => ({
             key: q.key,
             stem: q.stem,
+            builtIn: !q.schoolId,
             outdated: outdated.has(q.key),
             choices: q.choices.map((c) => ({ key: c.key, label: c.label })),
           }))}

@@ -53,6 +53,7 @@ export async function loadSchoolContext(
     required: required.map((q) => ({
       key: q.key,
       stem: q.stem,
+      builtIn: !q.schoolId,
       choices: q.choices.map((c) => ({ key: c.key, label: c.label })),
     })),
     answers: current,
@@ -106,7 +107,7 @@ export async function loadProfileDrafts(userId: string) {
       .maybeSingle(),
   ]);
 
-  const data: Omit<OnboardingData, "initialStep"> = {
+  const data: Omit<OnboardingData, "initialStep" | "initialStepId"> = {
     userId,
     profile: {
       firstName: profile.first_name,

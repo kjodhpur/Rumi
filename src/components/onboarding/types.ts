@@ -38,7 +38,12 @@ export interface SchoolContext {
   trackLocked: boolean;
   preArrival: boolean;
   /** School questions this term requires, with the student's current answers. */
-  required: { key: string; stem: string; choices: { key: string; label: string }[] }[];
+  required: {
+    key: string;
+    stem: string;
+    builtIn?: boolean;
+    choices: { key: string; label: string }[];
+  }[];
   answers: Record<string, string>;
 }
 
@@ -81,6 +86,8 @@ export interface OnboardingData {
   /** Consistency prompts the student dismissed, with the answers they were dismissed on. */
   dismissedFlags: { ruleKey: string; signature: string }[];
   initialStep: number;
+  /** The step named in ?step=, which wins over the saved position. */
+  initialStepId?: string | null;
 }
 
 export interface StepProps {

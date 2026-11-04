@@ -3,16 +3,11 @@
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ChoiceChips } from "@/components/ui/choice";
-import { CLASS_YEARS, GENDERS } from "@/lib/options";
+import { useOptions, useT } from "@/components/providers/i18n";
 import type { StepProps } from "../types";
 import { Section } from "./section";
 
-const TRACKS = [
-  { value: "freshman", label: "First-year" },
-  { value: "returning", label: "Returning" },
-  { value: "transfer", label: "Transfer" },
-  { value: "grad", label: "Graduate" },
-] as const;
+const TRACKS = ["freshman", "returning", "transfer", "grad"] as const;
 
 const MAJORS = [
   "Accountancy",
@@ -51,10 +46,13 @@ export function BasicsStep({
   errors,
   trackLocked = false,
 }: StepProps & { trackLocked?: boolean }) {
+  const t = useT("onboarding");
+  const { CLASS_YEARS, GENDERS } = useOptions();
+  const tracks = TRACKS.map((value) => ({ value, label: t(`basics.tracks.${value}`) }));
   return (
     <div className="flex flex-col gap-8">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="First name" error={errors.firstName}>
+        <Field label={t("basics.firstName")} error={errors.firstName}>
           {({ id, describedBy, invalid }) => (
             <Input
               id={id}
@@ -67,7 +65,7 @@ export function BasicsStep({
             />
           )}
         </Field>
-        <Field label="Last name" hint="Only your initial is shown." error={errors.lastName}>
+        <Field label={t("basics.lastName")} hint={t("basics.lastNameHint")} error={errors.lastName}>
           {({ id, describedBy, invalid }) => (
             <Input
               id={id}
@@ -82,11 +80,11 @@ export function BasicsStep({
         </Field>
       </div>
 
-      <Field label="Pronouns" aside="Optional">
+      <Field label={t("basics.pronouns")} aside={t("basics.optional")}>
         {({ id, describedBy }) => (
           <Input
             id={id}
-            placeholder="she/her, he/him, they/them…"
+            placeholder={t("basics.pronounsPlaceholder")}
             value={profile.pronouns}
             onChange={(e) => updateProfile({ pronouns: e.target.value })}
             aria-describedby={describedBy}
@@ -95,22 +93,18 @@ export function BasicsStep({
         )}
       </Field>
 
-      <Section
-        label="Gender"
-        hint="Used only to respect everyone's roommate preferences — it isn't shown on your profile."
-        error={errors.gender}
-      >
+      <Section label={t("basics.gender")} hint={t("basics.genderHint")} error={errors.gender}>
         <ChoiceChips
-          aria-label="Gender"
+          aria-label={t("basics.gender")}
           value={profile.gender}
           onValueChange={(gender) => updateProfile({ gender })}
           options={GENDERS}
         />
       </Section>
 
-      <Section label="Year" error={errors.classYear}>
+      <Section label={t("basics.year")} error={errors.classYear}>
         <ChoiceChips
-          aria-label="Year"
+          aria-label={t("basics.year")}
           value={profile.classYear}
           onValueChange={(classYear) => updateProfile({ classYear })}
           options={CLASS_YEARS}
@@ -118,30 +112,26 @@ export function BasicsStep({
       </Section>
 
       <Section
-        label="Student track"
-        hint={
-          trackLocked
-            ? "Set by your housing office. Ask them if it's wrong."
-            : "First-year, returning, transfer and graduate students match within their own track unless your school mixes them."
-        }
+        label={t("basics.track")}
+        hint={trackLocked ? t("basics.trackLocked") : t("basics.trackHint")}
       >
         <ChoiceChips
-          aria-label="Student track"
+          aria-label={t("basics.track")}
           value={profile.track ?? ""}
           onValueChange={(track) => {
             if (!trackLocked) updateProfile({ track });
           }}
-          options={TRACKS.filter((t) => !trackLocked || t.value === profile.track)}
+          options={tracks.filter((o) => !trackLocked || o.value === profile.track)}
         />
       </Section>
 
-      <Field label="Major" error={errors.major}>
+      <Field label={t("basics.major")} error={errors.major}>
         {({ id, describedBy, invalid }) => (
           <>
             <Input
               id={id}
               list="majors"
-              placeholder="Start typing…"
+              placeholder={t("basics.majorPlaceholder")}
               value={profile.major}
               onChange={(e) => updateProfile({ major: e.target.value })}
               aria-invalid={invalid || undefined}

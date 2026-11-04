@@ -1,7 +1,7 @@
 "use client";
 
 import { ScalePicker } from "@/components/ui/scale-picker";
-import { SCALES } from "@/lib/options";
+import { useOptions } from "@/components/providers/i18n";
 import type { StepProps } from "../types";
 import { Section } from "./section";
 
@@ -13,6 +13,7 @@ const KEYS = [
 ] as const;
 
 export function LifestyleStep({ prefs, updatePrefs }: StepProps) {
+  const { SCALES } = useOptions();
   return (
     <div className="flex flex-col gap-10">
       {KEYS.map(([scaleKey, prefKey]) => {

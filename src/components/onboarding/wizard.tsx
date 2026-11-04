@@ -33,6 +33,7 @@ import { ConsistencyPrompt, consistencyInput } from "@/components/matching/consi
 import { PhotoManager } from "./photo-manager";
 import { ProfilePreview } from "./profile-preview";
 import { FinishScreen } from "./finish-screen";
+import { useLocalizeError, useT } from "@/components/providers/i18n";
 
 type StepId =
   | "basics"
@@ -49,112 +50,47 @@ type StepId =
   | "music"
   | "sharing";
 
-interface StepDef {
-  id: StepId;
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-}
-
-const ALL_STEPS: StepDef[] = [
-  {
-    id: "basics",
-    eyebrow: "About you",
-    title: "Let's start with the basics.",
-    subtitle: "Your first name and last initial are all anyone sees.",
-  },
-  {
-    id: "school",
-    eyebrow: "Campus",
-    title: "Where you'll be on campus.",
-    subtitle:
-      "From your housing office's lists. It's used for their matching rules and never shown on your profile.",
-  },
-  {
-    id: "photos",
-    eyebrow: "Photos",
-    title: "Add a few photos.",
-    subtitle:
-      "Profiles with three or more get noticeably more intros. The first one is your cover.",
-  },
-  {
-    id: "about",
-    eyebrow: "Bio",
-    title: "Introduce yourself.",
-    subtitle: "A few honest lines about you and how you like to live.",
-  },
-  {
-    id: "housing",
-    eyebrow: "Housing",
-    title: "What are you looking for?",
-    subtitle: "Budget, timing and the kind of place you want.",
-  },
-  {
-    id: "areas",
-    eyebrow: "Neighborhoods",
-    title: "Where do you want to live?",
-    subtitle: "Choose every area you'd genuinely consider.",
-  },
-  {
-    id: "lifestyle",
-    eyebrow: "Lifestyle",
-    title: "How do you live, day to day?",
-    subtitle: "Be honest — it's what makes your matches good.",
-  },
-  {
-    id: "habits",
-    eyebrow: "Habits",
-    title: "A few habits.",
-    subtitle: "No judgment. It's all about fit.",
-  },
-  {
-    id: "priorities",
-    eyebrow: "Priorities",
-    title: "What matters most?",
-    subtitle: "Your matches are weighted by what you care about.",
-  },
-  {
-    id: "questions",
-    eyebrow: "Your school's questions",
-    title: "A few questions from housing.",
-    subtitle: "Everyday situations your housing office asks everyone about this term.",
-  },
-  {
-    id: "dealbreakers",
-    eyebrow: "Dealbreakers",
-    title: "Any dealbreakers?",
-    subtitle: "We'll never show you anyone who breaks these — and they won't see you.",
-  },
-  {
-    id: "music",
-    eyebrow: "Music",
-    title: "Bring your music.",
-    subtitle: "Connect Spotify to see shared artists. Optional.",
-  },
-  {
-    id: "sharing",
-    eyebrow: "Your school",
-    title: "Share with your housing office?",
-    subtitle: "Optional, off unless you turn it on, and you can change it anytime in Settings.",
-  },
+const ALL_STEPS: StepId[] = [
+  "basics",
+  "school",
+  "photos",
+  "about",
+  "housing",
+  "areas",
+  "lifestyle",
+  "habits",
+  "priorities",
+  "questions",
+  "dealbreakers",
+  "music",
+  "sharing",
 ];
 
 export function OnboardingWizard({ data }: { data: OnboardingData }) {
   const router = useRouter();
+  const t = useT("onboarding");
+  const localizeError = useLocalizeError();
   const steps = React.useMemo(
     () =>
       ALL_STEPS.filter(
-        (s) =>
-          (s.id !== "music" || data.spotify.enabled) &&
-          (s.id !== "sharing" || Boolean(data.sharing.office)) &&
-          (s.id !== "school" || hasSchoolOptions(data.school)) &&
-          (s.id !== "questions" || data.school.required.length > 0),
-      ).map((s) =>
-        s.id === "sharing" ? { ...s, title: `Share with ${data.sharing.office}?` } : s,
-      ),
-    [data.spotify.enabled, data.sharing.office, data.school],
+        (id) =>
+          (id !== "music" || data.spotify.enabled) &&
+          (id !== "sharing" || Boolean(data.sharing.office)) &&
+          (id !== "school" || hasSchoolOptions(data.school)) &&
+          (id !== "questions" || data.school.required.length > 0),
+      ).map((id) => ({
+        id,
+        eyebrow: t(`steps.${id}.eyebrow`),
+        title: t(`steps.${id}.title`, { office: data.sharing.office ?? "" }),
+        subtitle: t(`steps.${id}.subtitle`),
+      })),
+    [data.spotify.enabled, data.sharing.office, data.school, t],
   );
-  const [index, setIndex] = React.useState(() => Math.min(data.initialStep, steps.length - 1));
+  const [index, setIndex] = React.useState(() => {
+    // ?step= names a step (reloads, back/forward); otherwise resume where they left off.
+    const named = steps.findIndex((s) => s.id === data.initialStepId);
+    return named >= 0 ? named : Math.min(data.initialStep, steps.length - 1);
+  });
   const [direction, setDirection] = React.useState<1 | -1>(1);
   const [profile, setProfile] = React.useState<ProfileDraft>(data.profile);
   const [prefs, setPrefs] = React.useState<PrefsDraft>(data.prefs);
@@ -211,31 +147,32 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
     [queue],
   );
 
+  const localized = (errs: Record<string, string>) =>
+    Object.fromEntries(Object.entries(errs).map(([k, v]) => [k, localizeError(v)]));
+
   function validate(id: StepId): Record<string, string> {
     switch (id) {
       case "basics": {
         const r = basicsSchema.safeParse({ ...profile, pronouns: profile.pronouns || undefined });
-        return r.success ? {} : fieldErrors(r.error);
+        return r.success ? {} : localized(fieldErrors(r.error));
       }
       case "questions":
         return data.school.required.every((q) => schoolAnswers[q.key])
           ? {}
-          : { questions: "Answer each question to continue." };
+          : { questions: t("answerEach") };
       case "photos":
-        return photos.length > 0
-          ? {}
-          : { photos: "Add at least one photo so people know who they're meeting." };
+        return photos.length > 0 ? {} : { photos: t("needPhoto") };
       case "about": {
         const r = bioSchema.safeParse({ bio: profile.bio });
-        return r.success ? {} : fieldErrors(r.error);
+        return r.success ? {} : localized(fieldErrors(r.error));
       }
       case "housing": {
         const r = housingSchema.safeParse(prefs);
-        return r.success ? {} : fieldErrors(r.error);
+        return r.success ? {} : localized(fieldErrors(r.error));
       }
       case "areas": {
         const r = areasSchema.safeParse({ areas: prefs.areas });
-        return r.success ? {} : fieldErrors(r.error);
+        return r.success ? {} : localized(fieldErrors(r.error));
       }
       default:
         return {};
@@ -275,18 +212,8 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
     if (!result.ok) {
       toast.error(result.error);
       // Jump back to whichever step the server says is incomplete.
-      const target = /photo/i.test(result.error)
-        ? "photos"
-        : /neighborhood/i.test(result.error)
-          ? "areas"
-          : /move-in/i.test(result.error)
-            ? "housing"
-            : /name|year/i.test(result.error)
-              ? "basics"
-              : /housing office's questions/i.test(result.error)
-                ? "questions"
-                : null;
-      if (target) goTo(steps.findIndex((s) => s.id === target));
+      const target = steps.findIndex((s) => s.id === result.fieldErrors?.step);
+      if (target >= 0) goTo(target);
       return;
     }
     setFinished({ matches: result.data.matches });
@@ -322,7 +249,7 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
                 variant="ghost"
                 size="icon"
                 onClick={back}
-                aria-label="Previous step"
+                aria-label={t("previous")}
                 className="-ml-2"
               >
                 <ChevronLeft strokeWidth={1.75} />
@@ -335,11 +262,11 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
           </div>
           <div className="flex flex-1 flex-col items-center gap-1.5">
             <span className="text-caption font-medium text-ink-2 tabular">
-              Step {index + 1} of {steps.length}
+              {t("stepOf", { step: index + 1, total: steps.length })}
             </span>
             <ProgressBar
               value={(index + 1) / steps.length}
-              label="Onboarding progress"
+              label={t("progress")}
               className="max-w-[220px]"
             />
           </div>
@@ -431,7 +358,7 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
           <div className="mt-10 hidden items-center justify-between lg:flex">
             <form action={signOut}>
               <Button type="submit" variant="ghost" size="sm" className="text-ink-3">
-                <LogOut /> Sign out
+                <LogOut /> {t("signOut")}
               </Button>
             </form>
             <Button
@@ -440,14 +367,14 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
               loading={finishing}
               className="min-w-[180px]"
             >
-              {isLast ? "Finish & see matches" : "Continue"}
+              {isLast ? t("finishButton") : t("continue")}
             </Button>
           </div>
         </div>
 
         <aside className="hidden lg:block">
           <div className="sticky top-28">
-            <p className="mb-4 text-caption font-medium text-ink-3">How your card will look</p>
+            <p className="mb-4 text-caption font-medium text-ink-3">{t("preview")}</p>
             <ProfilePreview profile={profile} prefs={prefs} photos={photos} areas={data.areas} />
           </div>
         </aside>
@@ -457,7 +384,7 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
       <div className="glass fixed inset-x-0 bottom-0 z-30 border-t border-[var(--glass-border)] pb-safe lg:hidden">
         <div className="mx-auto flex max-w-[560px] items-center gap-3 px-4 py-3">
           <Button size="lg" block onClick={() => void next()} loading={finishing}>
-            {isLast ? "Finish & see matches" : "Continue"}
+            {isLast ? t("finishButton") : t("continue")}
           </Button>
         </div>
       </div>
@@ -466,6 +393,7 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
 }
 
 function SaveIndicator({ status }: { status: ReturnType<typeof useAutosave>["status"] }) {
+  const t = useT("onboarding");
   return (
     <AnimatePresence mode="wait" initial={false}>
       {status === "idle" ? null : (
@@ -484,12 +412,12 @@ function SaveIndicator({ status }: { status: ReturnType<typeof useAutosave>["sta
           {status === "saving" ? (
             <>
               <span className="size-1.5 animate-pulse rounded-full bg-ink-3" />
-              Saving
+              {t("saving")}
             </>
           ) : status === "saved" ? (
             <>
               <Check className="size-3.5" strokeWidth={2.5} aria-hidden />
-              Saved
+              {t("saved")}
             </>
           ) : (
             <>
@@ -498,7 +426,7 @@ function SaveIndicator({ status }: { status: ReturnType<typeof useAutosave>["sta
               ) : (
                 <AlertCircle className="size-3.5" strokeWidth={2} aria-hidden />
               )}
-              Not saved
+              {t("notSaved")}
             </>
           )}
         </motion.span>

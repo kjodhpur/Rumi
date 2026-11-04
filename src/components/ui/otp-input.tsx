@@ -5,6 +5,8 @@ import { motion, useAnimationControls } from "motion/react";
 import { cn } from "@/lib/utils";
 
 interface OtpInputProps {
+  /** Accessible name; defaults to "6-digit code". */
+  label?: string;
   value: string;
   onChange: (value: string) => void;
   onComplete?: (value: string) => void;
@@ -27,6 +29,7 @@ export function OtpInput({
   disabled,
   invalid,
   autoFocus,
+  label,
   ...aria
 }: OtpInputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -61,12 +64,16 @@ export function OtpInput({
         maxLength={length}
         disabled={disabled}
         autoFocus={autoFocus}
-        aria-label={`${length}-digit code`}
+        aria-label={label ?? `${length}-digit code`}
         aria-invalid={invalid || undefined}
         className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0 disabled:cursor-not-allowed"
         {...aria}
       />
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }} aria-hidden>
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${length}, minmax(0, 1fr))` }}
+        aria-hidden
+      >
         {Array.from({ length }).map((_, i) => {
           const char = value[i] ?? "";
           const isActive = focused && i === activeIndex && value.length < length;
@@ -75,7 +82,7 @@ export function OtpInput({
               key={i}
               className={cn(
                 "relative flex h-14 items-center justify-center rounded-md bg-surface text-display-sm font-semibold text-ink tabular shadow-xs",
-                "ring-1 ring-line-strong ring-inset transition-shadow duration-150",
+                "ring-1 ring-line-strong transition-shadow duration-150 ring-inset",
                 isActive && "ring-2 ring-focus",
                 invalid && "ring-2 ring-danger",
                 disabled && "opacity-60",

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Check, Music2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { showSpotifyStatus } from "@/components/settings/spotify-status";
+import { useT } from "@/components/providers/i18n";
 
 export function MusicStep({
   connected,
@@ -16,6 +17,7 @@ export function MusicStep({
   artists: string[];
   returnTo: string;
 }) {
+  const t = useT("onboarding");
   React.useEffect(() => {
     const url = new URL(window.location.href);
     if (showSpotifyStatus(url.searchParams.get("spotify"))) {
@@ -32,13 +34,17 @@ export function MusicStep({
             <Check className="size-5" strokeWidth={2.25} aria-hidden />
           </span>
           <div>
-            <p className="text-body-sm font-semibold text-ink">Spotify connected</p>
-            {displayName ? <p className="text-caption text-ink-3">as {displayName}</p> : null}
+            <p className="text-body-sm font-semibold text-ink">{t("music.connected")}</p>
+            {displayName ? (
+              <p className="text-caption text-ink-3">{t("music.as", { name: displayName })}</p>
+            ) : null}
           </div>
         </div>
         {artists.length > 0 ? (
           <div>
-            <p className="mb-2 text-caption font-medium text-ink-3 uppercase">Your top artists</p>
+            <p className="mb-2 text-caption font-medium text-ink-3 uppercase">
+              {t("music.topArtists")}
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {artists.slice(0, 10).map((name) => (
                 <span
@@ -61,19 +67,19 @@ export function MusicStep({
         <Music2 className="size-6" strokeWidth={1.75} aria-hidden />
       </span>
       <div>
-        <p className="text-title font-semibold text-ink">See who shares your taste</p>
+        <p className="text-title font-semibold text-ink">{t("music.title")}</p>
         <ul className="mt-3 flex flex-col gap-2 text-body-sm text-ink-2">
-          <li>• Your top artists and genres show up on your profile.</li>
-          <li>• Shared artists appear on your matches and nudge your score.</li>
-          <li>• Read-only. We never post, and you can disconnect anytime.</li>
+          <li>• {t("music.b1")}</li>
+          <li>• {t("music.b2")}</li>
+          <li>• {t("music.b3")}</li>
         </ul>
       </div>
       <Button asChild size="lg" className="w-full sm:w-auto">
         <a href={`/api/spotify/connect?returnTo=${encodeURIComponent(returnTo)}`}>
-          Connect Spotify
+          {t("music.connect")}
         </a>
       </Button>
-      <p className="text-caption text-ink-3">Totally optional — Rumi works great without it.</p>
+      <p className="text-caption text-ink-3">{t("music.optional")}</p>
     </div>
   );
 }

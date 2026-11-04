@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Building2, Check, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { setConsent } from "@/app/actions/consent";
-import { CONSENT_COPY } from "@/lib/consent";
+import { useT } from "@/components/providers/i18n";
 
 /** Optional final step: share Rumi results with the school's housing office. Off by default. */
 export function SharingStep({
@@ -15,6 +15,8 @@ export function SharingStep({
   office: string;
   initialGranted: boolean;
 }) {
+  const t = useT("onboarding");
+  const tc = useT("consent");
   const [granted, setGranted] = React.useState(initialGranted);
   const [pending, setPending] = React.useState(false);
   const id = React.useId();
@@ -38,9 +40,9 @@ export function SharingStep({
         </span>
         <div className="min-w-0 flex-1">
           <label htmlFor={id} className="text-body-sm font-semibold text-ink">
-            Share my Rumi results with {office}
+            {t("sharing.label", { office })}
           </label>
-          <p className="mt-1 text-body-sm text-ink-2">{CONSENT_COPY.share_with_housing.shares}</p>
+          <p className="mt-1 text-body-sm text-ink-2">{tc("share_with_housing.shares")}</p>
         </div>
         <Switch
           id={id}
@@ -54,15 +56,15 @@ export function SharingStep({
       <ul id={`${id}-never`} className="flex flex-col gap-2.5 px-1 text-body-sm text-ink-2">
         <li className="flex gap-2.5">
           <Check className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={2.25} aria-hidden />
-          Staff see totals that include you either way. This only adds your own results.
+          {t("sharing.totals")}
         </li>
         <li className="flex gap-2.5">
           <X className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={2.25} aria-hidden />
-          Never your messages, photos, email or exact answers.
+          {t("sharing.never")}
         </li>
         <li className="flex gap-2.5">
           <X className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={2.25} aria-hidden />
-          Turning it off removes your results from staff views right away.
+          {t("sharing.off")}
         </li>
       </ul>
     </div>

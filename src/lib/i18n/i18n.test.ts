@@ -4,7 +4,7 @@ import { es } from "./messages/es";
 import { zh } from "./messages/zh";
 import { hi } from "./messages/hi";
 import { leafPaths, placeholders, translate, valueAt } from "./core";
-import { localizeError } from "./errors";
+import { localizeError } from "./errors-server";
 import { SELECTABLE_LOCALES } from "./config";
 
 describe("dictionaries (missing-key check)", () => {

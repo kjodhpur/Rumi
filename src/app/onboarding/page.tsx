@@ -3,23 +3,13 @@ import { redirect } from "next/navigation";
 import { getUser } from "@/lib/supabase/server";
 import { OnboardingWizard } from "@/components/onboarding/wizard";
 import { loadProfileDrafts } from "@/lib/onboarding-data";
+import { WithI18n } from "@/components/providers/with-i18n";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Set up your profile" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("onboarding"))("title") };
+}
 export const dynamic = "force-dynamic";
-
-const STEP_IDS = [
-  "basics",
-  "photos",
-  "about",
-  "housing",
-  "areas",
-  "lifestyle",
-  "habits",
-  "priorities",
-  "dealbreakers",
-  "music",
-  "sharing",
-];
 
 export default async function OnboardingPage({
   searchParams,
@@ -37,10 +27,15 @@ export default async function OnboardingPage({
   if (profile.sso_non_student) redirect("/not-a-student");
   if (profile.onboarding_completed_at) redirect("/matches");
 
-  const requested = STEP_IDS.indexOf(searchParams.step ?? "");
   return (
-    <OnboardingWizard
-      data={{ ...data, initialStep: requested >= 0 ? requested : profile.onboarding_step }}
-    />
+    <WithI18n>
+      <OnboardingWizard
+        data={{
+          ...data,
+          initialStep: profile.onboarding_step,
+          initialStepId: searchParams.step?.slice(0, 40) ?? null,
+        }}
+      />
+    </WithI18n>
   );
 }

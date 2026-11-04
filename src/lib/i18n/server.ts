@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isSelectableLocale, type Locale } from "./config";
 import { createTranslator, type Namespace } from "./core";
 import { messagesFor, en } from "./messages";
+import { localizeOptions } from "./options";
 
 /**
  * The request's language: a signed-in student's saved choice, else the language cookie
@@ -57,4 +58,8 @@ export async function localesOf(userIds: string[]): Promise<Map<string, Locale>>
       if (isSelectableLocale(row.locale)) out.set(row.user_id, row.locale);
   }
   return out;
+}
+
+export async function getOptions() {
+  return localizeOptions(await getT("options"));
 }

@@ -3,32 +3,34 @@
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   DEFAULT_IMPORTANCE,
-  FACTOR_LABELS,
-  IMPORTANCE,
   WEIGHTED_FACTORS,
   type FactorKey,
   type Importance,
 } from "@/lib/options";
+import { useOptions, useT } from "@/components/providers/i18n";
 import type { StepProps } from "../types";
-
-const OPTIONS = IMPORTANCE.map((level) => ({
-  value: String(level.value) as "0" | "1" | "2" | "3",
-  label: level.short,
-  ariaLabel: level.label,
-}));
 
 export function PrioritiesStep({
   prefs,
   updatePrefs,
   musicEnabled,
 }: StepProps & { musicEnabled: boolean }) {
+  const t = useT("onboarding");
+  const { FACTOR_LABELS, IMPORTANCE } = useOptions();
+  const OPTIONS = IMPORTANCE.map((level) => ({
+    value: String(level.value) as "0" | "1" | "2" | "3",
+    label: level.short,
+    ariaLabel: level.label,
+  }));
   const factors = WEIGHTED_FACTORS.filter((f) => f !== "music" || musicEnabled);
   const valueOf = (key: FactorKey): Importance => prefs.weights[key] ?? DEFAULT_IMPORTANCE[key];
   return (
     <div className="flex flex-col">
       <p className="mb-4 text-body-sm text-ink-3">
-        <span className="font-medium text-ink-2">Skip</span> ignores it ·{" "}
-        <span className="font-medium text-ink-2">Must</span> counts six times as much as Nice.
+        <span className="font-medium text-ink-2">{t("priorities.skip")}</span>{" "}
+        {t("priorities.ignores")}{" "}
+        <span className="font-medium text-ink-2">{t("priorities.must")}</span>{" "}
+        {t("priorities.counts")}
       </p>
       <ul className="divide-y divide-line rounded-lg bg-surface ring-1 ring-line">
         {factors.map((key) => (
@@ -39,7 +41,7 @@ export function PrioritiesStep({
             <span className="text-body-sm font-medium text-ink">{FACTOR_LABELS[key]}</span>
             <SegmentedControl
               size="sm"
-              aria-label={`How much ${FACTOR_LABELS[key].toLowerCase()} matters`}
+              aria-label={t("priorities.howMuch", { factor: FACTOR_LABELS[key].toLowerCase() })}
               className="sm:w-[300px]"
               value={String(valueOf(key)) as "0" | "1" | "2" | "3"}
               onValueChange={(v) =>

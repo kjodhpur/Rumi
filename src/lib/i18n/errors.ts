@@ -1,7 +1,6 @@
 import { LOCALE_COOKIE, isSelectableLocale, type Locale } from "./config";
 import { interpolate } from "./core";
 import { en } from "./messages/en";
-import { messagesFor } from "./messages";
 
 type Entry = { key: keyof typeof en.errors; pattern: RegExp | null; names: string[] };
 
@@ -17,10 +16,8 @@ const entries: Entry[] = (Object.keys(en.errors) as (keyof typeof en.errors)[]).
 });
 const exact = new Map(entries.filter((e) => !e.pattern).map((e) => [en.errors[e.key], e.key]));
 
-/** The same message in `locale`, when it's one we know; otherwise unchanged. */
-export function localizeError(message: string, locale: Locale): string {
-  if (locale === "en") return message;
-  const messages = messagesFor(locale).errors;
+/** The same message from `messages` (a locale's errors), when it's one we know. */
+export function localizeErrorWith(message: string, messages: typeof en.errors): string {
   const key = exact.get(message);
   if (key) return messages[key];
   for (const e of entries) {

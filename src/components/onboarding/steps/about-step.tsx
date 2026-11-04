@@ -3,15 +3,12 @@
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import type { StepProps } from "../types";
+import { useT } from "@/components/providers/i18n";
 
-const PROMPTS = [
-  "A typical weeknight for me is…",
-  "On weekends you'll find me…",
-  "The roommate I get along with best…",
-  "Something I'm weirdly particular about…",
-];
+const PROMPTS = ["p1", "p2", "p3", "p4"] as const;
 
 export function AboutStep({ profile, updateProfile, errors }: StepProps) {
+  const t = useT("onboarding");
   const length = profile.bio.length;
   const addPrompt = (prompt: string) => {
     const spacer = profile.bio && !profile.bio.endsWith("\n") ? "\n\n" : "";
@@ -20,7 +17,7 @@ export function AboutStep({ profile, updateProfile, errors }: StepProps) {
   return (
     <div className="flex flex-col gap-6">
       <Field
-        label="Your bio"
+        label={t("about.bio")}
         error={errors.bio}
         aside={<span className={length > 480 ? "text-warning" : undefined}>{length}/500</span>}
       >
@@ -29,7 +26,7 @@ export function AboutStep({ profile, updateProfile, errors }: StepProps) {
             id={id}
             rows={6}
             maxLength={500}
-            placeholder="Nursing junior, usually up early for clinicals. I cook a lot and I'm happy to share. Looking for someone chill who keeps common areas tidy…"
+            placeholder={t("about.placeholder")}
             value={profile.bio}
             onChange={(e) => updateProfile({ bio: e.target.value })}
             aria-invalid={invalid || undefined}
@@ -38,9 +35,9 @@ export function AboutStep({ profile, updateProfile, errors }: StepProps) {
         )}
       </Field>
       <div>
-        <p className="mb-3 text-body-sm text-ink-3">Stuck? Start with a prompt:</p>
+        <p className="mb-3 text-body-sm text-ink-3">{t("about.stuck")}</p>
         <div className="flex flex-wrap gap-2">
-          {PROMPTS.map((prompt) => (
+          {PROMPTS.map((key) => t(`about.prompts.${key}`)).map((prompt) => (
             <button
               key={prompt}
               type="button"

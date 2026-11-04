@@ -6,10 +6,14 @@ import { ChoiceChips } from "@/components/ui/choice";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { saveScenarioAnswer } from "@/app/actions/scenarios";
+import { useT } from "@/components/providers/i18n";
+import { localizeScenario } from "@/lib/i18n/scenarios";
 
 export interface ScenarioQuestionView {
   key: string;
   stem: string;
+  /** One of Rumi's default questions (translated); school-added ones show as written. */
+  builtIn?: boolean;
   /** Answered at an older version: shown as unanswered until answered again. */
   outdated: boolean;
   choices: { key: string; label: string }[];
@@ -53,29 +57,29 @@ export function ScenarioQuestions({
     }
   }
 
+  const t = useT("matching");
+  const ts = useT("scenarios");
+  const shown = React.useMemo(() => questions.map((q) => localizeScenario(q, ts)), [questions, ts]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="rounded-lg bg-surface p-4 ring-1 ring-line">
         <div className="flex items-center justify-between text-body-sm">
-          <span className="font-medium text-ink">Your answers</span>
+          <span className="font-medium text-ink">{t("yourAnswers")}</span>
           <span className="text-ink-2 tabular-nums" aria-live="polite">
-            {answered} of {questions.length}
+            {t("answered", { answered, total: questions.length })}
           </span>
         </div>
         <ProgressBar
           value={questions.length ? answered / questions.length : 0}
           className="mt-3"
-          label="Scenarios answered"
+          label={t("progress")}
         />
-        <p className="mt-2 text-caption text-ink-3">
-          {required
-            ? "Your housing office asks everyone these. You can change an answer anytime in Settings."
-            : "Optional. Skip any you like; you can change or clear an answer anytime."}
-        </p>
+        <p className="mt-2 text-caption text-ink-3">{required ? t("required") : t("optional")}</p>
       </div>
 
       <ol className="flex flex-col gap-4">
-        {questions.map((q, i) => (
+        {shown.map((q, i) => (
           <li key={q.key} className="rounded-lg bg-surface p-5 ring-1 ring-line">
             <div className="flex items-start justify-between gap-3">
               <h2 id={`scenario-${q.key}`} className="text-body font-medium text-ink">
@@ -89,14 +93,12 @@ export function ScenarioQuestions({
                   disabled={saving === q.key}
                   onClick={() => void choose(q.key, null)}
                 >
-                  Clear
+                  {t("clear")}
                 </Button>
               ) : null}
             </div>
             {q.outdated && !answers[q.key] ? (
-              <p className="mt-1 text-caption text-warning">
-                This question changed. Answer it again so it counts.
-              </p>
+              <p className="mt-1 text-caption text-warning">{t("changed")}</p>
             ) : null}
             <ChoiceChips
               className="mt-4"
