@@ -27,6 +27,7 @@ export function SiteFooter() {
       links: [
         { href: "/privacy", label: "Privacy" },
         { href: "/terms", label: "Terms" },
+        { href: "/security", label: "Security" },
         { href: `mailto:${publicEnv.supportEmail}`, label: "Contact" },
       ],
     },
@@ -43,11 +44,16 @@ export function SiteFooter() {
         <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-3 sm:gap-16">
           {columns.map((column) => (
             <div key={column.title}>
-              <h2 className="text-caption font-semibold tracking-wide text-ink-3 uppercase">{column.title}</h2>
+              <h2 className="text-caption font-semibold tracking-wide text-ink-3 uppercase">
+                {column.title}
+              </h2>
               <ul className="mt-4 flex flex-col gap-2.5">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link href={link.href} className="text-body-sm text-ink-2 transition-colors hover:text-ink">
+                    <Link
+                      href={link.href}
+                      className="text-body-sm text-ink-2 transition-colors hover:text-ink"
+                    >
                       {link.label}
                     </Link>
                   </li>

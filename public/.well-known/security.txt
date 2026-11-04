@@ -1,0 +1,4 @@
+Contact: mailto:support@rumimatch.app
+Policy: https://rumimatch.app/security
+Preferred-Languages: en
+Expires: 2027-11-01T00:00:00.000Z

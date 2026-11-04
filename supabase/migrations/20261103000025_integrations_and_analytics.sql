@@ -374,6 +374,11 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- staff_segment_base checks this too; checked here first so the guard is visible.
+  if auth.role() is distinct from 'service_role'
+     and not public.has_role(p_school, array['housing_admin', 'housing_staff', 'analyst', 'ra']) then
+    raise exception 'not_allowed';
+  end if;
   if p_dimension not in ('class_year', 'academic_college', 'residential_college', 'llc', 'campus',
                          'gender_inclusive', 'housing_type', 'track', 'pre_arrival') then
     raise exception 'invalid_dimension';

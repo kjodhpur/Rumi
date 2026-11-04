@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { recomputeMatchesFor } from "@/lib/matching/recompute";
 import { runInBackground } from "@/lib/background";
 import { fail, ok, type ActionResult } from "@/lib/action";
+import { purgeAccount } from "@/lib/account/delete";
 
 const privacySchema = z.object({ is_hidden: z.boolean(), verified_only: z.boolean() }).partial();
 
@@ -52,53 +53,8 @@ export async function deleteAccount(confirmation: string): Promise<ActionResult>
   if (!user) return fail("Please sign in again.");
   if (confirmation.trim().toUpperCase() !== "DELETE") return fail("Type DELETE to confirm.");
 
-  const admin = createAdminClient();
   try {
-    const { data: files } = await admin.storage.from("photos").list(user.id, { limit: 100 });
-    if (files?.length)
-      await admin.storage.from("photos").remove(files.map((f) => `${user.id}/${f.name}`));
-
-    const { data: memberships } = await admin
-      .from("conversation_members")
-      .select("conversation_id, conversations!inner(kind)")
-      .eq("user_id", user.id);
-    const direct = (memberships ?? [])
-      .filter((m) => (m.conversations as unknown as { kind: string }).kind === "direct")
-      .map((m) => m.conversation_id);
-    if (direct.length) await admin.from("conversations").delete().in("id", direct);
-
-    // Hand off any group they own before the cascade removes them.
-    const { data: group } = await admin
-      .from("group_members")
-      .select("group_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (group) {
-      const { data: next } = await admin
-        .from("group_members")
-        .select("user_id")
-        .eq("group_id", group.group_id)
-        .neq("user_id", user.id)
-        .order("joined_at")
-        .limit(1)
-        .maybeSingle();
-      if (next) {
-        await admin
-          .from("groups")
-          .update({ owner_id: next.user_id, status: "open" })
-          .eq("id", group.group_id);
-        await admin
-          .from("group_members")
-          .update({ role: "owner" })
-          .eq("group_id", group.group_id)
-          .eq("user_id", next.user_id);
-      } else {
-        await admin.from("groups").delete().eq("id", group.group_id);
-      }
-    }
-
-    const { error } = await admin.auth.admin.deleteUser(user.id);
-    if (error) throw error;
+    await purgeAccount(user.id);
   } catch (error) {
     console.error("[account] delete failed", error);
     return fail("We couldn't delete your account. Please try again or contact support.");

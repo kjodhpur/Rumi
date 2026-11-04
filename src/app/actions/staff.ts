@@ -15,6 +15,8 @@ import { cleanName, cleanText } from "@/lib/sanitize";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email/send";
 import { staffInviteEmail } from "@/lib/email/templates";
+import { findSchoolStudent } from "@/lib/staff/data-requests";
+import { purgeAccount } from "@/lib/account/delete";
 import { fail, ok, type ActionResult } from "@/lib/action";
 
 const schoolId = z.string().regex(/^[a-z0-9-]{2,32}$/);
@@ -445,15 +447,13 @@ export async function updateRetention(raw: z.input<typeof retentionInput>): Prom
   if (!actorId) return fail("Only housing admins can change retention.");
   const { min, max, label } = RETENTION_COPY[entity];
   if (days < min || days > max) return fail(`${label}: pick between ${min} and ${max} days.`);
-  const { error } = await createAdminClient()
-    .from("retention_policies")
-    .upsert({
-      school_id: school,
-      entity,
-      days,
-      updated_by: actorId,
-      updated_at: new Date().toISOString(),
-    });
+  const { error } = await createAdminClient().from("retention_policies").upsert({
+    school_id: school,
+    entity,
+    days,
+    updated_by: actorId,
+    updated_at: new Date().toISOString(),
+  });
   if (error) return fail("Couldn't save that.");
   await logAudit({
     actorId,
@@ -464,5 +464,74 @@ export async function updateRetention(raw: z.input<typeof retentionInput>): Prom
     meta: { days },
   });
   revalidateStaff();
+  return ok();
+}
+
+const lookupInput = z.object({
+  schoolId: z.string().regex(/^[a-z0-9-]{2,40}$/),
+  email: z.string().max(254),
+});
+
+/** Finds a student for a records request; shows only their name and whether they share with housing. */
+export async function lookupDataRequestStudent(
+  raw: z.input<typeof lookupInput>,
+): Promise<ActionResult<{ name: string; consented: boolean }>> {
+  const parsed = lookupInput.safeParse(raw);
+  if (!parsed.success) return fail("Enter the student's email.");
+  const actorId = await assertRole(parsed.data.schoolId, "managePrivacy");
+  if (!actorId) return fail("Only housing admins handle records requests.");
+  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many lookups. Try again later.");
+  const student = await findSchoolStudent(parsed.data.schoolId, parsed.data.email);
+  if (!student) return fail("No student at your school uses that email.");
+  await logAudit({
+    actorId,
+    schoolId: parsed.data.schoolId,
+    action: "student_record_looked_up",
+    entity: "profile",
+    entityId: student.id,
+  });
+  return ok({ name: student.name, consented: student.consented });
+}
+
+const deleteInput = z.object({
+  schoolId: z.string().regex(/^[a-z0-9-]{2,40}$/),
+  email: z.string().max(254),
+  reason: z
+    .string()
+    .transform((v) => cleanText(v))
+    .pipe(z.string().min(15, "Describe the request in a sentence.").max(500)),
+  confirmation: z.string(),
+});
+
+/** Deletes a student's account on request (0.2). Audited before deletion; can't be undone. */
+export async function deleteStudentOnRequest(
+  raw: z.input<typeof deleteInput>,
+): Promise<ActionResult> {
+  const parsed = deleteInput.safeParse(raw);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the request.");
+  if (parsed.data.confirmation.trim().toUpperCase() !== "DELETE")
+    return fail("Type DELETE to confirm.");
+  const actorId = await assertRole(parsed.data.schoolId, "managePrivacy");
+  if (!actorId) return fail("Only housing admins handle records requests.");
+  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again later.");
+  const student = await findSchoolStudent(parsed.data.schoolId, parsed.data.email);
+  if (!student) return fail("No student at your school uses that email.");
+  await logAudit({
+    actorId,
+    schoolId: parsed.data.schoolId,
+    action: "student_deleted_on_request",
+    entity: "profile",
+    entityId: student.id,
+    meta: { reason: parsed.data.reason },
+  });
+  try {
+    await purgeAccount(student.id);
+  } catch (error) {
+    console.error("[staff] delete on request failed", error);
+    return fail("Couldn't delete the account. Try again or contact Rumi.");
+  }
+  revalidatePath("/staff", "layout");
   return ok();
 }
