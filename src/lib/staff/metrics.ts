@@ -17,7 +17,7 @@ export interface OverviewKpis {
 }
 
 export type FunnelStage =
-  "signed_up" | "verified" | "onboarded" | "intro" | "intro_accepted" | "matched";
+  "signed_up" | "verified" | "onboarded" | "intro" | "intro_accepted" | "matched" | "exported";
 
 export interface Overview {
   kpis: OverviewKpis;
@@ -25,6 +25,8 @@ export interface Overview {
   weekly: { week: string; signups: number; onboarded: number; matched: number }[];
   distribution: { bin: ScoreBin; n: number }[];
   segments: { dimension: "class_year" | "housing_type"; value: string; bin: ScoreBin; n: number }[];
+  /** Sign-ups by entry link (3.3); n is null when 1–4. */
+  sources?: { source: string; n: number | null }[];
 }
 
 export const SCORE_BINS = ["none", "0-49", "50-59", "60-69", "70-79", "80-89", "90-100"] as const;
@@ -47,6 +49,7 @@ export const FUNNEL_LABELS: Record<FunnelStage, string> = {
   intro: "Sent or got an intro",
   intro_accepted: "Had an intro accepted",
   matched: "In a pair or group",
+  exported: "Exported to StarRez",
 };
 
 /** Any group smaller than this is shown as "<5" so no individual can be singled out. */

@@ -3,6 +3,7 @@ import { can, requireStaffPage } from "@/lib/staff/context";
 import { loadAudit, loadRetention, loadTeam } from "@/lib/staff/team";
 import { loadActiveTerm, loadOverview, nextDeadline } from "@/lib/staff/dashboard";
 import { StaffHome } from "@/components/staff/staff-home";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -16,13 +17,40 @@ export default async function StaffHomePage({
   const context = await requireStaffPage("home");
   const admin = can(context, "manageTeam");
   const weeks = WEEKS.includes(Number(searchParams.weeks)) ? Number(searchParams.weeks) : 16;
-  const [team, retention, audit, term, overview] = await Promise.all([
-    loadTeam(context.school.id),
-    admin ? loadRetention(context.school.id) : Promise.resolve(null),
-    can(context, "viewAudit") ? loadAudit(context.school.id) : Promise.resolve(null),
-    loadActiveTerm(context.school.id),
-    can(context, "viewDashboard") ? loadOverview(context.school.id, weeks) : Promise.resolve(null),
-  ]);
+  const [team, retention, audit, term, overview, { data: pilotRow }, { data: colleges }] =
+    await Promise.all([
+      loadTeam(context.school.id),
+      admin ? loadRetention(context.school.id) : Promise.resolve(null),
+      can(context, "viewAudit") ? loadAudit(context.school.id) : Promise.resolve(null),
+      loadActiveTerm(context.school.id),
+      can(context, "viewDashboard")
+        ? loadOverview(context.school.id, weeks)
+        : Promise.resolve(null),
+      createAdminClient()
+        .from("pilot_configs")
+        .select("scope, starts_on, ends_on")
+        .eq("school_id", context.school.id)
+        .maybeSingle(),
+      createAdminClient()
+        .from("school_options")
+        .select("value, label")
+        .eq("school_id", context.school.id)
+        .eq("kind", "residential_college"),
+    ]);
+  const today = new Date().toISOString().slice(0, 10);
+  const scopeList = pilotRow
+    ? ((pilotRow.scope as { residential_colleges?: string[] }).residential_colleges ?? [])
+    : [];
+  const pilot =
+    pilotRow && pilotRow.ends_on >= today
+      ? {
+          startsOn: pilotRow.starts_on,
+          endsOn: pilotRow.ends_on,
+          scope: scopeList.length
+            ? scopeList.map((v) => colleges?.find((c) => c.value === v)?.label ?? v).join(", ")
+            : "Everyone",
+        }
+      : null;
 
   return (
     <StaffHome
@@ -43,6 +71,7 @@ export default async function StaffHomePage({
         .filter((m) => !m.disabled)
         .map((m) => ({ id: m.id, name: m.name, role: m.role }))}
       recent={(audit?.rows ?? []).slice(0, 6)}
+      pilot={pilot}
     />
   );
 }

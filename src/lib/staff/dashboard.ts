@@ -42,15 +42,25 @@ export async function loadActiveTerm(schoolId: string): Promise<Term | null> {
 
 /** Role is enforced inside the SQL function (has_role), so this runs as the signed-in staff member. */
 export async function loadOverview(schoolId: string, weeks: number): Promise<Overview | null> {
-  const { data, error } = await createClient().rpc("staff_overview", {
-    p_school: schoolId,
-    p_weeks: weeks,
-  });
+  const supabase = createClient();
+  const [{ data, error }, exported, sources] = await Promise.all([
+    supabase.rpc("staff_overview", { p_school: schoolId, p_weeks: weeks }),
+    supabase.rpc("staff_exported_students", { p_school: schoolId }),
+    supabase.rpc("staff_signups_by_source", { p_school: schoolId }),
+  ]);
   if (error) {
     console.error("[staff] overview failed", error);
     return null;
   }
-  return data as unknown as Overview;
+  const overview = data as unknown as Overview;
+  // The last funnel stage: students in a pairing that has gone out in a StarRez export.
+  if (typeof exported.data === "number")
+    overview.funnel = [...overview.funnel, { stage: "exported", n: exported.data }];
+  overview.sources = (sources.data ?? []).map((r) => ({
+    source: r.source,
+    n: r.suppressed ? null : r.n,
+  }));
+  return overview;
 }
 
 export interface UnmatchedStudent {
