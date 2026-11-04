@@ -33,13 +33,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useProfileOverlay } from "@/components/profile/profile-overlay";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
-import { cancelGroupRequest, inviteToGroup, leaveGroup, respondToGroupRequest } from "@/app/actions/groups";
+import {
+  cancelGroupRequest,
+  inviteToGroup,
+  leaveGroup,
+  respondToGroupRequest,
+} from "@/app/actions/groups";
 import type { GroupCandidate, GroupDetail } from "@/lib/groups";
-import { CLASS_YEARS, labelOf } from "@/lib/options";
+import { labelOf } from "@/lib/options";
 import { cn, displayName, formatBudget } from "@/lib/utils";
 import { revealDelay, spring } from "@/lib/motion";
 import { useEntrance } from "@/hooks/use-entrance";
 import { moveInLabel } from "@/components/matches/card-meta";
+import { useIntlLocale, useOptions, useT } from "@/components/providers/i18n";
 
 export function GroupDetailView({
   userId,
@@ -52,6 +58,9 @@ export function GroupDetailView({
   agreementStatus: "draft" | "signed" | "reopened" | null;
 }) {
   const entrance = useEntrance(group.candidates.map((c) => c.id));
+  const t = useT("groups");
+  const intl = useIntlLocale();
+  const { CLASS_YEARS } = useOptions();
   const router = useRouter();
   const overlay = useProfileOverlay();
   const [inviting, setInviting] = React.useState<GroupCandidate | null>(null);
@@ -63,7 +72,9 @@ export function GroupDetailView({
     ? Math.round(group.pairs.reduce((sum, p) => sum + p.score, 0) / group.pairs.length)
     : null;
   // Every pairing, including ones with no score because a dealbreaker conflicts.
-  const memberPairs = group.members.flatMap((a, i) => group.members.slice(i + 1).map((b) => [a, b] as const));
+  const memberPairs = group.members.flatMap((a, i) =>
+    group.members.slice(i + 1).map((b) => [a, b] as const),
+  );
   const pairScore = (x: string, y: string) =>
     group.pairs.find((p) => (p.a === x && p.b === y) || (p.a === y && p.b === x))?.score ?? null;
 
@@ -76,7 +87,16 @@ export function GroupDetailView({
     };
     const channel = supabase
       .channel(`group:${group.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "group_requests", filter: `group_id=eq.${group.id}` }, refresh)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "group_requests",
+          filter: `group_id=eq.${group.id}`,
+        },
+        refresh,
+      )
       .subscribe();
     return () => {
       clearTimeout(timer);
@@ -93,7 +113,7 @@ export function GroupDetailView({
       return;
     }
     setLeaveOpen(false);
-    toast.success(`You left ${group.name}`);
+    toast.success(t("detail.left", { group: group.name }));
     router.replace("/groups");
     router.refresh();
   }
@@ -104,27 +124,31 @@ export function GroupDetailView({
         title={group.name}
         description={
           group.status === "full"
-            ? `Full · ${group.members.length} of ${group.targetSize} — time to find your place.`
-            : `${group.members.length} of ${group.targetSize} · ${open} ${open === 1 ? "spot" : "spots"} open`
+            ? t("detail.full", { members: group.members.length, size: group.targetSize })
+            : t("detail.open", {
+                members: group.members.length,
+                size: group.targetSize,
+                count: open,
+              })
         }
         actions={
           <>
             {group.conversationId ? (
               <Button asChild variant="secondary">
                 <Link href={`/messages/${group.conversationId}`}>
-                  <MessageCircle /> Group chat
+                  <MessageCircle /> {t("detail.chat")}
                 </Link>
               </Button>
             ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Group options">
+                <Button variant="ghost" size="icon" aria-label={t("detail.options")}>
                   <MoreHorizontal strokeWidth={1.75} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem destructive onSelect={() => setLeaveOpen(true)}>
-                  <LogOut /> Leave group
+                  <LogOut /> {t("detail.leave")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -135,14 +159,27 @@ export function GroupDetailView({
       {/* Members + fit */}
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line sm:p-6">
-          <h2 className="mb-5 text-caption font-semibold tracking-wide text-ink-3 uppercase">Members</h2>
+          <h2 className="mb-5 text-caption font-semibold tracking-wide text-ink-3 uppercase">
+            {t("detail.members")}
+          </h2>
           <ul className="grid grid-cols-2 gap-5 sm:grid-cols-4">
             {group.members.map((m) => (
               <li key={m.id} className="flex flex-col items-center text-center">
-                <Avatar src={m.avatarUrl} firstName={m.firstName} lastInitial={m.lastInitial} size={64} />
+                <Avatar
+                  src={m.avatarUrl}
+                  firstName={m.firstName}
+                  lastInitial={m.lastInitial}
+                  size={64}
+                />
                 <p className="mt-2.5 flex items-center gap-1 text-body-sm font-semibold text-ink">
-                  {m.id === userId ? "You" : displayName(m.firstName, m.lastInitial)}
-                  {m.role === "owner" ? <Crown className="size-3.5 text-warning" strokeWidth={2} aria-label="Group owner" /> : null}
+                  {m.id === userId ? t("detail.you") : displayName(m.firstName, m.lastInitial)}
+                  {m.role === "owner" ? (
+                    <Crown
+                      className="size-3.5 text-warning"
+                      strokeWidth={2}
+                      aria-label={t("detail.owner")}
+                    />
+                  ) : null}
                 </p>
                 <p className="mt-0.5 line-clamp-1 text-caption text-ink-3">
                   {[labelOf(CLASS_YEARS, m.classYear), m.major].filter(Boolean).join(" · ")}
@@ -154,7 +191,7 @@ export function GroupDetailView({
                 <span className="flex size-16 items-center justify-center rounded-full border-[1.5px] border-dashed border-line-strong text-ink-3">
                   <UserPlus className="size-5" strokeWidth={1.5} aria-hidden />
                 </span>
-                <p className="mt-2.5 text-body-sm text-ink-3">Open spot</p>
+                <p className="mt-2.5 text-body-sm text-ink-3">{t("detail.openSpot")}</p>
               </li>
             ))}
           </ul>
@@ -162,11 +199,13 @@ export function GroupDetailView({
 
         <div className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line sm:p-6">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-caption font-semibold tracking-wide text-ink-3 uppercase">How you all fit</h2>
+            <h2 className="text-caption font-semibold tracking-wide text-ink-3 uppercase">
+              {t("detail.howFit")}
+            </h2>
             {cohesion !== null ? <ScoreRing score={cohesion} size={44} /> : null}
           </div>
           {group.members.length < 2 ? (
-            <p className="text-body-sm text-ink-2">Invite someone and you&apos;ll see every pairing&apos;s compatibility here.</p>
+            <p className="text-body-sm text-ink-2">{t("detail.inviteSomeone")}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {memberPairs.map(([a, b]) => {
@@ -174,16 +213,29 @@ export function GroupDetailView({
                 return (
                   <li key={`${a.id}-${b.id}`} className="flex items-center gap-3">
                     <span className="flex -space-x-2">
-                      <Avatar src={a.avatarUrl} firstName={a.firstName} lastInitial={a.lastInitial} size={28} className="rounded-full ring-2 ring-surface" />
-                      <Avatar src={b.avatarUrl} firstName={b.firstName} lastInitial={b.lastInitial} size={28} className="rounded-full ring-2 ring-surface" />
+                      <Avatar
+                        src={a.avatarUrl}
+                        firstName={a.firstName}
+                        lastInitial={a.lastInitial}
+                        size={28}
+                        className="rounded-full ring-2 ring-surface"
+                      />
+                      <Avatar
+                        src={b.avatarUrl}
+                        firstName={b.firstName}
+                        lastInitial={b.lastInitial}
+                        size={28}
+                        className="rounded-full ring-2 ring-surface"
+                      />
                     </span>
                     <span className="flex-1 text-body-sm text-ink">
-                      {a.id === userId ? "You" : a.firstName} &amp; {b.id === userId ? "you" : b.firstName}
+                      {a.id === userId ? t("detail.you") : a.firstName} &amp;{" "}
+                      {b.id === userId ? t("detail.youLower") : b.firstName}
                     </span>
                     {score !== null ? (
                       <span className="text-body-sm font-semibold text-ink tabular">{score}%</span>
                     ) : (
-                      <span className="text-caption text-warning">Dealbreaker clash</span>
+                      <span className="text-caption text-warning">{t("detail.clash")}</span>
                     )}
                   </li>
                 );
@@ -197,19 +249,21 @@ export function GroupDetailView({
         <>
           <Link
             href={`/groups/${group.id}/agreement`}
-            className="mt-4 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+            className="mt-4 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line transition-colors outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
           >
             <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
               <FileSignature className="size-5" strokeWidth={1.75} aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-body font-semibold text-ink">Roommate agreement</span>
+              <span className="block text-body font-semibold text-ink">
+                {t("detail.agreement")}
+              </span>
               <span className="mt-0.5 block text-body-sm text-ink-2">
                 {agreementStatus === "signed"
-                  ? "Signed by everyone. Reopen it anytime things change."
+                  ? t("detail.agreementSigned")
                   : agreementStatus
-                    ? "In progress. Review each section and sign when you all agree."
-                    : "Agree on quiet hours, guests, chores and more. We've drafted it from your profiles."}
+                    ? t("detail.agreementInProgress")
+                    : t("detail.agreementNew")}
               </span>
             </span>
             <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
@@ -217,15 +271,15 @@ export function GroupDetailView({
 
           <Link
             href={`/groups/${group.id}/calendar`}
-            className="mt-3 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+            className="mt-3 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line transition-colors outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
           >
             <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
               <CalendarDays className="size-5 text-accent" strokeWidth={1.75} aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-body font-semibold text-ink">Room calendar & quiet hours</span>
+              <span className="block text-body font-semibold text-ink">{t("detail.calendar")}</span>
               <span className="mt-0.5 block text-body-sm text-ink-2">
-                Coordinate guest stays, overnight limits, exam quiet hours, and sync with your personal calendar.
+                {t("detail.calendarBody")}
               </span>
             </span>
             <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
@@ -233,16 +287,14 @@ export function GroupDetailView({
 
           <Link
             href={`/groups/${group.id}/home`}
-            className="mt-3 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
+            className="mt-3 flex items-center gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line transition-colors outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus sm:p-6"
           >
             <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
               <Sparkles className="size-5 text-accent" strokeWidth={1.75} aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-body font-semibold text-ink">Chores & expenses</span>
-              <span className="mt-0.5 block text-body-sm text-ink-2">
-                Rotating chore wheel and transparent, zero-sum shared room expenses.
-              </span>
+              <span className="block text-body font-semibold text-ink">{t("detail.home")}</span>
+              <span className="mt-0.5 block text-body-sm text-ink-2">{t("detail.homeBody")}</span>
             </span>
             <ChevronRight className="size-5 shrink-0 text-ink-3" strokeWidth={1.75} aria-hidden />
           </Link>
@@ -252,12 +304,12 @@ export function GroupDetailView({
       {group.status === "full" && group.conversationId ? (
         <section className="mt-4 flex flex-col gap-4 rounded-xl bg-ink p-6 text-ink-inverse sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="font-display text-display-sm">Your group is complete.</p>
-            <p className="mt-1 text-body-sm opacity-75">Compare listings, split a budget, and plan tours together in the group chat.</p>
+            <p className="font-display text-display-sm">{t("detail.complete")}</p>
+            <p className="mt-1 text-body-sm opacity-75">{t("detail.completeBody")}</p>
           </div>
           <Button asChild variant="secondary" className="shrink-0">
             <Link href={`/messages/${group.conversationId}`}>
-              <MessageCircle /> Open group chat
+              <MessageCircle /> {t("detail.openChat")}
             </Link>
           </Button>
         </section>
@@ -266,7 +318,9 @@ export function GroupDetailView({
       {/* Join requests */}
       {group.joinRequests.length > 0 ? (
         <section className="mt-10">
-          <h2 className="mb-3 text-caption font-semibold tracking-wide text-ink-3 uppercase">Want to join</h2>
+          <h2 className="mb-3 text-caption font-semibold tracking-wide text-ink-3 uppercase">
+            {t("detail.wantJoin")}
+          </h2>
           <ul className="flex flex-col gap-3">
             <AnimatePresence initial={false}>
               {group.joinRequests.map((r) => (
@@ -281,25 +335,32 @@ export function GroupDetailView({
       {group.status === "open" ? (
         <section className="mt-10">
           <div className="mb-4">
-            <h2 className="text-title font-semibold text-ink">Suggested for your group</h2>
-            <p className="text-body-sm text-ink-2">Ranked by how well they fit every member — not just you.</p>
+            <h2 className="text-title font-semibold text-ink">{t("detail.suggested")}</h2>
+            <p className="text-body-sm text-ink-2">{t("detail.suggestedBody")}</p>
           </div>
           {group.candidates.length === 0 ? (
             <EmptyState
               icon={<Users strokeWidth={1.5} />}
-              title="No one fits everyone yet"
-              description="Suggestions need to pass every member's dealbreakers. As more students join, they'll appear here."
+              title={t("detail.noOne")}
+              description={t("detail.noOneBody")}
               className="py-10"
             />
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
               {group.candidates.map((c, i) => (
-                <li key={c.id} style={revealDelay(i)} className={cn("flex flex-col rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line", entrance(c.id))}>
+                <li
+                  key={c.id}
+                  style={revealDelay(i)}
+                  className={cn(
+                    "flex flex-col rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line",
+                    entrance(c.id),
+                  )}
+                >
                   <div className="flex items-start gap-3">
                     <button
                       type="button"
                       className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      aria-label={`View ${c.firstName}'s profile`}
+                      aria-label={t("detail.viewProfile", { name: c.firstName })}
                       onClick={() =>
                         overlay?.open({
                           id: c.id,
@@ -311,7 +372,9 @@ export function GroupDetailView({
                           placeholder: c.placeholder,
                           photoCount: 1,
                           verified: true,
-                          score: c.memberScores.find((s) => s.memberId === userId)?.score ?? c.groupScore,
+                          score:
+                            c.memberScores.find((s) => s.memberId === userId)?.score ??
+                            c.groupScore,
                           reasons: [],
                           watchouts: [],
                           sharedArtists: [],
@@ -324,24 +387,41 @@ export function GroupDetailView({
                         })
                       }
                     >
-                      <Avatar src={c.avatarUrl} firstName={c.firstName} lastInitial={c.lastInitial} size={52} />
+                      <Avatar
+                        src={c.avatarUrl}
+                        firstName={c.firstName}
+                        lastInitial={c.lastInitial}
+                        size={52}
+                      />
                     </button>
                     <div className="min-w-0 flex-1">
-                      <p className="text-body font-semibold text-ink">{displayName(c.firstName, c.lastInitial)}</p>
-                      <p className="truncate text-body-sm text-ink-2">{[labelOf(CLASS_YEARS, c.classYear), c.major].filter(Boolean).join(" · ")}</p>
+                      <p className="text-body font-semibold text-ink">
+                        {displayName(c.firstName, c.lastInitial)}
+                      </p>
+                      <p className="truncate text-body-sm text-ink-2">
+                        {[labelOf(CLASS_YEARS, c.classYear), c.major].filter(Boolean).join(" · ")}
+                      </p>
                     </div>
                     <ScoreRing score={c.groupScore} size={44} />
                   </div>
                   <ul className="mt-3 flex flex-wrap gap-1.5">
                     {c.memberScores.map((s) => (
-                      <li key={s.memberId} className="rounded-full bg-surface-sunken px-2.5 py-1 text-caption text-ink-2">
-                        {s.memberId === userId ? "You" : memberById.get(s.memberId)?.firstName} · <span className="font-medium text-ink tabular">{s.score}%</span>
+                      <li
+                        key={s.memberId}
+                        className="rounded-full bg-surface-sunken px-2.5 py-1 text-caption text-ink-2"
+                      >
+                        {s.memberId === userId
+                          ? t("detail.you")
+                          : memberById.get(s.memberId)?.firstName}{" "}
+                        · <span className="font-medium text-ink tabular">{s.score}%</span>
                       </li>
                     ))}
                   </ul>
                   <p className="mt-3 text-caption text-ink-3">
                     {formatBudget(c.budgetMin, c.budgetMax)}
-                    {c.moveInDate ? ` · Moves ${moveInLabel(c.moveInDate)}` : ""}
+                    {c.moveInDate
+                      ? t("detail.moves", { date: moveInLabel(c.moveInDate, intl) ?? "" })
+                      : ""}
                   </p>
                   <Button
                     size="sm"
@@ -350,7 +430,15 @@ export function GroupDetailView({
                     disabled={Boolean(c.pendingKind)}
                     onClick={() => setInviting(c)}
                   >
-                    {c.pendingKind === "invite" ? "Invited" : c.pendingKind === "request" ? "Asked to join — see above" : (<><UserPlus /> Invite</>)}
+                    {c.pendingKind === "invite" ? (
+                      t("detail.invited")
+                    ) : c.pendingKind === "request" ? (
+                      t("detail.askedJoin")
+                    ) : (
+                      <>
+                        <UserPlus /> {t("detail.invite")}
+                      </>
+                    )}
                   </Button>
                 </li>
               ))}
@@ -361,7 +449,9 @@ export function GroupDetailView({
 
       {group.sentInvites.length > 0 ? (
         <section className="mt-10">
-          <h2 className="mb-3 text-caption font-semibold tracking-wide text-ink-3 uppercase">Invites sent</h2>
+          <h2 className="mb-3 text-caption font-semibold tracking-wide text-ink-3 uppercase">
+            {t("detail.invitesSent")}
+          </h2>
           <ul className="divide-y divide-line rounded-lg bg-surface ring-1 ring-line">
             {group.sentInvites.map((r) => (
               <SentInviteRow key={r.id} request={r} />
@@ -370,33 +460,45 @@ export function GroupDetailView({
         </section>
       ) : null}
 
-      <InviteSheet groupId={group.id} groupName={group.name} candidate={inviting} onClose={() => setInviting(null)} />
+      <InviteSheet
+        groupId={group.id}
+        groupName={group.name}
+        candidate={inviting}
+        onClose={() => setInviting(null)}
+      />
 
       <Sheet
         open={leaveOpen}
         onOpenChange={setLeaveOpen}
         size="sm"
-        title={`Leave ${group.name}?`}
-        description={
-          group.members.length === 1
-            ? "You're the only member, so the group and its chat will be deleted."
-            : "You'll leave the group chat. You can be invited back later."
-        }
+        title={t("detail.leaveTitle", { group: group.name })}
+        description={group.members.length === 1 ? t("detail.leaveOnly") : t("detail.leaveBody")}
         footer={
           <div className="flex gap-3">
-            <Button variant="secondary" size="lg" className="flex-1" onClick={() => setLeaveOpen(false)}>
-              Stay
+            <Button
+              variant="secondary"
+              size="lg"
+              className="flex-1"
+              onClick={() => setLeaveOpen(false)}
+            >
+              {t("detail.stay")}
             </Button>
-            <Button variant="danger" size="lg" className="flex-1" loading={leaving} onClick={() => void leave()}>
-              Leave group
+            <Button
+              variant="danger"
+              size="lg"
+              className="flex-1"
+              loading={leaving}
+              onClick={() => void leave()}
+            >
+              {t("detail.leave")}
             </Button>
           </div>
         }
       >
         <p className="text-body-sm text-ink-2">
           {group.ownerId === userId && group.members.length > 1
-            ? "Ownership passes to the longest-standing member."
-            : "Your matches and messages aren't affected."}
+            ? t("detail.ownership")
+            : t("detail.unaffected")}
         </p>
       </Sheet>
     </div>
@@ -405,6 +507,7 @@ export function GroupDetailView({
 
 function JoinRequestRow({ request }: { request: GroupDetail["joinRequests"][number] }) {
   const router = useRouter();
+  const t = useT("groups");
   const [pending, setPending] = React.useState<"accept" | "decline" | null>(null);
   async function respond(accept: boolean) {
     setPending(accept ? "accept" : "decline");
@@ -414,27 +517,62 @@ function JoinRequestRow({ request }: { request: GroupDetail["joinRequests"][numb
       toast.error(result.error);
       return;
     }
-    toast.success(accept ? `${request.person.firstName} joined the group` : "Request declined");
+    toast.success(
+      accept ? t("detail.joined", { name: request.person.firstName }) : t("detail.declined"),
+    );
     router.refresh();
   }
   const myScore = request.scores[0]?.score;
   return (
-    <motion.li layout="position" exit={{ opacity: 0, x: 40 }} transition={spring} className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line">
+    <motion.li
+      layout="position"
+      exit={{ opacity: 0, x: 40 }}
+      transition={spring}
+      className="rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line"
+    >
       <div className="flex items-center gap-3">
-        <Avatar src={request.person.avatarUrl} firstName={request.person.firstName} lastInitial={request.person.lastInitial} size={44} />
+        <Avatar
+          src={request.person.avatarUrl}
+          firstName={request.person.firstName}
+          lastInitial={request.person.lastInitial}
+          size={44}
+        />
         <div className="min-w-0 flex-1">
-          <p className="text-body-sm font-semibold text-ink">{displayName(request.person.firstName, request.person.lastInitial)}</p>
-          <RelativeTime iso={request.createdAt} prefix="Asked " className="block text-caption text-ink-3" />
+          <p className="text-body-sm font-semibold text-ink">
+            {displayName(request.person.firstName, request.person.lastInitial)}
+          </p>
+          <RelativeTime
+            iso={request.createdAt}
+            prefix={t("detail.askedAgo")}
+            className="block text-caption text-ink-3"
+          />
         </div>
         {typeof myScore === "number" ? <ScoreRing score={myScore} size={40} /> : null}
       </div>
-      {request.message ? <p className="mt-3 rounded-md bg-surface-sunken px-3 py-2.5 text-body-sm text-ink">{request.message}</p> : null}
+      {request.message ? (
+        <p className="mt-3 rounded-md bg-surface-sunken px-3 py-2.5 text-body-sm text-ink">
+          {request.message}
+        </p>
+      ) : null}
       <div className="mt-3 flex gap-2.5">
-        <Button variant="secondary" size="sm" className="flex-1" onClick={() => void respond(false)} loading={pending === "decline"} disabled={pending !== null}>
-          Decline
+        <Button
+          variant="secondary"
+          size="sm"
+          className="flex-1"
+          onClick={() => void respond(false)}
+          loading={pending === "decline"}
+          disabled={pending !== null}
+        >
+          {t("detail.decline")}
         </Button>
-        <Button size="sm" className="flex-[2]" onClick={() => void respond(true)} loading={pending === "accept"} disabled={pending !== null}>
-          Accept
+        <Button
+          size="sm"
+          className="flex-[2]"
+          onClick={() => void respond(true)}
+          loading={pending === "accept"}
+          disabled={pending !== null}
+        >
+          {t("detail.accept")}
         </Button>
       </div>
     </motion.li>
@@ -443,6 +581,7 @@ function JoinRequestRow({ request }: { request: GroupDetail["joinRequests"][numb
 
 function SentInviteRow({ request }: { request: GroupDetail["sentInvites"][number] }) {
   const router = useRouter();
+  const t = useT("groups");
   const [pending, setPending] = React.useState(false);
   async function cancel() {
     setPending(true);
@@ -456,13 +595,24 @@ function SentInviteRow({ request }: { request: GroupDetail["sentInvites"][number
   }
   return (
     <li className="flex items-center gap-3 p-3.5">
-      <Avatar src={request.person.avatarUrl} firstName={request.person.firstName} lastInitial={request.person.lastInitial} size={36} />
+      <Avatar
+        src={request.person.avatarUrl}
+        firstName={request.person.firstName}
+        lastInitial={request.person.lastInitial}
+        size={36}
+      />
       <div className="min-w-0 flex-1">
-        <p className="text-body-sm font-medium text-ink">{displayName(request.person.firstName, request.person.lastInitial)}</p>
-        <RelativeTime iso={request.createdAt} prefix="Invited " className="block text-caption text-ink-3" />
+        <p className="text-body-sm font-medium text-ink">
+          {displayName(request.person.firstName, request.person.lastInitial)}
+        </p>
+        <RelativeTime
+          iso={request.createdAt}
+          prefix={t("detail.invitedAgo")}
+          className="block text-caption text-ink-3"
+        />
       </div>
       <Button variant="ghost" size="sm" loading={pending} onClick={() => void cancel()}>
-        Cancel
+        {t("cancel")}
       </Button>
     </li>
   );
@@ -480,16 +630,17 @@ function InviteSheet({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const t = useT("groups");
   const [message, setMessage] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
 
   React.useEffect(() => {
     if (candidate) {
-      setMessage(`Hey ${candidate.firstName}! We're looking for one more for ${groupName} — you fit all of us really well.`);
+      setMessage(t("detail.inviteMessage", { name: candidate.firstName, group: groupName }));
       setSuccess(false);
     }
-  }, [candidate, groupName]);
+  }, [candidate, groupName, t]);
 
   async function send() {
     if (!candidate) return;
@@ -504,7 +655,7 @@ function InviteSheet({
     setTimeout(() => {
       onClose();
       router.refresh();
-      toast.success(`Invite sent to ${candidate.firstName}`);
+      toast.success(t("detail.inviteSent", { name: candidate.firstName }));
     }, 700);
   }
 
@@ -512,15 +663,30 @@ function InviteSheet({
     <Sheet
       open={Boolean(candidate)}
       onOpenChange={(o) => !o && onClose()}
-      title={candidate ? `Invite ${candidate.firstName}` : "Invite"}
-      description="They'll see everyone's compatibility before deciding."
+      title={
+        candidate ? t("detail.inviteTitle", { name: candidate.firstName }) : t("detail.invite")
+      }
+      description={t("detail.inviteDescription")}
       footer={
-        <Button size="lg" block loading={pending} success={success} successLabel="Invited" onClick={() => void send()}>
-          Send invite
+        <Button
+          size="lg"
+          block
+          loading={pending}
+          success={success}
+          successLabel={t("detail.invited")}
+          onClick={() => void send()}
+        >
+          {t("detail.sendInvite")}
         </Button>
       }
     >
-      <Textarea aria-label="Invite message" rows={3} maxLength={300} value={message} onChange={(e) => setMessage(e.target.value)} />
+      <Textarea
+        aria-label={t("detail.inviteAria")}
+        rows={3}
+        maxLength={300}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
     </Sheet>
   );
 }

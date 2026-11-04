@@ -20,6 +20,8 @@ import { privacy } from "./privacy";
 import { settingsPages } from "./settingsPages";
 import { safety } from "./safety";
 import { share } from "./share";
+import { groups } from "./groups";
+import { agreement } from "./agreement";
 
 /** English: the source of truth. Every other complete locale must match these keys. */
 export const en = {
@@ -45,6 +47,8 @@ export const en = {
   settingsPages,
   safety,
   share,
+  groups,
+  agreement,
 };
 
 export type Messages = typeof en;

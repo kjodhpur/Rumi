@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildDraft, type MemberPrefs } from "./template";
+import { createTranslator } from "@/lib/i18n/core";
+import { messagesFor } from "@/lib/i18n/messages";
+import { en } from "@/lib/i18n/messages/en";
+import { sectionTitle } from "@/lib/i18n/agreements";
 import { afterAccept, afterEdit, membersMatch, readyToSign, signatureMatches } from "./rules";
 
 const member = (overrides: Partial<MemberPrefs>): MemberPrefs => ({
@@ -139,5 +143,35 @@ describe("school agreement templates", () => {
     expect(parseTemplate([{ key: "made_up", custom: false }])).toBeNull();
     expect(parseTemplate([{ key: "sleep" }, { key: "sleep" }])).toHaveLength(1);
     expect(defaultTemplate().every((t) => t.enabled && !t.custom)).toBe(true);
+  });
+});
+
+describe("drafts in another language", () => {
+  const es = createTranslator("es", messagesFor("es"), en, "agreement");
+  const enT = createTranslator("en", en, en, "agreement");
+
+  it("writes the whole draft in the starter's language", () => {
+    const draft = buildDraft(
+      [member({ sleepSchedule: 1, guests: 2 }), member({ id: "b", firstName: "Ben" })],
+      ["Ben se acuesta más tarde que tú"],
+      es,
+    );
+    expect(draft.find((s) => s.key === "sleep")!.title).toBe("Sueño y horas de silencio");
+    expect(draft.find((s) => s.key === "sleep")!.content).toMatch(/a las 10 p\. m\. entre semana/);
+    expect(draft.find((s) => s.key === "guests")!.content).toMatch(/como máximo 1 noche por semana/);
+    expect(draft.find((s) => s.key === "talk")!.content).toMatch(/^Nuestras compatibilidades/);
+  });
+
+  it("keeps a school's default titles in the draft's language", () => {
+    const draft = buildDraft([member({}), member({ id: "b" })], [], es);
+    const sections = applyTemplate(draft, defaultTemplate());
+    expect(sections[0]!.title).toBe("Sueño y horas de silencio");
+  });
+
+  it("shows default titles in the reader's language and custom ones as written", () => {
+    expect(sectionTitle("sleep", "Sleep and quiet hours", es)).toBe("Sueño y horas de silencio");
+    expect(sectionTitle("sleep", "Sueño y horas de silencio", enT)).toBe("Sleep and quiet hours");
+    expect(sectionTitle("sleep", "Lights out", es)).toBe("Lights out");
+    expect(sectionTitle("hall_rules", "Hall rules", es)).toBe("Hall rules");
   });
 });

@@ -5,8 +5,12 @@ import { getUser } from "@/lib/supabase/server";
 import { loadAgreement } from "@/lib/agreements/load";
 import { AgreementEditor } from "@/components/groups/agreement-editor";
 import { SwipeBack } from "@/components/motion/swipe-back";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Roommate agreement" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("agreement");
+  return { title: t("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function AgreementPage({ params }: { params: { id: string } }) {

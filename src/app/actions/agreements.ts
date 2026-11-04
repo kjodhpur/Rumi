@@ -16,6 +16,7 @@ import { cleanName, cleanText } from "@/lib/sanitize";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { fail, ok, type ActionResult } from "@/lib/action";
 import { dispatchMany } from "@/lib/notifications/dispatch";
+import { localesOf, tFor } from "@/lib/i18n/server";
 
 const uuid = z.string().uuid();
 
@@ -71,10 +72,16 @@ export async function startAgreement(groupId: string): Promise<ActionResult> {
       .in("candidate_id", memberIds),
   ]);
   const nameOf = new Map((profiles ?? []).map((p) => [p.id, p.first_name]));
+  // The draft is written in the starter's language. Watch-outs are stored in each viewer's
+  // language, so only those written in the same one go in; the starter's own always do.
+  const [{ locale, t }, locales] = await Promise.all([
+    tFor(userId, "agreement"),
+    localesOf(memberIds),
+  ]);
   const draft = buildDraft(
     (prefs ?? []).map((p) => ({
       id: p.user_id,
-      firstName: nameOf.get(p.user_id) || "A roommate",
+      firstName: nameOf.get(p.user_id) || t("roommate"),
       sleepSchedule: p.sleep_schedule,
       cleanliness: p.cleanliness,
       noise: p.noise,
@@ -83,13 +90,16 @@ export async function startAgreement(groupId: string): Promise<ActionResult> {
       drinking: p.drinking,
       pets: p.pets,
     })),
-    (scores ?? []).flatMap((s) =>
-      Array.isArray(s.watchouts)
-        ? (s.watchouts as { label?: string }[])
-            .map((w) => w.label)
-            .filter((l): l is string => Boolean(l))
-        : [],
-    ),
+    (scores ?? [])
+      .filter((s) => (locales.get(s.viewer_id) ?? "en") === locale)
+      .flatMap((s) =>
+        Array.isArray(s.watchouts)
+          ? (s.watchouts as { label?: string }[])
+              .map((w) => w.label)
+              .filter((l): l is string => Boolean(l))
+          : [],
+      ),
+    t,
   );
 
   // The school's current template decides sections, order, titles and its own notes.
@@ -387,14 +397,12 @@ export async function addAgreementComment(
   if (live.agreement.status === "signed")
     return fail("This agreement is signed. Reopen it to discuss changes.");
   // Through the member's own session: RLS checks membership and that the agreement is open.
-  const { error } = await createClient()
-    .from("agreement_comments")
-    .insert({
-      agreement_id: live.agreement.id,
-      section_key: parsed.data.key,
-      author_id: userId,
-      body,
-    });
+  const { error } = await createClient().from("agreement_comments").insert({
+    agreement_id: live.agreement.id,
+    section_key: parsed.data.key,
+    author_id: userId,
+    body,
+  });
   if (error) return fail("Couldn't post the comment.");
   const others = (await groupMembers(parsed.data.groupId)).filter((id) => id !== userId);
   const { data: me } = await createAdminClient()

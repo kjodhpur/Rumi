@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ScoreRing } from "@/components/ui/score-ring";
 import { requestToJoin } from "@/app/actions/groups";
 import { offerPush } from "@/lib/push/client";
+import { useT } from "@/components/providers/i18n";
 
 export interface GroupSuggestion {
   id: string;
@@ -17,21 +18,28 @@ export interface GroupSuggestion {
   score: number;
   minScore: number;
   pending: boolean;
-  members: { id: string; firstName: string; lastInitial: string; avatarUrl: string | null; score: number }[];
+  members: {
+    id: string;
+    firstName: string;
+    lastInitial: string;
+    avatarUrl: string | null;
+    score: number;
+  }[];
 }
 
 export function GroupsStrip({ groups }: { groups: GroupSuggestion[] }) {
+  const t = useT("groups");
   return (
     <section className="mb-10" aria-labelledby="groups-for-you">
       <div className="mb-4 flex items-end justify-between">
         <div>
           <h2 id="groups-for-you" className="text-title font-semibold text-ink">
-            Groups with a room for you
+            {t("strip.title")}
           </h2>
-          <p className="text-body-sm text-ink-2">Everyone in these groups is a mutual match with you.</p>
+          <p className="text-body-sm text-ink-2">{t("strip.body")}</p>
         </div>
       </div>
-      <ul className="scrollbar-none -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+      <ul className="-mx-4 scrollbar-none flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
         {groups.map((group) => (
           <GroupCard key={group.id} group={group} />
         ))}
@@ -41,6 +49,7 @@ export function GroupsStrip({ groups }: { groups: GroupSuggestion[] }) {
 }
 
 function GroupCard({ group }: { group: GroupSuggestion }) {
+  const t = useT("groups");
   const [pending, setPending] = React.useState(group.pending);
   const [loading, setLoading] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
@@ -58,8 +67,10 @@ function GroupCard({ group }: { group: GroupSuggestion }) {
       setPending(true);
       setSuccess(false);
     }, 900);
-    toast.success(`Request sent to ${group.name}`, { description: "Anyone in the group can accept." });
-    window.setTimeout(() => offerPush(`Want to know when ${group.name} answers?`), 2500);
+    toast.success(t("strip.requestSent", { group: group.name }), {
+      description: t("strip.requestSentHint"),
+    });
+    window.setTimeout(() => offerPush(t("strip.push", { group: group.name })), 2500);
   }
 
   const open = group.targetSize - group.memberCount;
@@ -70,20 +81,29 @@ function GroupCard({ group }: { group: GroupSuggestion }) {
           <p className="truncate text-body font-semibold text-ink">{group.name}</p>
           <p className="mt-0.5 flex items-center gap-1.5 text-caption text-ink-3">
             <Users className="size-3.5" strokeWidth={1.75} aria-hidden />
-            {group.memberCount} of {group.targetSize} · {open} {open === 1 ? "spot" : "spots"} open
+            {t("strip.spots", { members: group.memberCount, size: group.targetSize, count: open })}
           </p>
         </div>
         <ScoreRing score={group.score} size={40} />
       </div>
-      <ul className="mt-4 flex -space-x-2" aria-label="Members">
+      <ul className="mt-4 flex -space-x-2" aria-label={t("strip.members")}>
         {group.members.map((m) => (
           <li key={m.id} title={`${m.firstName} · ${m.score}%`}>
-            <Avatar src={m.avatarUrl} firstName={m.firstName} lastInitial={m.lastInitial} size={32} className="rounded-full ring-2 ring-surface" />
+            <Avatar
+              src={m.avatarUrl}
+              firstName={m.firstName}
+              lastInitial={m.lastInitial}
+              size={32}
+              className="rounded-full ring-2 ring-surface"
+            />
           </li>
         ))}
       </ul>
       <p className="mt-3 text-caption text-ink-2">
-        You fit {group.members.map((m) => m.firstName).join(", ")} — lowest pair {group.minScore}%.
+        {t("strip.fit", {
+          names: group.members.map((m) => m.firstName).join(", "),
+          min: group.minScore,
+        })}
       </p>
       <Button
         variant={pending ? "subtle" : "primary"}
@@ -93,10 +113,10 @@ function GroupCard({ group }: { group: GroupSuggestion }) {
         disabled={pending}
         loading={loading}
         success={success}
-        successLabel="Requested"
+        successLabel={t("strip.requested")}
         onClick={() => void request()}
       >
-        {pending ? "Request pending" : "Ask to join"}
+        {pending ? t("strip.pending") : t("strip.ask")}
       </Button>
     </li>
   );

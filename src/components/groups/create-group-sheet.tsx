@@ -9,9 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { createGroup } from "@/app/actions/groups";
+import { useT } from "@/components/providers/i18n";
 
-export function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CreateGroupSheet({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const router = useRouter();
+  const t = useT("groups");
   const [name, setName] = React.useState("");
   const [size, setSize] = React.useState<"2" | "3" | "4">("3");
   const [error, setError] = React.useState<string | null>(null);
@@ -27,7 +35,7 @@ export function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpen
       return;
     }
     onOpenChange(false);
-    toast.success(`${name.trim()} is ready`, { description: "Invite people who fit — we'll rank them for you." });
+    toast.success(t("create.ready", { name: name.trim() }), { description: t("create.readyHint") });
     router.push(`/groups/${result.data.id}`);
   }
 
@@ -35,22 +43,28 @@ export function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpen
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title="Start a group"
-      description="Team up for a bigger place. We'll rank people by how well they fit everyone in the group."
+      title={t("create.title")}
+      description={t("create.description")}
       footer={
-        <Button size="lg" block loading={pending} onClick={() => void submit()} disabled={!name.trim()}>
-          Create group
+        <Button
+          size="lg"
+          block
+          loading={pending}
+          onClick={() => void submit()}
+          disabled={!name.trim()}
+        >
+          {t("create.submit")}
         </Button>
       }
     >
       <div className="flex flex-col gap-6">
-        <Field label="Group name" error={error} hint="Something your future roommates will recognize.">
+        <Field label={t("create.name")} error={error} hint={t("create.nameHint")}>
           {({ id, describedBy, invalid }) => (
             <Input
               id={id}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Tempe 4BR crew"
+              placeholder={t("create.namePlaceholder")}
               maxLength={40}
               aria-invalid={invalid || undefined}
               aria-describedby={describedBy}
@@ -59,19 +73,19 @@ export function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpen
           )}
         </Field>
         <div className="flex flex-col gap-3">
-          <p className="text-body-sm font-medium text-ink">Total roommates, including you</p>
+          <p className="text-body-sm font-medium text-ink">{t("create.total")}</p>
           <SegmentedControl
-            aria-label="Group size"
+            aria-label={t("create.size")}
             value={size}
             onValueChange={setSize}
             options={[
-              { value: "2", label: "2 people" },
-              { value: "3", label: "3 people" },
-              { value: "4", label: "4 people" },
+              { value: "2", label: t("create.people", { n: 2 }) },
+              { value: "3", label: t("create.people", { n: 3 }) },
+              { value: "4", label: t("create.people", { n: 4 }) },
             ]}
           />
           <p className="text-body-sm text-ink-3">
-            {size === "2" ? "A two-bedroom." : size === "3" ? "A three-bedroom house or apartment." : "A four-bedroom — the best rent per person near campus."}
+            {size === "2" ? t("create.two") : size === "3" ? t("create.three") : t("create.four")}
           </p>
         </div>
       </div>

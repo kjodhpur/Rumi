@@ -16,7 +16,15 @@ export async function GroupsForYou() {
     score: g.group_score,
     minScore: g.min_score,
     pending: g.pending,
-    members: (g.members as { id: string; first_name: string; last_initial: string; avatar_path: string | null; score: number }[]).map((m) => ({
+    members: (
+      g.members as {
+        id: string;
+        first_name: string;
+        last_initial: string;
+        avatar_path: string | null;
+        score: number;
+      }[]
+    ).map((m) => ({
       id: m.id,
       firstName: m.first_name,
       lastInitial: m.last_initial,

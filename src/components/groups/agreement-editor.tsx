@@ -35,12 +35,16 @@ import type { AgreementSection, AgreementView } from "@/lib/agreements/load";
 import { spring } from "@/lib/motion";
 import { wordDiff } from "@/lib/agreements/diff";
 import { cn } from "@/lib/utils";
+import { useIntlLocale, useT } from "@/components/providers/i18n";
+import { sectionTitle } from "@/lib/i18n/agreements";
 
 export function AgreementEditor({ userId, view }: { userId: string; view: AgreementView }) {
   const router = useRouter();
+  const t = useT("agreement");
+  const intl = useIntlLocale();
   const [pending, setPending] = React.useState<string | null>(null);
   const agreement = view.agreement;
-  const nameOf = new Map(view.members.map((m) => [m.id, m.id === userId ? "You" : m.firstName]));
+  const nameOf = new Map(view.members.map((m) => [m.id, m.id === userId ? t("you") : m.firstName]));
   const others = view.members.filter((m) => m.id !== userId);
 
   async function run(
@@ -69,12 +73,10 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
       </Link>
 
       <header>
-        <h1 className="font-display text-display-md text-ink lg:text-display-lg">
-          Roommate agreement
-        </h1>
+        <h1 className="font-display text-display-md text-ink lg:text-display-lg">{t("title")}</h1>
         <p className="mt-1.5 text-body-sm text-ink-2 lg:text-body">
-          {view.members.map((m) => (m.id === userId ? "You" : m.firstName)).join(", ")}
-          {agreement ? ` · version ${agreement.version}` : ""}
+          {view.members.map((m) => (m.id === userId ? t("you") : m.firstName)).join(", ")}
+          {agreement ? t("version", { n: agreement.version }) : ""}
         </p>
       </header>
 
@@ -83,19 +85,17 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
           <FileSignature className="size-6 text-ink-2" strokeWidth={1.75} aria-hidden />
           <div>
             <h2 className="text-title font-semibold text-ink">
-              {agreement?.stale ? "Your group changed" : "Start with a draft"}
+              {agreement?.stale ? t("staleTitle") : t("startTitle")}
             </h2>
             <p className="mt-1 text-body-sm text-ink-2">
-              {agreement?.stale
-                ? "The old agreement was for different people. Start a fresh one for everyone in the group now."
-                : "We'll draft quiet hours, chores, guests and more from everyone's answers, plus anything your matches flagged to talk through. Edit anything, then sign together."}
+              {agreement?.stale ? t("staleBody") : t("startBody")}
             </p>
           </div>
           <Button
             loading={pending === "start"}
-            onClick={() => void run("start", () => startAgreement(view.groupId), "Draft ready")}
+            onClick={() => void run("start", () => startAgreement(view.groupId), t("draftReady"))}
           >
-            Start the agreement
+            {t("start")}
           </Button>
         </section>
       ) : (
@@ -108,11 +108,7 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
             myPending={agreement.sections.filter((s) => !s.acceptedBy.includes(userId)).length}
             accepting={pending === "accept-all"}
             onAcceptAll={() =>
-              void run(
-                "accept-all",
-                () => acceptAllSections(view.groupId),
-                "Accepted every section",
-              )
+              void run("accept-all", () => acceptAllSections(view.groupId), t("acceptedAll"))
             }
           />
 
@@ -125,6 +121,7 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
                 userId={userId}
                 memberCount={view.members.length}
                 nameOf={nameOf}
+                title={sectionTitle(section.key, section.title, t)}
                 locked={agreement.status === "signed"}
                 onDone={() => router.refresh()}
               />
@@ -134,12 +131,12 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
           {agreement.status === "signed" ? (
             <section className="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line sm:flex-row sm:items-center">
               <div className="flex-1">
-                <h2 className="text-body font-semibold text-ink">Signed by everyone</h2>
+                <h2 className="text-body font-semibold text-ink">{t("signedAll")}</h2>
                 <ul className="mt-1 text-body-sm text-ink-2">
                   {agreement.signatures.map((s) => (
                     <li key={s.userId}>
                       {s.typedName} ·{" "}
-                      {new Date(s.signedAt).toLocaleDateString("en-US", {
+                      {new Date(s.signedAt).toLocaleDateString(intl, {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
@@ -151,21 +148,17 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
               <div className="flex flex-wrap gap-2">
                 <Button asChild variant="secondary">
                   <a href={`/print/agreement/${view.groupId}`} target="_blank" rel="noopener">
-                    <Printer aria-hidden /> Save as PDF
+                    <Printer aria-hidden /> {t("savePdf")}
                   </a>
                 </Button>
                 <Button
                   variant="ghost"
                   loading={pending === "reopen"}
                   onClick={() =>
-                    void run(
-                      "reopen",
-                      () => reopenAgreement(view.groupId),
-                      "Reopened. Edit, then sign again.",
-                    )
+                    void run("reopen", () => reopenAgreement(view.groupId), t("reopenedToast"))
                   }
                 >
-                  <RotateCcw aria-hidden /> Reopen
+                  <RotateCcw aria-hidden /> {t("reopen")}
                 </Button>
               </div>
             </section>
@@ -177,10 +170,8 @@ export function AgreementEditor({ userId, view }: { userId: string; view: Agreem
               signedCount={agreement.signatures.length}
               memberCount={view.members.length}
               onDone={(allSigned) => {
-                toast.success(allSigned ? "Signed by everyone" : "Signed", {
-                  description: allSigned
-                    ? "Save a PDF copy anytime."
-                    : "We'll wait for everyone else.",
+                toast.success(allSigned ? t("signedAll") : t("signed"), {
+                  description: allSigned ? t("signedAllHint") : t("signedHint"),
                 });
                 router.refresh();
               }}
@@ -209,16 +200,17 @@ function StatusBar({
   accepting: boolean;
   onAcceptAll: () => void;
 }) {
+  const t = useT("agreement");
   const share = total ? acceptedCount / total : 0;
   return (
     <div className="rounded-xl bg-surface p-4 shadow-xs ring-1 ring-line sm:p-5">
       <div className="flex items-center justify-between gap-3 text-body-sm">
         <span className="font-medium text-ink">
           {agreement.status === "signed"
-            ? "Signed"
-            : `${acceptedCount} of ${total} sections agreed`}
+            ? t("signed")
+            : t("sectionsAgreed", { agreed: acceptedCount, total })}
         </span>
-        {agreement.status === "reopened" ? <Badge variant="warning">Reopened</Badge> : null}
+        {agreement.status === "reopened" ? <Badge variant="warning">{t("reopened")}</Badge> : null}
       </div>
       <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-sunken" aria-hidden>
         <motion.div
@@ -231,8 +223,7 @@ function StatusBar({
       {agreement.status !== "signed" ? (
         <div className="mt-2.5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-caption text-ink-3">
-            A section is agreed when you and {others.join(" and ")} have each accepted the same
-            text.
+            {t("agreedWhen", { names: others.join(t("and")) })}
           </p>
           {myPending > 1 ? (
             <Button
@@ -242,7 +233,7 @@ function StatusBar({
               loading={accepting}
               onClick={onAcceptAll}
             >
-              <Check aria-hidden /> Accept all {myPending}
+              <Check aria-hidden /> {t("acceptAll", { count: myPending })}
             </Button>
           ) : null}
         </div>
@@ -257,6 +248,7 @@ function SectionCard({
   userId,
   memberCount,
   nameOf,
+  title,
   locked,
   onDone,
 }: {
@@ -265,9 +257,12 @@ function SectionCard({
   userId: string;
   memberCount: number;
   nameOf: Map<string, string>;
+  /** The section title in the reader's language. */
+  title: string;
   locked: boolean;
   onDone: () => void;
 }) {
+  const t = useT("agreement");
   const [editing, setEditing] = React.useState(false);
   const [text, setText] = React.useState(section.content);
   // A change waiting on someone's acceptance shows its highlights until they hide it.
@@ -305,15 +300,15 @@ function SectionCard({
     >
       <div className="flex items-start justify-between gap-3">
         <h2 id={headingId} className="text-body font-semibold text-ink">
-          {section.title}
+          {title}
         </h2>
         {section.accepted ? (
           <Badge variant="success" size="sm">
-            <CircleCheck aria-hidden /> Agreed
+            <CircleCheck aria-hidden /> {t("agreed")}
           </Badge>
         ) : (
           <Badge variant="neutral" size="sm">
-            {section.acceptedBy.length} of {memberCount} accepted
+            {t("acceptedOf", { count: section.acceptedBy.length, total: memberCount })}
           </Badge>
         )}
       </div>
@@ -335,7 +330,7 @@ function SectionCard({
               disabled={!text.trim() || text === section.content}
               onClick={() => void save()}
             >
-              Save change
+              {t("saveChange")}
             </Button>
             <Button
               size="sm"
@@ -345,12 +340,10 @@ function SectionCard({
                 setEditing(false);
               }}
             >
-              Cancel
+              {t("cancel")}
             </Button>
           </div>
-          <p className="text-caption text-ink-3">
-            Saving asks everyone else to accept your version.
-          </p>
+          <p className="text-caption text-ink-3">{t("savingAsks")}</p>
         </div>
       ) : (
         <p className="mt-2 text-body-sm whitespace-pre-line text-ink-2">{section.content}</p>
@@ -358,7 +351,9 @@ function SectionCard({
 
       {section.proposedBy && !editing ? (
         <p className="mt-3 flex flex-wrap items-center gap-x-2 text-caption text-ink-3">
-          <span>Changed by {nameOf.get(section.proposedBy) ?? "a former member"}</span>
+          <span>
+            {t("changedBy", { name: nameOf.get(section.proposedBy) ?? t("formerMember") })}
+          </span>
           {section.previous ? (
             <button
               type="button"
@@ -367,7 +362,7 @@ function SectionCard({
               className="inline-flex items-center gap-1 rounded-sm font-medium text-ink-2 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
             >
               <History className="size-3.5" strokeWidth={2} aria-hidden />{" "}
-              {showChanges ? "Hide changes" : "Show changes"}
+              {showChanges ? t("hideChanges") : t("showChanges")}
             </button>
           ) : null}
         </p>
@@ -379,7 +374,7 @@ function SectionCard({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={spring}
-            aria-label="What changed"
+            aria-label={t("whatChanged")}
             className="mt-2 overflow-hidden rounded-md bg-surface-sunken px-3 py-2 text-caption whitespace-pre-line text-ink-2"
           >
             {wordDiff(section.previous, section.content).map((part, i) =>
@@ -387,12 +382,12 @@ function SectionCard({
                 <span key={i}>{part.text}</span>
               ) : part.kind === "added" ? (
                 <ins key={i} className="rounded-sm bg-accent-soft px-0.5 text-ink no-underline">
-                  <span className="sr-only">Added: </span>
+                  <span className="sr-only">{t("added")}</span>
                   {part.text}
                 </ins>
               ) : (
                 <del key={i} className="text-ink-3 decoration-ink-3/60">
-                  <span className="sr-only">Removed: </span>
+                  <span className="sr-only">{t("removed")}</span>
                   {part.text}
                 </del>
               ),
@@ -415,20 +410,20 @@ function SectionCard({
         <div className="mt-4 flex flex-wrap gap-2">
           {iAccepted ? (
             <span className="inline-flex h-8 items-center gap-1.5 text-body-sm font-medium text-success">
-              <Check className="size-4" strokeWidth={2.5} aria-hidden /> You accepted
+              <Check className="size-4" strokeWidth={2.5} aria-hidden /> {t("youAccepted")}
             </span>
           ) : (
             <Button size="sm" loading={pending === "accept"} onClick={() => void accept()}>
-              <Check aria-hidden /> Accept
+              <Check aria-hidden /> {t("accept")}
             </Button>
           )}
           <Button
             size="sm"
             variant="ghost"
             onClick={() => setEditing(true)}
-            aria-label={`Edit ${section.title}`}
+            aria-label={t("editAria", { title })}
           >
-            <Pencil aria-hidden /> Edit
+            <Pencil aria-hidden /> {t("edit")}
           </Button>
         </div>
       ) : null}
@@ -451,6 +446,7 @@ function SignPanel({
   memberCount: number;
   onDone: (allSigned: boolean) => void;
 }) {
+  const t = useT("agreement");
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
@@ -470,16 +466,13 @@ function SignPanel({
       className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-line"
     >
       <h2 id="sign-title" className="text-body font-semibold text-ink">
-        Sign
+        {t("sign")}
       </h2>
       {!ready ? (
-        <p className="mt-1 text-body-sm text-ink-2">
-          Signing opens once everyone has accepted every section.
-        </p>
+        <p className="mt-1 text-body-sm text-ink-2">{t("signOpens")}</p>
       ) : signedByMe ? (
         <p className="mt-1 text-body-sm text-ink-2">
-          You signed. Waiting on {memberCount - signedCount} more{" "}
-          {memberCount - signedCount === 1 ? "person" : "people"}.
+          {t("waiting", { count: memberCount - signedCount })}
         </p>
       ) : (
         <form
@@ -487,7 +480,7 @@ function SignPanel({
           className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end"
           noValidate
         >
-          <Field label="Type your full name" error={error} className="flex-1">
+          <Field label={t("typeName")} error={error} className="flex-1">
             {({ id, describedBy, invalid }) => (
               <Input
                 id={id}
@@ -503,7 +496,7 @@ function SignPanel({
             )}
           </Field>
           <Button type="submit" loading={pending} disabled={name.trim().length < 2}>
-            <FileSignature aria-hidden /> Sign agreement
+            <FileSignature aria-hidden /> {t("signAgreement")}
           </Button>
         </form>
       )}
@@ -528,6 +521,7 @@ function SectionComments({
   locked: boolean;
   onDone: () => void;
 }) {
+  const t = useT("agreement");
   const [open, setOpen] = React.useState(false);
   const [body, setBody] = React.useState("");
   const [pending, setPending] = React.useState(false);
@@ -556,9 +550,7 @@ function SectionComments({
         className="inline-flex items-center gap-1.5 rounded-sm text-caption font-medium text-ink-2 underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-focus"
       >
         <MessageSquare className="size-3.5" strokeWidth={2} aria-hidden />
-        {comments.length
-          ? `${comments.length} ${comments.length === 1 ? "comment" : "comments"}`
-          : "Comment"}
+        {comments.length ? t("comments", { count: comments.length }) : t("comment")}
       </button>
       {open ? (
         <div className="mt-2 flex flex-col gap-2 rounded-md bg-surface-sunken p-3">
@@ -566,7 +558,7 @@ function SectionComments({
             <div key={c.id} className="text-body-sm">
               <p className="text-ink">
                 <span className="font-medium">
-                  {c.authorId ? (nameOf.get(c.authorId) ?? "A former member") : "A former member"}
+                  {(c.authorId && nameOf.get(c.authorId)) ?? t("formerMemberStart")}
                 </span>{" "}
                 <span className="whitespace-pre-line text-ink-2">{c.body}</span>
               </p>
@@ -576,7 +568,7 @@ function SectionComments({
                   onClick={() => void remove(c.id)}
                   className="text-caption text-ink-3 underline-offset-4 hover:underline"
                 >
-                  Delete
+                  {t("delete")}
                 </button>
               ) : null}
             </div>
@@ -587,12 +579,12 @@ function SectionComments({
               onSubmit={(e) => (e.preventDefault(), void post())}
             >
               <Textarea
-                aria-label="Add a comment"
+                aria-label={t("addComment")}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={2}
                 maxLength={500}
-                placeholder="Ask a question or suggest a tweak"
+                placeholder={t("commentPlaceholder")}
               />
               <Button
                 type="submit"
@@ -601,7 +593,7 @@ function SectionComments({
                 loading={pending}
                 disabled={!body.trim()}
               >
-                Post
+                {t("post")}
               </Button>
             </form>
           ) : null}
