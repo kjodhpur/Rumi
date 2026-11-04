@@ -1,143 +1,129 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowRight, BadgeCheck, HeartHandshake, Scale } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Wordmark } from "@/components/brand/wordmark";
-import { normalizeSource } from "@/lib/integrations/attribution";
-import { LAUNCH_SCHOOL } from "@/lib/school";
+import { Button } from "@/components/ui/button";
+import { SiteFooter } from "@/components/marketing/site-footer";
+import { isSchoolSlug, normalizeSource } from "@/lib/integrations/attribution";
+import { publicEnv } from "@/lib/env";
 
 interface PageProps {
   params: { school: string };
   searchParams: { src?: string };
 }
 
+export const dynamic = "force-dynamic";
+
+async function loadSchool(slug: string) {
+  if (!isSchoolSlug(slug)) return null;
+  const { data } = await createAdminClient()
+    .from("schools")
+    .select("id, name, short_name, email_domains, active, sso_provider, pre_arrival_enabled")
+    .eq("id", slug)
+    .maybeSingle();
+  return data?.active ? data : null;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const schoolSlug = params.school.toLowerCase();
-  const schoolName = schoolSlug === "asu" ? "Arizona State University" : schoolSlug.toUpperCase();
+  const school = await loadSchool(params.school.toLowerCase());
+  if (!school) return { title: "Rumi" };
   return {
-    title: `Find Your Roommate — Rumi for ${schoolName}`,
-    description: `Verified roommate matching for ${schoolName} students. Mutual compatibility, lifestyle fit, zero swiping.`,
+    title: `Rumi for ${school.short_name ?? school.name} students`,
+    description: `Roommate matching for verified ${school.name} students: two-way scores, dealbreakers respected, free.`,
   };
 }
 
-export default async function SchoolPortalLandingPage({ params, searchParams }: PageProps) {
-  const schoolSlug = params.school.toLowerCase();
-  const db = createAdminClient();
-
-  const { data: school } = await db
-    .from("schools")
-    .select("id, name, short_name, email_domains")
-    .eq("id", schoolSlug)
-    .maybeSingle();
-
-  // If school is not found in database, check if it's the launch school
-  const activeSchool = school ?? (schoolSlug === "asu" ? {
-    id: "asu",
-    name: LAUNCH_SCHOOL.name,
-    short_name: "ASU",
-    email_domains: [LAUNCH_SCHOOL.domain],
-  } : null);
-
-  if (!activeSchool) {
-    notFound();
-  }
-
+/**
+ * A school's public entry point (2c + 3.3). The source in ?src= rides a signed cookie set by
+ * /s/<school>/start and is recorded when the student finishes onboarding.
+ */
+export default async function SchoolLandingPage({ params, searchParams }: PageProps) {
+  const school = await loadSchool(params.school.toLowerCase());
+  if (!school) notFound();
   const source = normalizeSource(searchParams.src);
+  const short = school.short_name ?? school.name;
+  const domain = school.email_domains?.[0];
+  const ssoReady = publicEnv.ssoEnabled && Boolean(school.sso_provider);
+  const start = `/s/${school.id}/start${source === "direct" ? "" : `?src=${source}`}`;
 
-  // Record attribution asynchronously
-  try {
-    await db.from("link_attributions").insert({
-      school_id: activeSchool.id,
-      source,
-    });
-  } catch (err) {
-    // Non-blocking log error
-    console.error("[attribution] Failed to record source", err);
-  }
-
-  const sourceLabels: Record<string, string> = {
-    starrez: "StarRez Housing Portal",
-    canvas: "Canvas Course / LMS",
-    asuapp: "ASU Mobile App",
-    qr: "Campus Housing QR Code",
-    email: "Housing Office Invitation",
-    direct: "Direct Link",
-  };
-
-  const domainHint = activeSchool.email_domains?.[0] ? `@${activeSchool.email_domains[0]}` : "";
+  const points = [
+    {
+      icon: Scale,
+      title: "Scores go both ways",
+      body: "A match only ranks high when it works for both of you, not just one.",
+    },
+    {
+      icon: BadgeCheck,
+      title: `Verified ${short} students`,
+      body: domain
+        ? `Everyone signs in with an @${domain} email${school.pre_arrival_enabled ? " or an admitted-student invite" : ""}.`
+        : "Everyone is a verified student.",
+    },
+    {
+      icon: HeartHandshake,
+      title: "Your dealbreakers hold",
+      body: "Say what you can't live with and those people never show up.",
+    },
+  ];
 
   return (
-    <div className="min-h-dvh bg-canvas text-ink flex flex-col justify-between px-4 py-8 sm:px-8 max-w-4xl mx-auto">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-6">
-        <Link href="/" aria-label="Rumi home">
-          <Wordmark height={28} />
+    <div className="flex min-h-dvh flex-col bg-bg">
+      <header className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-4 py-5 sm:px-8">
+        <Link href="/" aria-label="Rumi home" className="rounded-md text-ink">
+          <Wordmark height={26} />
         </Link>
-        <span className="text-caption font-medium bg-sand px-3 py-1.5 rounded-full text-ink-2">
-          {activeSchool.short_name} Housing Partner
-        </span>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/login">Sign in</Link>
+        </Button>
       </header>
 
-      <main className="py-12 sm:py-16 space-y-8">
-        {source !== "direct" && (
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-ember/10 text-ember text-caption font-medium rounded-full">
-            <span>Arrived from {sourceLabels[source] || source}</span>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <h1 className="font-serif text-3xl sm:text-5xl text-ink leading-tight">
-            Meet your ideal roommate at {activeSchool.name}.
-          </h1>
-          <p className="text-body-lg text-ink-2 max-w-2xl leading-relaxed">
-            Mutual compatibility scoring based on sleep schedule, cleanliness, study habits, and lifestyle.
-            No swiping, no algorithmic mystery, and completely free for students.
-          </p>
+      <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 pt-10 pb-20 sm:px-8 lg:pt-20">
+        <p className="text-caption font-semibold tracking-wide text-accent-ink uppercase">
+          For {school.name} students
+        </p>
+        <h1 className="mt-3 max-w-[760px] font-display text-[44px] !leading-[1.04] text-ink sm:text-display-xl lg:text-display-2xl">
+          Find a roommate you&apos;d <span className="italic">actually</span> live well with.
+        </h1>
+        <p className="lg:text-body-lg mt-5 max-w-[560px] text-body text-ink-2">
+          Answer a few questions about sleep, cleanliness, guests and budget. Rumi ranks everyone by
+          how well you&apos;d fit, and tells you why. Free for students.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Button asChild size="xl" className="group">
+            <Link href={start}>
+              {ssoReady
+                ? `Continue with ${short} sign-in`
+                : domain
+                  ? `Start with your @${domain} email`
+                  : "Get started"}
+              <ArrowRight
+                className="transition-transform duration-200 group-hover:translate-x-0.5"
+                strokeWidth={2}
+                aria-hidden
+              />
+            </Link>
+          </Button>
+          <Button asChild size="xl" variant="secondary">
+            <Link href="/#ranking">How it works</Link>
+          </Button>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-4 pt-4">
-          <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-1">
-            <h3 className="font-medium text-ink">Two-Way Fit</h3>
-            <p className="text-caption text-ink-3">
-              Scores reflect both people&apos;s preferences. No one-sided matching.
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-1">
-            <h3 className="font-medium text-ink">Verified Students Only</h3>
-            <p className="text-caption text-ink-3">
-              Only authenticated {domainHint} accounts enter the housing pool.
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-1">
-            <h3 className="font-medium text-ink">StarRez Sync Ready</h3>
-            <p className="text-caption text-ink-3">
-              Confirmed roommate groups can be directly exported to campus housing.
-            </p>
-          </div>
-        </div>
-
-        <div className="pt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <Link
-            href={`/login?school=${activeSchool.id}&src=${source}`}
-            className="inline-flex justify-center items-center px-6 py-3.5 bg-ember text-canvas rounded-lg font-medium shadow-sm hover:opacity-95 transition-opacity"
-          >
-            Continue with {activeSchool.short_name} Email
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex justify-center items-center px-6 py-3.5 bg-surface text-ink border border-border-subtle rounded-lg font-medium hover:bg-sand transition-colors"
-          >
-            Already have an account? Sign in
-          </Link>
-        </div>
+        <ul className="mt-16 grid gap-4 sm:grid-cols-3">
+          {points.map(({ icon: Icon, title, body }) => (
+            <li key={title} className="rounded-xl bg-surface p-5 ring-1 ring-line">
+              <span className="flex size-9 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
+                <Icon className="size-[18px]" aria-hidden />
+              </span>
+              <h2 className="mt-4 text-body font-semibold text-ink">{title}</h2>
+              <p className="mt-1 text-body-sm text-ink-2">{body}</p>
+            </li>
+          ))}
+        </ul>
       </main>
 
-      <footer className="border-t border-border-subtle pt-6 text-caption text-ink-3 flex flex-col sm:flex-row justify-between items-center gap-4">
-        <span>Rumi · 100% Free for Students · FERPA Compliant</span>
-        <div className="flex gap-4">
-          <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
-          <Link href="/terms" className="hover:underline">Terms of Service</Link>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

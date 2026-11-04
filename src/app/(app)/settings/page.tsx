@@ -11,7 +11,13 @@ export default async function SettingsPage() {
   const user = (await getUser())!;
   const supabase = createClient();
   const [{ data: profile }, { data: settings }, { data: admin }] = await Promise.all([
-    supabase.from("profiles").select("id, first_name, last_initial, avatar_path, student_verified_at").eq("id", user.id).single(),
+    supabase
+      .from("profiles")
+      .select(
+        "id, first_name, last_initial, avatar_path, student_verified_at, pre_arrival, schools(email_domains)",
+      )
+      .eq("id", user.id)
+      .single(),
     supabase.from("user_settings").select("email").eq("user_id", user.id).single(),
     supabase.from("admins").select("user_id").eq("user_id", user.id).maybeSingle(),
   ]);
@@ -26,6 +32,10 @@ export default async function SettingsPage() {
         email: settings?.email ?? user.email ?? "",
         verifiedUntil: verifiedUntil(profile?.student_verified_at),
         isAdmin: Boolean(admin),
+        preArrival: Boolean(profile?.pre_arrival),
+        schoolDomain:
+          (profile?.schools as { email_domains: string[] | null } | null)?.email_domains?.[0] ??
+          null,
       }}
     />
   );

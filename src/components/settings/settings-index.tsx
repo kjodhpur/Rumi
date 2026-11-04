@@ -3,7 +3,23 @@
 import * as React from "react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
-import { Bell, CalendarCheck, ClipboardCheck, Download, Link2, LogOut, Monitor, Moon, ShieldAlert, ShieldCheck, SlidersHorizontal, Sun, Trash2, ChevronRight, Sparkles } from "lucide-react";
+import {
+  Bell,
+  CalendarCheck,
+  ClipboardCheck,
+  Download,
+  Link2,
+  LogOut,
+  Monitor,
+  Moon,
+  ShieldAlert,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sun,
+  Trash2,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -12,11 +28,22 @@ import { signOut } from "@/app/actions/auth";
 import { updateTheme } from "@/app/actions/settings";
 import { SettingsLinkRow, SettingsSection } from "./settings-ui";
 import { LAUNCH_SCHOOL } from "@/lib/school";
+import { LinkSchoolEmail } from "./link-school-email";
 
 export function SettingsIndex({
   user,
 }: {
-  user: { id: string; firstName: string; lastInitial: string; avatarUrl: string | null; email: string; verifiedUntil: string | null; isAdmin: boolean };
+  user: {
+    id: string;
+    firstName: string;
+    lastInitial: string;
+    avatarUrl: string | null;
+    email: string;
+    verifiedUntil: string | null;
+    isAdmin: boolean;
+    preArrival: boolean;
+    schoolDomain: string | null;
+  };
 }) {
   const { theme, setTheme } = useTheme();
   const hydrated = useHydrated();
@@ -27,9 +54,14 @@ export function SettingsIndex({
 
       <Link
         href={`/profile/${user.id}`}
-        className="-mt-4 flex items-center gap-4 rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus"
+        className="-mt-4 flex items-center gap-4 rounded-lg bg-surface p-4 shadow-sm ring-1 ring-line transition-colors outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus"
       >
-        <Avatar src={user.avatarUrl} firstName={user.firstName} lastInitial={user.lastInitial} size={56} />
+        <Avatar
+          src={user.avatarUrl}
+          firstName={user.firstName}
+          lastInitial={user.lastInitial}
+          size={56}
+        />
         <span className="min-w-0 flex-1">
           <span className="block text-body font-semibold text-ink">
             {user.firstName} {user.lastInitial}.
@@ -40,14 +72,38 @@ export function SettingsIndex({
         <ChevronRight className="size-4 text-ink-3" strokeWidth={2} aria-hidden />
       </Link>
 
+      {user.preArrival ? (
+        <LinkSchoolEmail domain={user.schoolDomain ?? LAUNCH_SCHOOL.domain} />
+      ) : null}
+
       <SettingsSection title="Profile">
-        <SettingsLinkRow href="/settings/profile" icon={<SlidersHorizontal />} label="Profile & preferences" detail="Photos, budget, lifestyle" />
-        <SettingsLinkRow href="/settings/scenarios" icon={<Sparkles />} label="Roommate scenarios" detail="Optional everyday situations" />
+        <SettingsLinkRow
+          href="/settings/profile"
+          icon={<SlidersHorizontal />}
+          label="Profile & preferences"
+          detail="Photos, budget, lifestyle"
+        />
+        <SettingsLinkRow
+          href="/settings/scenarios"
+          icon={<Sparkles />}
+          label="Roommate scenarios"
+          detail="Optional everyday situations"
+        />
       </SettingsSection>
 
       <SettingsSection title="Living together">
-        <SettingsLinkRow href="/check-in" icon={<ClipboardCheck />} label="Check-ins & room changes" detail="After you move in" />
-        <SettingsLinkRow href="/survey" icon={<CalendarCheck />} label="End of term" detail="Room again? Keep your group?" />
+        <SettingsLinkRow
+          href="/check-in"
+          icon={<ClipboardCheck />}
+          label="Check-ins & room changes"
+          detail="After you move in"
+        />
+        <SettingsLinkRow
+          href="/survey"
+          icon={<CalendarCheck />}
+          label="End of term"
+          detail="Room again? Keep your group?"
+        />
       </SettingsSection>
 
       <SettingsSection title="Preferences">
@@ -66,9 +122,30 @@ export function SettingsIndex({
               void updateTheme(value);
             }}
             options={[
-              { value: "system", label: <><Monitor className="size-3.5" strokeWidth={2} aria-hidden /> System</> },
-              { value: "light", label: <><Sun className="size-3.5" strokeWidth={2} aria-hidden /> Light</> },
-              { value: "dark", label: <><Moon className="size-3.5" strokeWidth={2} aria-hidden /> Dark</> },
+              {
+                value: "system",
+                label: (
+                  <>
+                    <Monitor className="size-3.5" strokeWidth={2} aria-hidden /> System
+                  </>
+                ),
+              },
+              {
+                value: "light",
+                label: (
+                  <>
+                    <Sun className="size-3.5" strokeWidth={2} aria-hidden /> Light
+                  </>
+                ),
+              },
+              {
+                value: "dark",
+                label: (
+                  <>
+                    <Moon className="size-3.5" strokeWidth={2} aria-hidden /> Dark
+                  </>
+                ),
+              },
             ]}
           />
         </div>
@@ -76,17 +153,33 @@ export function SettingsIndex({
 
       {user.isAdmin ? (
         <SettingsSection title="Team">
-          <SettingsLinkRow href="/admin" icon={<ShieldAlert />} label="Safety admin" detail="Reports & accounts" />
+          <SettingsLinkRow
+            href="/admin"
+            icon={<ShieldAlert />}
+            label="Safety admin"
+            detail="Reports & accounts"
+          />
         </SettingsSection>
       ) : null}
 
-      <SettingsSection title="Your data" footer="A JSON file with everything Rumi stores about you.">
-        <SettingsLinkRow href="/api/account/export" icon={<Download />} label="Download your data" download />
+      <SettingsSection
+        title="Your data"
+        footer="A JSON file with everything Rumi stores about you."
+      >
+        <SettingsLinkRow
+          href="/api/account/export"
+          icon={<Download />}
+          label="Download your data"
+          download
+        />
       </SettingsSection>
 
       <SettingsSection title="Account">
         <form action={signOut}>
-          <button type="submit" className="flex min-h-14 w-full items-center gap-3.5 px-4 py-3 text-left text-ink outline-none transition-colors hover:bg-surface-hover focus-visible:bg-surface-hover">
+          <button
+            type="submit"
+            className="flex min-h-14 w-full items-center gap-3.5 px-4 py-3 text-left text-ink transition-colors outline-none hover:bg-surface-hover focus-visible:bg-surface-hover"
+          >
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-ink-2">
               <LogOut className="size-[18px]" strokeWidth={1.75} aria-hidden />
             </span>
@@ -97,8 +190,12 @@ export function SettingsIndex({
       </SettingsSection>
 
       <p className="flex flex-wrap justify-center gap-x-4 gap-y-1 pb-4 text-caption text-ink-3">
-        <Link href="/terms" className="hover:text-ink-2">Terms</Link>
-        <Link href="/privacy" className="hover:text-ink-2">Privacy</Link>
+        <Link href="/terms" className="hover:text-ink-2">
+          Terms
+        </Link>
+        <Link href="/privacy" className="hover:text-ink-2">
+          Privacy
+        </Link>
         <span>Rumi · Not affiliated with {LAUNCH_SCHOOL.shortName}</span>
       </p>
     </div>

@@ -9,6 +9,7 @@ import { emailSchema, firstError, otpSchema } from "@/lib/validation";
 import { fail, ok, type ActionResult } from "@/lib/action";
 import { publicEnv, serverEnv } from "@/lib/env";
 import { LAUNCH_SCHOOL } from "@/lib/school";
+import { hashPersonalEmail } from "@/lib/admissions/allowlist";
 
 const SUSPENDED_MESSAGE = `This account is suspended. Email ${publicEnv.supportEmail} if you think that's a mistake.`;
 
@@ -63,7 +64,16 @@ export async function requestCode(rawEmail: string): Promise<ActionResult<{ emai
 
   const supabase = createClient();
   const { data: school } = await supabase.rpc("school_for_email", { p_email: email });
-  if (!school) {
+  // Admitted students without a school account yet: a personal email on their school's
+  // admit list (3.1). The database trigger re-checks this when the account is created.
+  const admitted = school
+    ? null
+    : (
+        await createAdminClient().rpc("admit_school_for", {
+          p_email_hash: hashPersonalEmail(email),
+        })
+      ).data;
+  if (!school && !admitted) {
     return fail(
       `Rumi is for verified students — use your school email (like you@${LAUNCH_SCHOOL.domain}).`,
     );
@@ -123,7 +133,9 @@ export async function verifyCode(input: {
 /** Finishes the one-tap email link once the person presses the button on /auth/confirm. */
 export async function confirmLink(formData: FormData) {
   const tokenHash = formData.get("token_hash");
-  const type = String(formData.get("type") || "email") as EmailOtpType;
+  const LINK_TYPES: EmailOtpType[] = ["email", "magiclink", "signup", "email_change"];
+  const requested = String(formData.get("type") || "email");
+  const type = LINK_TYPES.find((t) => t === requested) ?? "email";
   const next = formData.get("next");
   if (typeof tokenHash !== "string" || !tokenHash) redirect("/login?error=link_expired");
 

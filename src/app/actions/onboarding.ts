@@ -20,6 +20,7 @@ import {
   SMOKING,
   STUDY,
 } from "@/lib/options";
+import { recordAttribution } from "@/lib/integrations/record-attribution";
 import type { Database } from "@/types/database";
 
 const oneOf = <T extends readonly { value: string }[]>(list: T) =>
@@ -199,6 +200,12 @@ export async function completeOnboarding(): Promise<ActionResult<{ matches: numb
   const supabase = createClient();
   const { error } = await supabase.rpc("complete_onboarding");
   if (error) return fail(friendlyDbError(error.message));
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("school_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  await recordAttribution(user.id, me?.school_id ?? null);
   try {
     // No revalidatePath here: re-rendering /onboarding now would redirect away
     // from the finish screen. The client navigates to /matches when ready.

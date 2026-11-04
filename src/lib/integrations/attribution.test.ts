@@ -1,42 +1,55 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  normalizeSource,
   buildDeepLink,
-  generatePortalEmbedSnippet,
-  generateLmsLinkConfig,
+  canvasLink,
+  normalizeSource,
+  parseSourceCookie,
+  portalEmbedSnippet,
+  sourceCookieValue,
 } from "./attribution";
 
-describe("attribution", () => {
-  it("normalizes recognized sources correctly", () => {
-    expect(normalizeSource("starrez")).toBe("starrez");
-    expect(normalizeSource("CANVAS")).toBe("canvas");
-    expect(normalizeSource("asuapp")).toBe("asuapp");
-    expect(normalizeSource("qr")).toBe("qr");
-    expect(normalizeSource("email")).toBe("email");
-  });
+const SIG = "a".repeat(64);
 
-  it("falls back to direct for unrecognized sources or null", () => {
+describe("source attribution", () => {
+  it("normalizes known sources and falls back to direct", () => {
+    expect(normalizeSource("starrez")).toBe("starrez");
+    expect(normalizeSource(" CANVAS ")).toBe("canvas");
+    expect(normalizeSource("asuapp")).toBe("asuapp");
     expect(normalizeSource(null)).toBe("direct");
     expect(normalizeSource("")).toBe("direct");
-    expect(normalizeSource("random_tracker_123")).toBe("direct");
+    expect(normalizeSource("utm_spam")).toBe("direct");
   });
 
-  it("builds clean deep links with query parameters", () => {
-    const link = buildDeepLink("asu", "starrez", "https://rumi.app");
-    expect(link).toBe("https://rumi.app/s/asu?src=starrez");
+  it("builds deep links on the app's own origin", () => {
+    expect(buildDeepLink("https://rumimatch.app/", "asu", "starrez")).toBe(
+      "https://rumimatch.app/s/asu?src=starrez",
+    );
+    expect(buildDeepLink("http://localhost:3000", "ASU", "direct")).toBe(
+      "http://localhost:3000/s/asu",
+    );
+    expect(canvasLink("https://rumimatch.app", "asu").url).toBe(
+      "https://rumimatch.app/s/asu?src=canvas",
+    );
   });
 
-  it("generates an embed snippet containing the school link and button", () => {
-    const snippet = generatePortalEmbedSnippet("asu", "Arizona State University");
-    expect(snippet).toContain("https://rumi.app/s/asu?src=starrez");
-    expect(snippet).toContain("Find Your Roommate on Rumi");
-    expect(snippet).toContain("Continue with Arizona State University Login");
+  it("round-trips the source cookie and rejects tampered values", () => {
+    expect(parseSourceCookie(sourceCookieValue("asu", "canvas", SIG))).toEqual({
+      school: "asu",
+      source: "canvas",
+      signature: SIG,
+    });
+    expect(parseSourceCookie("asu.evil.".concat(SIG))).toBeNull();
+    expect(parseSourceCookie("asu.canvas.short")).toBeNull();
+    expect(parseSourceCookie("../x.canvas.".concat(SIG))).toBeNull();
+    expect(parseSourceCookie(undefined)).toBeNull();
   });
 
-  it("generates LMS external tool placement configuration", () => {
-    const config = generateLmsLinkConfig("asu");
-    expect(config.title).toBe("Find Your Roommate (Rumi)");
-    expect(config.url).toContain("/s/asu?src=canvas");
-    expect(config.target).toBe("_blank");
+  it("makes a portal button with no affiliation claim and escaped text", () => {
+    const html = portalEmbedSnippet("https://rumimatch.app", "asu", 'A"SU');
+    expect(html).toContain('href="https://rumimatch.app/s/asu?src=starrez"');
+    expect(html).toContain("Find your roommate on Rumi");
+    expect(html).toContain("independent service");
+    expect(html).toContain("A&quot;SU");
+    expect(html).not.toMatch(/official|partner|login/i);
   });
 });

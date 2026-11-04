@@ -1,74 +1,69 @@
 import { createHash } from "node:crypto";
-import type { ServerSupabase } from "@/lib/supabase/server";
+import { headerIndex, parseCsv } from "@/lib/csv/parse";
 
+/**
+ * Admitted-student allowlist (3.1). Pure. Staff upload personal emails or their SHA-256
+ * hashes; only the hash is stored. Matches public.email_hash() in the database.
+ */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
 export function hashPersonalEmail(email: string): string {
-  const normalized = normalizeEmail(email);
-  return createHash("sha256").update(normalized).digest("hex");
+  return createHash("sha256").update(normalizeEmail(email), "utf8").digest("hex");
 }
 
-export interface ParsedAllowlistRow {
-  email: string;
-  emailHash: string;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const HASH = /^[0-9a-f]{64}$/;
+
+export interface ParsedAllowlist {
+  hashes: string[];
+  /** 1-based data row numbers that held neither an email nor a hash. */
+  invalidRows: number[];
+  duplicates: number;
 }
 
 /**
- * Parses a raw CSV or newline-delimited list of emails into validated,
- * normalized hashes ready for storage without saving plaintext emails.
+ * Reads a CSV with an "email" or "email_hash" column, or a plain list (one per line).
+ * School-domain emails are refused: those students sign in with their school account.
  */
-export function parseAllowlistCsv(content: string): ParsedAllowlistRow[] {
-  const lines = content.split(/\r?\n/);
-  const rows: ParsedAllowlistRow[] = [];
+export function parseAllowlist(
+  content: string,
+  schoolDomains: string[] = [],
+  maxRows = 20_000,
+): ParsedAllowlist {
+  const rows = parseCsv(content, maxRows + 1).filter((r) => r.some((c) => c.trim()));
+  if (!rows.length) return { hashes: [], invalidRows: [], duplicates: 0 };
+  const header = rows[0].map((h) => h.trim().toLowerCase());
+  const col = headerIndex(header);
+  const emailCol = col("email");
+  const hashCol = col("email_hash");
+  const hasHeader = emailCol >= 0 || hashCol >= 0;
+  const data = hasHeader ? rows.slice(1) : rows;
+  const domains = schoolDomains.map((d) => d.toLowerCase());
+
   const seen = new Set<string>();
-
-  for (const rawLine of lines) {
-    const trimmed = rawLine.trim();
-    if (!trimmed || trimmed.startsWith("#") || trimmed.toLowerCase() === "email") {
-      continue;
+  const invalidRows: number[] = [];
+  let duplicates = 0;
+  data.forEach((row, i) => {
+    const raw =
+      (hasHeader ? row[hashCol >= 0 ? hashCol : emailCol] : row[0])
+        ?.trim()
+        .replace(/^["']|["']$/g, "") ?? "";
+    const value = raw.toLowerCase();
+    let hash: string | null = null;
+    if (HASH.test(value)) hash = value;
+    else if (
+      EMAIL.test(value) &&
+      !domains.some((d) => value.endsWith(`@${d}`) || value.endsWith(`.${d}`))
+    )
+      hash = hashPersonalEmail(value);
+    if (!hash) {
+      invalidRows.push(i + 1);
+      return;
     }
-    // Handle comma-separated columns if present
-    const firstCol = trimmed.split(",")[0].trim().replace(/^["']|["']$/g, "");
-    if (!firstCol || !firstCol.includes("@")) continue;
-
-    const email = normalizeEmail(firstCol);
-    const emailHash = hashPersonalEmail(email);
-
-    if (!seen.has(emailHash)) {
-      seen.add(emailHash);
-      rows.push({ email, emailHash });
-    }
-  }
-
-  return rows;
-}
-
-/**
- * Checks whether an incoming applicant personal email has been allowlisted by the school.
- */
-export async function isEmailAllowlisted(
-  supabase: ServerSupabase,
-  schoolId: string,
-  email: string,
-): Promise<{ allowlisted: boolean; termId: string | null; alreadyUsed: boolean }> {
-  const hash = hashPersonalEmail(email);
-
-  const { data, error } = await supabase
-    .from("admit_allowlist")
-    .select("id, term_id, used_at")
-    .eq("school_id", schoolId)
-    .eq("email_hash", hash)
-    .maybeSingle();
-
-  if (error || !data) {
-    return { allowlisted: false, termId: null, alreadyUsed: false };
-  }
-
-  return {
-    allowlisted: true,
-    termId: data.term_id,
-    alreadyUsed: Boolean(data.used_at),
-  };
+    if (seen.has(hash)) duplicates += 1;
+    else seen.add(hash);
+  });
+  return { hashes: [...seen], invalidRows, duplicates };
 }
