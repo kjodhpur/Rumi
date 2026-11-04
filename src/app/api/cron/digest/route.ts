@@ -5,6 +5,7 @@ import { strongMatchDigestEmail } from "@/lib/email/templates";
 import { STRONG_MATCH_THRESHOLD } from "@/lib/matching/engine";
 import { selectAll, selectByIds } from "@/lib/supabase/paginate";
 import { isAuthorizedCron } from "@/lib/cron";
+import { isSelectableLocale } from "@/lib/i18n/config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     selectByIds(viewerIds, (c, f, t) =>
       db
         .from("user_settings")
-        .select("user_id, email, notify_email_matches, last_digest_at")
+        .select("user_id, email, locale, notify_email_matches, last_digest_at")
         .in("user_id", c)
         .order("user_id")
         .range(f, t),
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
         name: visible.get(r.candidate_id)!,
         score: r.score,
       })),
+      isSelectableLocale(prefs.locale) ? prefs.locale : "en",
     );
     const delivered = await sendEmail({
       to: prefs.email,

@@ -17,16 +17,14 @@ export async function sendSms(input: {
     status: "sent" | "failed" | "skipped",
     extra: { provider_sid?: string; error?: string } = {},
   ) =>
-    db
-      .from("sms_messages")
-      .insert({
-        user_id: input.userId,
-        direction: "outbound",
-        kind: input.kind,
-        body: input.kind,
-        status,
-        ...extra,
-      });
+    db.from("sms_messages").insert({
+      user_id: input.userId,
+      direction: "outbound",
+      kind: input.kind,
+      body: input.kind,
+      status,
+      ...extra,
+    });
   if (!enabled || !accountSid || !authToken || (!from && !messagingServiceSid)) {
     await log("skipped", { error: "SMS isn't configured" });
     return false;

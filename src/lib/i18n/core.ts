@@ -107,3 +107,50 @@ export function placeholders(value: unknown): string[] {
 export function valueAt(tree: unknown, path: string) {
   return lookup(tree, path);
 }
+
+type TemplateEntry = { key: string; pattern: RegExp | null; names: string[] };
+const matchers = new WeakMap<object, { exact: Map<string, string>; entries: TemplateEntry[] }>();
+
+function matcherFor(source: Record<string, string>) {
+  let m = matchers.get(source);
+  if (!m) {
+    const entries = Object.entries(source).map(([key, text]) => {
+      const names = [...text.matchAll(/\{(\w+)\}/g)].map((x) => x[1]!);
+      if (!names.length) return { key, pattern: null, names };
+      const body = text
+        .split(/\{\w+\}/)
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+        .join("(.+?)");
+      return { key, pattern: new RegExp(`^${body}$`), names };
+    });
+    m = {
+      exact: new Map(entries.filter((e) => !e.pattern).map((e) => [source[e.key]!, e.key])),
+      entries,
+    };
+    matchers.set(source, m);
+  }
+  return m;
+}
+
+/**
+ * Text that was stored or sent in English (`source` holds the English templates) rendered
+ * from `target` in another language. Null when the text matches no template.
+ */
+export function translateTemplate(
+  text: string,
+  source: Record<string, string>,
+  target: Record<string, string>,
+): string | null {
+  const { exact, entries } = matcherFor(source);
+  const key = exact.get(text);
+  if (key) return target[key] ?? null;
+  for (const e of entries) {
+    const match = e.pattern?.exec(text);
+    if (match && target[e.key])
+      return interpolate(
+        target[e.key]!,
+        Object.fromEntries(e.names.map((name, i) => [name, match[i + 1] ?? ""])),
+      );
+  }
+  return null;
+}

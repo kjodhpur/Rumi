@@ -33,6 +33,8 @@ import { cn } from "@/lib/utils";
 import { revealDelay } from "@/lib/motion";
 import { useEntrance } from "@/hooks/use-entrance";
 import type { NotificationType } from "@/lib/notifications/types";
+import { useMessages, useT } from "@/components/providers/i18n";
+import { localizeNoticeWith } from "@/lib/i18n/notifications";
 
 export interface NotificationItem {
   id: string;
@@ -74,6 +76,8 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
   const entrance = useEntrance(initial.map((item) => item.id));
   const router = useRouter();
   const { refresh, counts } = useLive();
+  const t = useT("notifications");
+  const messages = useMessages();
   const [items, setItems] = React.useState(initial);
   React.useEffect(() => setItems(initial), [initial]);
 
@@ -88,7 +92,9 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
 
   async function open(item: NotificationItem) {
     if (!item.readAt) {
-      setItems((list) => list.map((n) => (n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n)));
+      setItems((list) =>
+        list.map((n) => (n.id === item.id ? { ...n, readAt: new Date().toISOString() } : n)),
+      );
       void markNotificationRead(item.id).then(refresh);
     }
     if (item.href) router.push(item.href);
@@ -115,12 +121,12 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
   return (
     <div className="mx-auto max-w-[680px]">
       <PageHeader
-        title="Notifications"
-        description="Intros, new strong matches, messages and group activity."
+        title={t("title")}
+        description={t("description")}
         actions={
           unread > 0 ? (
             <Button variant="ghost" size="sm" onClick={() => void markAll()}>
-              <CheckCheck /> Mark all read
+              <CheckCheck /> {t("markAll")}
             </Button>
           ) : null
         }
@@ -128,18 +134,20 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
       {items.length === 0 ? (
         <EmptyState
           icon={<Bell strokeWidth={1.5} />}
-          title="You're all caught up"
-          description="We'll let you know when someone sends an intro, a strong match joins, or your group changes."
+          title={t("empty")}
+          description={t("emptyBody")}
         />
       ) : (
         <div className="flex flex-col gap-8">
           {[
-            ["Today", today],
-            ["Earlier", earlier],
+            [t("today"), today],
+            [t("earlier"), earlier],
           ].map(([label, list]) =>
             (list as NotificationItem[]).length ? (
               <section key={label as string}>
-                <h2 className="mb-2 text-caption font-semibold tracking-wide text-ink-3 uppercase">{label as string}</h2>
+                <h2 className="mb-2 text-caption font-semibold tracking-wide text-ink-3 uppercase">
+                  {label as string}
+                </h2>
                 <ul className="-mx-2 flex flex-col">
                   {(list as NotificationItem[]).map((item, i) => {
                     const Icon = TYPE_ICON[item.type] ?? Bell;
@@ -148,11 +156,16 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
                         <button
                           type="button"
                           onClick={() => void open(item)}
-                          className="flex w-full items-start gap-3.5 rounded-lg px-2 py-3 text-left outline-none transition-colors hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus"
+                          className="flex w-full items-start gap-3.5 rounded-lg px-2 py-3 text-left transition-colors outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus"
                         >
                           <span className="relative shrink-0">
                             {item.actor ? (
-                              <Avatar src={item.actor.avatarUrl} firstName={item.actor.firstName} lastInitial={item.actor.lastInitial} size={44} />
+                              <Avatar
+                                src={item.actor.avatarUrl}
+                                firstName={item.actor.firstName}
+                                lastInitial={item.actor.lastInitial}
+                                size={44}
+                              />
                             ) : (
                               <span className="flex size-11 items-center justify-center rounded-full bg-surface-sunken text-ink-2">
                                 <Icon className="size-5" strokeWidth={1.75} aria-hidden />
@@ -160,18 +173,39 @@ export function NotificationList({ items: initial }: { items: NotificationItem[]
                             )}
                             {item.actor ? (
                               <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-surface text-ink ring-2 ring-bg">
-                                <Icon className={cn("size-3", item.type === "strong_match" && "text-accent")} strokeWidth={2.25} aria-hidden />
+                                <Icon
+                                  className={cn(
+                                    "size-3",
+                                    item.type === "strong_match" && "text-accent",
+                                  )}
+                                  strokeWidth={2.25}
+                                  aria-hidden
+                                />
                               </span>
                             ) : null}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className={cn("block text-body-sm", item.readAt ? "text-ink" : "font-semibold text-ink")}>{item.title}</span>
-                            {item.body ? <span className="mt-0.5 line-clamp-2 block text-body-sm text-ink-2">{item.body}</span> : null}
-                            <RelativeTime iso={item.createdAt} className="mt-1 block text-caption text-ink-3" />
+                            <span
+                              className={cn(
+                                "block text-body-sm",
+                                item.readAt ? "text-ink" : "font-semibold text-ink",
+                              )}
+                            >
+                              {localizeNoticeWith(item.title, messages)}
+                            </span>
+                            {item.body ? (
+                              <span className="mt-0.5 line-clamp-2 block text-body-sm text-ink-2">
+                                {localizeNoticeWith(item.body, messages)}
+                              </span>
+                            ) : null}
+                            <RelativeTime
+                              iso={item.createdAt}
+                              className="mt-1 block text-caption text-ink-3"
+                            />
                           </span>
                           {!item.readAt ? (
                             <span className="mt-2 size-2 shrink-0 rounded-full bg-accent">
-                              <span className="sr-only">Unread</span>
+                              <span className="sr-only">{t("unread")}</span>
                             </span>
                           ) : null}
                         </button>

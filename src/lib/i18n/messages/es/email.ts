@@ -1,0 +1,71 @@
+import type { Messages } from "../en";
+
+export const email: Messages["email"] = {
+  footer: "Recibes esto por tu configuración de notificaciones de Rumi.",
+  footerLink: "Cámbiala",
+  footerText: "Cambiar la configuración de notificaciones: {url}",
+  introReceived: {
+    subject: "{name} te envió una presentación en Rumi",
+    heading: "{name} quiere conectar contigo",
+    body: "Acéptala para abrir un chat o pasa; no se le dirá qué elegiste.",
+    cta: "Ver presentación",
+  },
+  introAccepted: {
+    subject: "{name} aceptó tu presentación",
+    preheader: "Tu chat está abierto.",
+    heading: "Tú y {name} están conectados",
+    body: "Tu chat está abierto. Un buen primer mensaje es preguntar cómo sería su lugar ideal.",
+    cta: "Abrir chat",
+  },
+  newMessage: {
+    subjectGroup: "Nuevo mensaje en {group}",
+    subject: "Nuevo mensaje de {name}",
+    headingGroup: "{name} en {group}",
+    heading: "{name} te envió un mensaje",
+    body: "Responde en Rumi: tu conversación es privada para quienes están en ella.",
+    cta: "Responder",
+  },
+  groupInvite: {
+    subject: "{name} te invitó a {group}",
+    preheader: "Únete a su grupo para buscar lugares más grandes juntos.",
+    heading: "¿Te unes a {group}?",
+    body: "{name} cree que encajarías en su grupo. Mira la compatibilidad de todos antes de decidir.",
+    cta: "Ver invitación",
+  },
+  digest: {
+    subjectOne: "Nueva compatibilidad del {score}% en Rumi",
+    subjectMany: "{count} nuevas compatibilidades altas en Rumi",
+    headingName: "{name}, tienes nuevas compatibilidades altas",
+    heading: "Tienes nuevas compatibilidades altas",
+    body: "Personas que encajan con tu forma de vivir se unieron o actualizaron su perfil: {list}.",
+    cta: "Ver tus compatibles",
+  },
+  inactivity: {
+    subject: "Tu cuenta de Rumi se eliminará pronto",
+    preheader: "Inicia sesión en los próximos {days} días para conservarla.",
+    heading: "Pronto eliminaremos tu cuenta",
+    body: "Hace mucho que no inicias sesión, así que eliminaremos tu cuenta y todo su contenido en {days} días. Inicia sesión cuando quieras antes de esa fecha para conservarla.",
+    cta: "Conservar mi cuenta",
+    footer: "Eliminamos las cuentas inactivas para no guardar datos que nadie usa.",
+  },
+  suggestion: {
+    subjectGroup: "{office} te sugirió un grupo de {size}",
+    subject: "{office} te sugirió un compañero",
+    preheaderGroup: "Conócelos y di que sí o que no. No pasa nada a menos que todos digan que sí.",
+    preheader: "Mira quién es y di que sí o que no. No pasa nada a menos que los dos digan que sí.",
+    headingGroup: "Una sugerencia de grupo",
+    heading: "Una sugerencia de compañero",
+    bodyGroup:
+      "{office} usó Rumi para sugerir un cuarto para {size} donde todos son compatibles. Conócelos y acepta o rechaza. No pasa nada a menos que todos digan que sí.",
+    body: "{office} usó Rumi para sugerirte a alguien compatible. Mira por qué son compatibles y acepta o rechaza. No pasa nada a menos que los dos digan que sí.",
+    cta: "Ver la sugerencia",
+  },
+  nudge: {
+    subject: "¿Sigues buscando compañero?",
+    preheader: "Tus mejores compatibles te esperan.",
+    heading: "¿Sigues buscando compañero?",
+    body: "{office} notó que todavía no encontraste compañero en Rumi. Tus mejores compatibles ya están ordenados, y basta con una presentación.",
+    cta: "Ver tus compatibles",
+  },
+  deadline: { cta: "Abrir Rumi" },
+};

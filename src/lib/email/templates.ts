@@ -1,4 +1,7 @@
 import { absoluteUrl } from "@/lib/utils";
+import type { Locale } from "@/lib/i18n/config";
+import { interpolate, type Params } from "@/lib/i18n/core";
+import { messagesFor } from "@/lib/i18n/messages";
 
 function escape(text: string) {
   return text.replace(
@@ -15,13 +18,23 @@ interface LayoutInput {
   cta: { label: string; href: string };
   /** Replaces the notification-settings footer for emails that aren't notifications. */
   footer?: string;
+  locale?: Locale;
 }
 
 /** One calm, accessible layout for every notification email. */
-export function layout({ preheader, heading, body, quote, cta, footer }: LayoutInput) {
+export function layout({
+  preheader,
+  heading,
+  body,
+  quote,
+  cta,
+  footer,
+  locale = "en",
+}: LayoutInput) {
+  const m = messagesFor(locale).email;
   const href = absoluteUrl(cta.href);
   const settings = absoluteUrl("/settings/notifications");
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${escape(heading)}</title></head>
+  const html = `<!doctype html><html lang="${locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${escape(heading)}</title></head>
 <body style="margin:0;padding:0;background:#f7f5f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Helvetica,Arial,sans-serif;color:#171614;">
 <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${escape(preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f0;padding:40px 16px;"><tr><td align="center">
@@ -32,33 +45,43 @@ export function layout({ preheader, heading, body, quote, cta, footer }: LayoutI
 ${quote ? `<tr><td style="padding:16px 32px 0;"><div style="background:#f0ede6;border-radius:12px;padding:14px 16px;font-size:15px;line-height:22px;color:#171614;">${escape(quote)}</div></td></tr>` : ""}
 <tr><td style="padding:24px 32px 32px;"><a href="${href}" style="display:inline-block;background:#171614;color:#f7f5f0;text-decoration:none;font-size:15px;font-weight:600;padding:12px 20px;border-radius:12px;">${escape(cta.label)}</a></td></tr>
 </table>
-<p style="margin:20px 0 0;font-size:12px;line-height:18px;color:#6f6a62;">${footer ? escape(footer) : `You're getting this because of your Rumi notification settings. <a href="${settings}" style="color:#6f6a62;">Change them</a>.`}</p>
+<p style="margin:20px 0 0;font-size:12px;line-height:18px;color:#6f6a62;">${footer ? escape(footer) : `${escape(m.footer)} <a href="${settings}" style="color:#6f6a62;">${escape(m.footerLink)}</a>.`}</p>
 </td></tr></table></body></html>`;
-  const text = `${heading}\n\n${body}${quote ? `\n\n“${quote}”` : ""}\n\n${cta.label}: ${href}\n\n${footer ?? `Change notification settings: ${settings}`}`;
+  const text = `${heading}\n\n${body}${quote ? `\n\n“${quote}”` : ""}\n\n${cta.label}: ${href}\n\n${footer ?? interpolate(m.footerText, { url: settings })}`;
   return { html, text };
 }
 
-export function introReceivedEmail(senderName: string, message: string) {
+const say = (text: string, params?: Params) => interpolate(text, params);
+
+export function introReceivedEmail(senderName: string, message: string, locale: Locale = "en") {
+  const m = messagesFor(locale).email.introReceived;
   return {
-    subject: `${senderName} sent you an intro on Rumi`,
+    subject: say(m.subject, { name: senderName }),
     ...layout({
       preheader: message.slice(0, 90),
-      heading: `${senderName} wants to connect`,
-      body: "Accept to open a chat, or pass — they won't be told which.",
+      heading: say(m.heading, { name: senderName }),
+      body: m.body,
       quote: message,
-      cta: { label: "View intro", href: "/messages?tab=requests" },
+      cta: { label: m.cta, href: "/messages?tab=requests" },
+      locale,
     }),
   };
 }
 
-export function introAcceptedEmail(recipientName: string, conversationId: string) {
+export function introAcceptedEmail(
+  recipientName: string,
+  conversationId: string,
+  locale: Locale = "en",
+) {
+  const m = messagesFor(locale).email.introAccepted;
   return {
-    subject: `${recipientName} accepted your intro`,
+    subject: say(m.subject, { name: recipientName }),
     ...layout({
-      preheader: "Your chat is open.",
-      heading: `You and ${recipientName} are connected`,
-      body: "Your chat is open — a good first message is a question about their ideal place.",
-      cta: { label: "Open chat", href: `/messages/${conversationId}` },
+      preheader: m.preheader,
+      heading: say(m.heading, { name: recipientName }),
+      body: m.body,
+      cta: { label: m.cta, href: `/messages/${conversationId}` },
+      locale,
     }),
   };
 }
@@ -68,27 +91,36 @@ export function newMessageEmail(
   preview: string,
   conversationId: string,
   groupName?: string | null,
+  locale: Locale = "en",
 ) {
+  const m = messagesFor(locale).email.newMessage;
   return {
-    subject: groupName ? `New message in ${groupName}` : `New message from ${senderName}`,
+    subject: groupName
+      ? say(m.subjectGroup, { group: groupName })
+      : say(m.subject, { name: senderName }),
     ...layout({
       preheader: preview.slice(0, 90),
-      heading: groupName ? `${senderName} in ${groupName}` : `${senderName} sent you a message`,
-      body: "Reply on Rumi — your conversation stays private to the people in it.",
+      heading: groupName
+        ? say(m.headingGroup, { name: senderName, group: groupName })
+        : say(m.heading, { name: senderName }),
+      body: m.body,
       quote: preview,
-      cta: { label: "Reply", href: `/messages/${conversationId}` },
+      cta: { label: m.cta, href: `/messages/${conversationId}` },
+      locale,
     }),
   };
 }
 
-export function groupInviteEmail(inviterName: string, groupName: string) {
+export function groupInviteEmail(inviterName: string, groupName: string, locale: Locale = "en") {
+  const m = messagesFor(locale).email.groupInvite;
   return {
-    subject: `${inviterName} invited you to ${groupName}`,
+    subject: say(m.subject, { name: inviterName, group: groupName }),
     ...layout({
-      preheader: "Join their group to match on bigger places together.",
-      heading: `Join ${groupName}?`,
-      body: `${inviterName} thinks you'd fit their group. See everyone's compatibility before you decide.`,
-      cta: { label: "View invite", href: "/messages?tab=requests" },
+      preheader: m.preheader,
+      heading: say(m.heading, { group: groupName }),
+      body: say(m.body, { name: inviterName }),
+      cta: { label: m.cta, href: "/messages?tab=requests" },
+      locale,
     }),
   };
 }
@@ -96,25 +128,27 @@ export function groupInviteEmail(inviterName: string, groupName: string) {
 export function strongMatchDigestEmail(
   firstName: string,
   matches: { name: string; score: number; id: string }[],
+  locale: Locale = "en",
 ) {
+  const m = messagesFor(locale).email.digest;
   const top = matches.slice(0, 3);
-  const list = top.map((m) => `${m.name} (${m.score}%)`).join(", ");
+  const list = top.map((x) => `${x.name} (${x.score}%)`).join(", ");
   return {
     subject:
       matches.length === 1
-        ? `New ${top[0].score}% match on Rumi`
-        : `${matches.length} strong new matches on Rumi`,
+        ? say(m.subjectOne, { score: top[0]!.score })
+        : say(m.subjectMany, { count: matches.length }),
     ...layout({
       preheader: list,
-      heading: firstName
-        ? `${firstName}, you have new strong matches`
-        : "You have new strong matches",
-      body: `People who fit how you live just joined or updated their profile: ${list}.`,
-      cta: { label: "See your matches", href: "/matches" },
+      heading: firstName ? say(m.headingName, { name: firstName }) : m.heading,
+      body: say(m.body, { list }),
+      cta: { label: m.cta, href: "/matches" },
+      locale,
     }),
   };
 }
 
+/** Staff invites are in English, like the staff app. */
 export function staffInviteEmail(
   inviterName: string,
   schoolName: string,
@@ -134,51 +168,56 @@ export function staffInviteEmail(
   };
 }
 
-export function inactivityWarningEmail(daysLeft: number) {
+export function inactivityWarningEmail(daysLeft: number, locale: Locale = "en") {
+  const m = messagesFor(locale).email.inactivity;
   return {
-    subject: "Your Rumi account will be deleted soon",
+    subject: m.subject,
     ...layout({
-      preheader: `Sign in within ${daysLeft} days to keep it.`,
-      heading: "We'll delete your account soon",
-      body: `You haven't signed in for a long time, so we'll delete your account and everything in it in ${daysLeft} days. Sign in anytime before then to keep it.`,
-      cta: { label: "Keep my account", href: "/login" },
-      footer: "We delete inactive accounts so we don't hold onto data nobody uses.",
+      preheader: say(m.preheader, { days: daysLeft }),
+      heading: m.heading,
+      body: say(m.body, { days: daysLeft }),
+      cta: { label: m.cta, href: "/login" },
+      footer: m.footer,
+      locale,
     }),
   };
 }
 
-export function housingSuggestionEmail(office: string, proposalId: string, size = 2) {
+export function housingSuggestionEmail(
+  office: string,
+  proposalId: string,
+  size = 2,
+  locale: Locale = "en",
+) {
+  const m = messagesFor(locale).email.suggestion;
   const group = size > 2;
   return {
-    subject: group
-      ? `${office} suggested a group of ${size} for you`
-      : `${office} suggested a roommate for you`,
+    subject: group ? say(m.subjectGroup, { office, size }) : say(m.subject, { office }),
     ...layout({
-      preheader: group
-        ? "Meet them and say yes or no. Nothing happens unless everyone says yes."
-        : "See who it is and say yes or no. Nothing happens unless you both say yes.",
-      heading: group ? "A group suggestion" : "A roommate suggestion",
-      body: group
-        ? `${office} used Rumi to suggest a room of ${size} where everyone is compatible. Meet them, then accept or decline. Nothing happens unless everyone says yes.`
-        : `${office} used Rumi to suggest someone you're compatible with. See why you match, then accept or decline. Nothing happens unless you both say yes.`,
-      cta: { label: "See the suggestion", href: `/suggestions/${proposalId}` },
+      preheader: group ? m.preheaderGroup : m.preheader,
+      heading: group ? m.headingGroup : m.heading,
+      body: group ? say(m.bodyGroup, { office, size }) : say(m.body, { office }),
+      cta: { label: m.cta, href: `/suggestions/${proposalId}` },
+      locale,
     }),
   };
 }
 
-export function housingNudgeEmail(office: string) {
+export function housingNudgeEmail(office: string, locale: Locale = "en") {
+  const m = messagesFor(locale).email.nudge;
   return {
-    subject: "Still looking for a roommate?",
+    subject: m.subject,
     ...layout({
-      preheader: "Your best matches are waiting.",
-      heading: "Still looking for a roommate?",
-      body: `${office} noticed you haven't found a roommate on Rumi yet. Your best matches are ranked and ready, and one intro is all it takes.`,
-      cta: { label: "See your matches", href: "/matches" },
+      preheader: m.preheader,
+      heading: m.heading,
+      body: say(m.body, { office }),
+      cta: { label: m.cta, href: "/matches" },
+      locale,
     }),
   };
 }
 
-/** A student chose to forward a serious report to the school's configured office (Phase 0.3). */
+/** A student chose to forward a serious report to the school's configured office (Phase 0.3). Staff-facing: English. */
 export function escalationForwardEmail(input: {
   office: string;
   category: string;
@@ -199,12 +238,17 @@ export function escalationForwardEmail(input: {
   return { subject: `Forwarded report from a student (${input.category})`, html, text };
 }
 
-export function deadlineNudgeEmail(copy: { title: string; body: string; href: string }) {
+/** `copy` is already in the recipient's language (see deadline-run). */
+export function deadlineNudgeEmail(
+  copy: { title: string; body: string; href: string },
+  locale: Locale = "en",
+) {
   const { html, text } = layout({
     preheader: copy.body,
     heading: copy.title,
     body: copy.body,
-    cta: { label: "Open Rumi", href: copy.href },
+    cta: { label: messagesFor(locale).email.deadline.cta, href: copy.href },
+    locale,
   });
   return { subject: copy.title, html, text };
 }

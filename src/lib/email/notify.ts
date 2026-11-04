@@ -8,6 +8,7 @@ import {
   introReceivedEmail,
   newMessageEmail,
 } from "./templates";
+import { isSelectableLocale, type Locale } from "@/lib/i18n/config";
 
 type EmailToggle =
   "notify_email_intros" | "notify_email_messages" | "notify_email_matches" | "notify_email_groups";
@@ -16,12 +17,16 @@ async function recipient(userId: string, toggle: EmailToggle) {
   const admin = createAdminClient();
   const { data } = await admin
     .from("user_settings")
-    .select(`email, ${toggle}`)
+    .select(`email, locale, ${toggle}`)
     .eq("user_id", userId)
     .maybeSingle();
-  const settings = data as ({ email: string } & Record<EmailToggle, boolean>) | null;
+  const settings = data as
+    ({ email: string; locale: string } & Record<EmailToggle, boolean>) | null;
   if (!settings || !settings[toggle]) return null;
-  return settings.email;
+  return {
+    email: settings.email,
+    locale: isSelectableLocale(settings.locale) ? settings.locale : ("en" as Locale),
+  };
 }
 
 async function firstName(userId: string) {
@@ -50,7 +55,7 @@ export async function emailIntroReceived(introId: string) {
   });
   const to = await recipient(intro.recipient_id, "notify_email_intros");
   if (!to) return;
-  await sendEmail({ to, ...introReceivedEmail(sender, intro.message) });
+  await sendEmail({ to: to.email, ...introReceivedEmail(sender, intro.message, to.locale) });
 }
 
 export async function emailIntroAccepted(introId: string) {
@@ -70,7 +75,10 @@ export async function emailIntroAccepted(introId: string) {
   });
   const to = await recipient(intro.sender_id, "notify_email_intros");
   if (!to) return;
-  await sendEmail({ to, ...introAcceptedEmail(accepter, intro.conversation_id) });
+  await sendEmail({
+    to: to.email,
+    ...introAcceptedEmail(accepter, intro.conversation_id, to.locale),
+  });
 }
 
 const MESSAGE_EMAIL_COOLDOWN_MS = 30 * 60 * 1000;
@@ -113,8 +121,8 @@ export async function emailNewMessage(conversationId: string, senderId: string, 
       const to = await recipient(member.user_id, "notify_email_messages");
       const sent = to
         ? await sendEmail({
-            to,
-            ...newMessageEmail(senderName, preview, conversationId, groupName),
+            to: to.email,
+            ...newMessageEmail(senderName, preview, conversationId, groupName, to.locale),
           })
         : false;
       if (sent || extras.length) {
@@ -146,5 +154,5 @@ export async function emailGroupInvite(requestId: string) {
   });
   const to = await recipient(request.user_id, "notify_email_groups");
   if (!to) return;
-  await sendEmail({ to, ...groupInviteEmail(inviter, groupName) });
+  await sendEmail({ to: to.email, ...groupInviteEmail(inviter, groupName, to.locale) });
 }

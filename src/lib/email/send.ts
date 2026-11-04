@@ -22,7 +22,13 @@ export async function sendEmail(email: OutgoingEmail): Promise<boolean> {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to: [email.to], subject: email.subject, html: email.html, text: email.text }),
+        body: JSON.stringify({
+          from,
+          to: [email.to],
+          subject: email.subject,
+          html: email.html,
+          text: email.text,
+        }),
         signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
@@ -33,7 +39,13 @@ export async function sendEmail(email: OutgoingEmail): Promise<boolean> {
         const nodemailer = await import("nodemailer");
         smtpTransport = nodemailer.createTransport(smtpUrl);
       }
-      await smtpTransport.sendMail({ from, to: email.to, subject: email.subject, html: email.html, text: email.text });
+      await smtpTransport.sendMail({
+        from,
+        to: email.to,
+        subject: email.subject,
+        html: email.html,
+        text: email.text,
+      });
       return true;
     }
     console.info(`[email] (no provider configured) to=${email.to} subject="${email.subject}"`);

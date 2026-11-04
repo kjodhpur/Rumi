@@ -18,6 +18,10 @@ import {
 import { notifyInApp, type InAppNotice } from "./notify";
 import { sendSms, smsNumber } from "./sms";
 import { sendPush } from "./push";
+import { isSelectableLocale, type Locale } from "@/lib/i18n/config";
+import { interpolate } from "@/lib/i18n/core";
+import { messagesFor } from "@/lib/i18n/messages";
+import { localizeNotice } from "@/lib/i18n/notifications";
 
 /**
  * A student's preferences grid. In-app and email for the original four kinds live in
@@ -58,6 +62,7 @@ interface Reach {
   phone: string | null;
   pushReady: boolean;
   email: string | null;
+  locale: Locale;
 }
 
 async function reach(userId: string): Promise<Reach> {
@@ -71,31 +76,46 @@ async function reach(userId: string): Promise<Reach> {
           .select("id", { count: "exact", head: true })
           .eq("user_id", userId)
       : Promise.resolve({ count: 0 }),
-    db.from("user_settings").select("email").eq("user_id", userId).maybeSingle(),
+    db.from("user_settings").select("email, locale").eq("user_id", userId).maybeSingle(),
   ]);
-  return { matrix, phone, pushReady: (count ?? 0) > 0, email: settings?.email ?? null };
+  return {
+    matrix,
+    phone,
+    pushReady: (count ?? 0) > 0,
+    email: settings?.email ?? null,
+    locale: isSelectableLocale(settings?.locale) ? settings.locale : "en",
+  };
 }
 
 async function send(channel: Channel, d: Dispatch, r: Reach) {
-  const short = (d.short ?? d.notice.title).slice(0, 140);
+  // Stored notices are English; texts and push go out in the recipient's language.
+  const title = localizeNotice(d.notice.title, r.locale);
+  const body = localizeNotice(d.notice.body ?? "", r.locale);
+  const short = (d.short ? localizeNotice(d.short, r.locale) : title).slice(0, 140);
   const url = absoluteUrl(d.notice.href ?? "/notifications");
   if (channel === "in_app") return notifyInApp([d.notice]);
-  if (channel === "email" && d.email && r.email) return sendEmail({ to: r.email, ...d.email });
+  if (channel === "email" && d.email && r.email)
+    return sendEmail({
+      to: r.email,
+      ...(typeof d.email === "function" ? d.email(r.locale) : d.email),
+    });
   if (channel === "sms" && r.phone)
     return sendSms({
       userId: d.notice.userId,
       to: r.phone,
-      body: `Rumi: ${short} ${url} Reply STOP to opt out.`,
+      body: interpolate(messagesFor(r.locale).notifications.sms, { text: short, url }),
       kind: d.kind,
     });
-  if (channel === "push")
-    return sendPush(d.notice.userId, { title: d.notice.title, body: d.notice.body ?? "", url });
+  if (channel === "push") return sendPush(d.notice.userId, { title, body, url });
 }
+
+type EmailContent = { subject: string; html: string; text: string };
 
 export interface Dispatch {
   kind: NotificationKind;
   notice: InAppNotice;
-  email?: { subject: string; html: string; text: string };
+  /** A ready email, or a builder that gets the recipient's language. */
+  email?: EmailContent | ((locale: Locale) => EmailContent);
   /** Short text for SMS/push; defaults to the notice title. */
   short?: string;
   /** Safety notices skip quiet hours and the in-app preference. */

@@ -2,6 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CAMPUS_TZ } from "@/lib/time";
 import { deadlineNudgeEmail } from "@/lib/email/templates";
+import type { Locale } from "@/lib/i18n/config";
+import { localizeNotice } from "@/lib/i18n/notifications";
 import { dispatch } from "./dispatch";
 import { selectAll, selectByIds } from "@/lib/supabase/paginate";
 import {
@@ -148,7 +150,17 @@ export async function runDeadlineNudges(
             body: copy.body,
             href: copy.href,
           },
-          email: rule.channels.includes("email") ? deadlineNudgeEmail(copy) : undefined,
+          email: rule.channels.includes("email")
+            ? (locale: Locale) =>
+                deadlineNudgeEmail(
+                  {
+                    title: localizeNotice(copy.title, locale),
+                    body: localizeNotice(copy.body, locale),
+                    href: copy.href,
+                  },
+                  locale,
+                )
+            : undefined,
         });
         sent += 1;
       }

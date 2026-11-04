@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { MessageCircleQuestion, X } from "lucide-react";
 import type { ChatStarter } from "@/lib/starters";
 import { springSnappy } from "@/lib/motion";
+import { useT } from "@/components/providers/i18n";
 
 const storageKey = (conversationId: string) => `rumi:starters-dismissed:${conversationId}`;
 
@@ -18,6 +19,7 @@ export function StarterChips({
   starters: ChatStarter[];
   onPick: (line: string) => void;
 }) {
+  const t = useT("starters");
   const [dismissed, setDismissed] = React.useState(true);
   React.useEffect(() => {
     try {
@@ -52,14 +54,14 @@ export function StarterChips({
                 id={`starters-${conversationId}`}
                 className="flex items-center gap-1.5 text-caption font-medium text-ink-3"
               >
-                <MessageCircleQuestion className="size-3.5" strokeWidth={2} aria-hidden /> Talk
-                about this
+                <MessageCircleQuestion className="size-3.5" strokeWidth={2} aria-hidden />{" "}
+                {t("chips.title")}
               </p>
               <button
                 type="button"
                 onClick={dismiss}
                 className="flex size-7 items-center justify-center rounded-full text-ink-3 outline-none hover:bg-surface-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-focus"
-                aria-label="Hide conversation starters"
+                aria-label={t("chips.hide")}
               >
                 <X className="size-4" strokeWidth={2} aria-hidden />
               </button>

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import { getT } from "@/lib/i18n/server";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { loadConversations } from "@/lib/messages";
 import { loadRequests } from "@/lib/requests";
 import { Inbox } from "@/components/chat/inbox";
 
-export const metadata: Metadata = { title: "Messages" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("chat"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {

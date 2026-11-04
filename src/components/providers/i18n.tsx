@@ -66,3 +66,8 @@ export function useLocalizeError() {
     [locale, messages],
   );
 }
+
+/** The reader's whole message tree (for template-matching stored English text). */
+export function useMessages() {
+  return React.useContext(Context).messages;
+}

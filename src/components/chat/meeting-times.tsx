@@ -8,12 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { suggestMeetingTimes, type MeetingSuggestions } from "@/app/actions/calendar";
 import { CAMPUS_TZ } from "@/lib/time";
+import { useIntlLocale, useT, type Translator } from "@/components/providers/i18n";
 
-const format = (iso: string, options: Intl.DateTimeFormatOptions) =>
-  new Date(iso).toLocaleString("en-US", { timeZone: CAMPUS_TZ, ...options });
+const format = (iso: string, options: Intl.DateTimeFormatOptions, intl = "en-US") =>
+  new Date(iso).toLocaleString(intl, { timeZone: CAMPUS_TZ, ...options });
 
-export function meetingLine(iso: string) {
-  return `Does ${format(iso, { weekday: "short", month: "short", day: "numeric" })} at ${format(iso, { hour: "numeric", minute: "2-digit" })} work to meet?`;
+export function meetingLine(iso: string, t: Translator<"chat">, intl = "en-US") {
+  return t("meet.line", {
+    day: format(iso, { weekday: "short", month: "short", day: "numeric" }, intl),
+    time: format(iso, { hour: "numeric", minute: "2-digit" }, intl),
+  });
 }
 
 /** Suggests times that suit everyone's shared calendars and class times (Phase 7.3a). */
@@ -28,6 +32,8 @@ export function MeetingTimes({
   onOpenChange: (open: boolean) => void;
   onPick: (line: string) => void;
 }) {
+  const t = useT("chat");
+  const intl = useIntlLocale();
   const [state, setState] = React.useState<
     | { kind: "loading" }
     | { kind: "error"; message: string }
@@ -52,17 +58,19 @@ export function MeetingTimes({
   const basis =
     state.kind === "ready"
       ? state.data.basis.calendars || state.data.basis.schedules
-        ? `Based on ${[
-            state.data.basis.calendars
-              ? `${state.data.basis.calendars} connected ${state.data.basis.calendars === 1 ? "calendar" : "calendars"}`
-              : null,
-            state.data.basis.schedules
-              ? `${state.data.basis.schedules} class ${state.data.basis.schedules === 1 ? "schedule" : "schedules"}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(" and ")}. Nobody sees anyone else's calendar.`
-        : "Nobody here has shared a calendar or class times yet, so these are just open daytime slots."
+        ? t("meet.basis", {
+            sources: [
+              state.data.basis.calendars
+                ? t("meet.calendars", { count: state.data.basis.calendars })
+                : null,
+              state.data.basis.schedules
+                ? t("meet.schedules", { count: state.data.basis.schedules })
+                : null,
+            ]
+              .filter((x): x is string => Boolean(x))
+              .reduce((a, b) => t("meet.and", { a, b })),
+          })
+        : t("meet.nothingShared")
       : null;
 
   return (
@@ -70,13 +78,13 @@ export function MeetingTimes({
       open={open}
       onOpenChange={onOpenChange}
       size="sm"
-      title="Find a time to meet"
-      description="Pick one to drop it into your message."
+      title={t("meet.title")}
+      description={t("meet.description")}
     >
       <div className="flex flex-col gap-3 pb-2">
         {state.kind === "loading" ? (
           <div className="flex justify-center py-6 text-ink-3">
-            <Spinner className="size-5" label="Finding times" />
+            <Spinner className="size-5" label={t("meet.finding")} />
           </div>
         ) : state.kind === "error" ? (
           <p className="text-body-sm text-danger">{state.message}</p>
@@ -88,26 +96,29 @@ export function MeetingTimes({
                   variant="secondary"
                   className="w-full justify-start"
                   onClick={() => {
-                    onPick(meetingLine(slot.start));
+                    onPick(meetingLine(slot.start, t, intl));
                     onOpenChange(false);
                   }}
                 >
                   <CalendarClock className="mr-2 size-4" aria-hidden />
-                  {format(slot.start, { weekday: "long", month: "short", day: "numeric" })},{" "}
-                  {format(slot.start, { hour: "numeric", minute: "2-digit" })}–
-                  {format(slot.end, { hour: "numeric", minute: "2-digit" })}
+                  {format(
+                    slot.start,
+                    { weekday: "long", month: "short", day: "numeric" },
+                    intl,
+                  )}, {format(slot.start, { hour: "numeric", minute: "2-digit" }, intl)}–
+                  {format(slot.end, { hour: "numeric", minute: "2-digit" }, intl)}
                 </Button>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-body-sm text-ink-2">No hour works for everyone in the next week.</p>
+          <p className="text-body-sm text-ink-2">{t("meet.none")}</p>
         )}
         {basis ? <p className="text-caption text-ink-3">{basis}</p> : null}
         <p className="text-caption text-ink-3">
-          Add your calendar or class times in{" "}
+          {t("meet.addYours")}{" "}
           <Link href="/settings/accounts" className="text-accent-ink underline underline-offset-2">
-            Connected accounts
+            {t("meet.accounts")}
           </Link>
           .
         </p>

@@ -59,7 +59,8 @@ export const profile: Messages["profile"] = {
     hint: "Sé específico: menciona lo que tienen en común.",
     starterReason:
       "¡Hola, {name}! Rumi dice que nos llevaríamos bien ({reason}). ¿Quieres hablar sobre buscar un lugar?",
-    starter: "¡Hola, {name}! Rumi dice que nos llevaríamos bien. ¿Quieres hablar sobre buscar un lugar?",
+    starter:
+      "¡Hola, {name}! Rumi dice que nos llevaríamos bien. ¿Quieres hablar sobre buscar un lugar?",
     starter2: "¡Hola, {name}! ¿Sigues buscando compañero de cuarto? Creo que encajaríamos bien.",
     starter3: "¡Hola! ¿Cómo sería tu lugar ideal: cerca del campus o algo más tranquilo?",
     sentToast: "Presentación enviada a {name}",
@@ -73,7 +74,8 @@ export const profile: Messages["profile"] = {
     transcript: "Transcripción",
     reportThanks: "Gracias. La vamos a revisar.",
     reportTitle: "Reportar esta presentación",
-    reportBody: "Los reportes son confidenciales. Con dos reportes, el clip se oculta hasta que se revise.",
+    reportBody:
+      "Los reportes son confidenciales. Con dos reportes, el clip se oculta hasta que se revise.",
     sendReport: "Enviar reporte",
     reason: "Razón",
     reasons: {
@@ -83,7 +85,8 @@ export const profile: Messages["profile"] = {
       not_them: "No es esta persona",
       other: "Otra cosa",
     },
-    permission: "Permite el acceso a la cámara o al micrófono en tu navegador para grabar, o sube un clip.",
+    permission:
+      "Permite el acceso a la cámara o al micrófono en tu navegador para grabar, o sube un clip.",
     tooBig: "Los clips pueden pesar hasta 20 MB.",
     format: "Usa un clip MP4 o WebM.",
     tooLong: "Ese clip dura {seconds} s. Recórtalo a {max} s o menos.",
@@ -93,7 +96,8 @@ export const profile: Messages["profile"] = {
     uploadFailed: "La subida falló. Revisa tu conexión e inténtalo de nuevo.",
     added: "Presentación agregada a tu perfil",
     addTitle: "Agrega una presentación en video o audio",
-    addBody: "Hasta {max} segundos. Solo la pueden reproducir estudiantes verificados que pueden ver tu perfil.",
+    addBody:
+      "Hasta {max} segundos. Solo la pueden reproducir estudiantes verificados que pueden ver tu perfil.",
     saveIntro: "Guardar presentación",
     how: "Cómo",
     record: "Grabar",

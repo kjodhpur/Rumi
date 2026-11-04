@@ -12,6 +12,10 @@ import { matches } from "./matches";
 import { common } from "./common";
 import { reasons } from "./reasons";
 import { profile } from "./profile";
+import { starters } from "./starters";
+import { chat } from "./chat";
+import { notifications } from "./notifications";
+import { email } from "./email";
 
 /** Spanish: complete for student flows. The type makes a missing key a compile error. */
 export const es: Messages = {
@@ -28,4 +32,8 @@ export const es: Messages = {
   common,
   reasons,
   profile,
+  starters,
+  chat,
+  notifications,
+  email,
 };

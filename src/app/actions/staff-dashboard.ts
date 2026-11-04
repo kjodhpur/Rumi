@@ -17,6 +17,7 @@ import { loadSchoolPool } from "@/lib/matching/recompute";
 import { blockingRule } from "@/lib/matching/blocking";
 import { selectAll, selectByIds } from "@/lib/supabase/paginate";
 import type { Json } from "@/types/database";
+import { isSelectableLocale } from "@/lib/i18n/config";
 
 const schoolId = z.string().regex(/^[a-z0-9-]{2,32}$/);
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a full date.");
@@ -307,7 +308,7 @@ export async function sendNudges(
   const settings = await selectByIds(targets, (chunk, from, to) =>
     db
       .from("user_settings")
-      .select("user_id, email, notify_email_matches, notify_inapp_matches")
+      .select("user_id, email, locale, notify_email_matches, notify_inapp_matches")
       .in("user_id", chunk)
       .order("user_id")
       .range(from, to),
@@ -327,7 +328,11 @@ export async function sendNudges(
       })),
   );
   for (const s of settings ?? []) {
-    if (s.notify_email_matches) await sendEmail({ to: s.email, ...housingNudgeEmail(office) });
+    if (s.notify_email_matches)
+      await sendEmail({
+        to: s.email,
+        ...housingNudgeEmail(office, isSelectableLocale(s.locale) ? s.locale : "en"),
+      });
   }
   await logAudit({
     actorId,
@@ -637,7 +642,7 @@ export async function sendApprovedProposals(input: {
   const office = await officeName(school);
   const { data: settings } = await db
     .from("user_settings")
-    .select("user_id, email, notify_email_matches")
+    .select("user_id, email, locale, notify_email_matches")
     .in(
       "user_id",
       valid.flatMap((p) => p.member_ids),
@@ -667,7 +672,12 @@ export async function sendApprovedProposals(input: {
       if (s?.notify_email_matches)
         await sendEmail({
           to: s.email,
-          ...housingSuggestionEmail(office, p.id, p.member_ids.length),
+          ...housingSuggestionEmail(
+            office,
+            p.id,
+            p.member_ids.length,
+            isSelectableLocale(s.locale) ? s.locale : "en",
+          ),
         });
     }
   }

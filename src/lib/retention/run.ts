@@ -11,6 +11,7 @@ import {
   RETENTION_DEFAULTS,
   type RetentionPolicy,
 } from "./policy";
+import { isSelectableLocale } from "@/lib/i18n/config";
 
 export interface RetentionReport {
   school: string;
@@ -165,10 +166,16 @@ async function handleInactive(schoolId: string, policy: RetentionPolicy, now: Da
   if (plan.warn.length > 0) {
     const { data: settings } = await db
       .from("user_settings")
-      .select("user_id, email")
+      .select("user_id, email, locale")
       .in("user_id", plan.warn);
     for (const row of settings ?? []) {
-      await sendEmail({ to: row.email, ...inactivityWarningEmail(policy.inactive_warning) });
+      await sendEmail({
+        to: row.email,
+        ...inactivityWarningEmail(
+          policy.inactive_warning,
+          isSelectableLocale(row.locale) ? row.locale : "en",
+        ),
+      });
     }
     await db
       .from("profiles")

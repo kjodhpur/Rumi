@@ -60,3 +60,25 @@ describe("localizeError", () => {
     expect(localizeError("Housing admins only.", "es")).toBe("Housing admins only.");
   });
 });
+
+describe("stored notices and emails", () => {
+  it("translates notification titles, including ones with names and counts", async () => {
+    const { localizeNotice } = await import("./notifications");
+    expect(localizeNotice("Ana sent you an intro", "es")).toBe("Ana te envió una presentación");
+    expect(localizeNotice("Room selection opens in 3 days", "es")).toBe(
+      "La selección de cuartos abre en 3 días",
+    );
+    expect(localizeNotice("Ana in Tempe Crew", "es")).toBe("Ana en Tempe Crew");
+    expect(localizeNotice("Hey, are you free Saturday?", "es")).toBe("Hey, are you free Saturday?");
+    expect(localizeNotice("Ana sent you an intro", "en")).toBe("Ana sent you an intro");
+  });
+
+  it("writes student emails in the recipient's language", async () => {
+    const { introReceivedEmail } = await import("@/lib/email/templates");
+    const es = introReceivedEmail("Ana", "¡Hola!", "es");
+    expect(es.subject).toBe("Ana te envió una presentación en Rumi");
+    expect(es.html).toContain('lang="es"');
+    expect(es.text).toContain("Ver presentación");
+    expect(introReceivedEmail("Ana", "Hi!").subject).toBe("Ana sent you an intro on Rumi");
+  });
+});

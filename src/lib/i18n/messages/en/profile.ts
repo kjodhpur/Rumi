@@ -55,7 +55,8 @@ export const profile = {
     label: "Intro message to {name}",
     placeholder: "Say why you think you'd get along…",
     hint: "Be specific — mention what you have in common.",
-    starterReason: "Hi {name}! Rumi says we'd get along — {reason}. Want to chat about finding a place?",
+    starterReason:
+      "Hi {name}! Rumi says we'd get along — {reason}. Want to chat about finding a place?",
     starter: "Hi {name}! Rumi says we'd get along. Want to chat about finding a place?",
     starter2: "Hey {name} — still looking for a roommate? I think we'd be a good fit.",
     starter3: "Hi! What's your ideal setup — somewhere near campus or a bit quieter?",
@@ -80,7 +81,8 @@ export const profile = {
       not_them: "Not this person",
       other: "Something else",
     },
-    permission: "Allow camera or microphone access in your browser to record, or upload a clip instead.",
+    permission:
+      "Allow camera or microphone access in your browser to record, or upload a clip instead.",
     tooBig: "Clips can be up to 20 MB.",
     format: "Use an MP4 or WebM clip.",
     tooLong: "That clip is {seconds}s. Trim it to {max}s or less.",

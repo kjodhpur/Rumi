@@ -8,7 +8,18 @@ import { toast } from "sonner";
 import { dayLabel, formatTime, fullStamp, sameDay } from "@/lib/time";
 import { useHydrated } from "@/hooks/use-hydrated";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { ArrowDown, ArrowUp, CalendarClock, ChevronLeft, Flag, MoreHorizontal, ShieldAlert, ShieldOff, UserRound, Users } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  CalendarClock,
+  ChevronLeft,
+  Flag,
+  MoreHorizontal,
+  ShieldAlert,
+  ShieldOff,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +45,9 @@ import { cn } from "@/lib/utils";
 import { PAYMENT_SAFETY_TIP } from "@/lib/safety-copy";
 import { springSnappy } from "@/lib/motion";
 import { GroupAvatar } from "./inbox";
+import { useIntlLocale, useT } from "@/components/providers/i18n";
+import { translateTemplate } from "@/lib/i18n/core";
+import { en } from "@/lib/i18n/messages/en";
 
 interface Thread {
   id: string;
@@ -60,6 +74,7 @@ export function ChatThread({
   initialDraft?: string;
 }) {
   const router = useRouter();
+  const t = useT("chat");
   const [messages, setMessages] = React.useState<ChatMessage[]>(thread.messages);
   const [members, setMembers] = React.useState<ChatMember[]>(thread.members);
   const [hasMore, setHasMore] = React.useState(thread.hasMore);
@@ -121,7 +136,12 @@ export function ChatThread({
     channel
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${thread.id}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${thread.id}`,
+        },
         (payload) => {
           const row = payload.new as {
             id: string;
@@ -155,10 +175,17 @@ export function ChatThread({
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "conversation_members", filter: `conversation_id=eq.${thread.id}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversation_members",
+          filter: `conversation_id=eq.${thread.id}`,
+        },
         (payload) => {
           const row = payload.new as { user_id: string; last_read_at: string };
-          setMembers((list) => list.map((m) => (m.id === row.user_id ? { ...m, lastReadAt: row.last_read_at } : m)));
+          setMembers((list) =>
+            list.map((m) => (m.id === row.user_id ? { ...m, lastReadAt: row.last_read_at } : m)),
+          );
         },
       )
       .on("broadcast", { event: "typing" }, ({ payload }) => {
@@ -195,7 +222,9 @@ export function ChatThread({
     const t = setInterval(() => {
       const now = Date.now();
       setTyping((current) => {
-        const next = Object.fromEntries(Object.entries(current).filter(([, at]) => now - at < 4000));
+        const next = Object.fromEntries(
+          Object.entries(current).filter(([, at]) => now - at < 4000),
+        );
         return Object.keys(next).length === Object.keys(current).length ? current : next;
       });
     }, 1000);
@@ -216,7 +245,10 @@ export function ChatThread({
         setLoadingOlder(false);
         if (!result.ok) return;
         setHasMore(result.data.hasMore);
-        setMessages((list) => [...result.data.messages.filter((m) => !list.some((x) => x.id === m.id)), ...list]);
+        setMessages((list) => [
+          ...result.data.messages.filter((m) => !list.some((x) => x.id === m.id)),
+          ...list,
+        ]);
         requestAnimationFrame(() => {
           if (box) box.scrollTop += box.scrollHeight - before;
         });
@@ -236,9 +268,15 @@ export function ChatThread({
   }
 
   async function deliver(message: ChatMessage) {
-    const result = await sendMessage({ conversationId: thread.id, body: message.body, clientId: message.clientId! });
+    const result = await sendMessage({
+      conversationId: thread.id,
+      body: message.body,
+      clientId: message.clientId!,
+    });
     if (!result.ok) {
-      setMessages((list) => list.map((m) => (m.clientId === message.clientId ? { ...m, status: "failed" } : m)));
+      setMessages((list) =>
+        list.map((m) => (m.clientId === message.clientId ? { ...m, status: "failed" } : m)),
+      );
       if (/can't reply/.test(result.error)) setBlocked(true);
       else toast.error(result.error);
       return;
@@ -268,7 +306,9 @@ export function ChatThread({
   }
 
   function retry(message: ChatMessage) {
-    setMessages((list) => list.map((m) => (m.clientId === message.clientId ? { ...m, status: "sending" } : m)));
+    setMessages((list) =>
+      list.map((m) => (m.clientId === message.clientId ? { ...m, status: "sending" } : m)),
+    );
     void deliver(message);
   }
 
@@ -279,7 +319,7 @@ export function ChatThread({
       toast.error(result.error);
       return;
     }
-    toast.success("You left the group");
+    toast.success(t("thread.left"));
     router.replace("/groups");
   }
 
@@ -287,48 +327,65 @@ export function ChatThread({
   const lastText = [...messages].reverse().find((m) => m.kind === "text");
   // Receipts sit under your own latest message, and only while it's the newest one.
   const lastMine = lastText?.senderId === userId ? lastText : undefined;
-  const seenBy = lastMine && !lastMine.status
-    ? others.filter((m) => Date.parse(m.lastReadAt) >= Date.parse(lastMine.createdAt))
-    : [];
-  const typingNames = Object.keys(typing).map((id) => memberById.get(id)?.firstName).filter(Boolean) as string[];
+  const seenBy =
+    lastMine && !lastMine.status
+      ? others.filter((m) => Date.parse(m.lastReadAt) >= Date.parse(lastMine.createdAt))
+      : [];
+  const typingNames = Object.keys(typing)
+    .map((id) => memberById.get(id)?.firstName)
+    .filter(Boolean) as string[];
   const subtitle =
     thread.kind === "group"
-      ? `${members.length} members${online.size ? ` · ${online.size} online` : ""}`
+      ? `${t("thread.members", { count: members.length })}${online.size ? t("thread.online", { count: online.size }) : ""}`
       : other && online.has(other.id)
-        ? "Active now"
-        : "Verified student";
+        ? t("thread.activeNow")
+        : t("thread.verified");
 
   return (
     <SwipeBack fallbackHref="/messages">
       <div className="flex h-dvh flex-col bg-bg">
         {/* Header */}
-        <header className="glass pt-safe sticky top-0 z-20 border-b border-[var(--glass-border)]">
+        <header className="glass sticky top-0 z-20 border-b border-[var(--glass-border)] pt-safe">
           <div className="mx-auto flex h-16 max-w-[820px] items-center gap-2 px-2 sm:px-4">
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Back to messages"
+              aria-label={t("thread.back")}
               onClick={() => (window.history.length > 1 ? router.back() : router.push("/messages"))}
             >
               <ChevronLeft strokeWidth={1.75} />
             </Button>
             <Link
-              href={thread.kind === "group" && thread.groupId ? `/groups/${thread.groupId}` : other ? `/profile/${other.id}` : "#"}
+              href={
+                thread.kind === "group" && thread.groupId
+                  ? `/groups/${thread.groupId}`
+                  : other
+                    ? `/profile/${other.id}`
+                    : "#"
+              }
               className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 outline-none hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus"
             >
               {thread.kind === "group" ? (
                 <GroupAvatar members={others} size={40} />
               ) : (
-                <Avatar src={other?.avatarUrl} firstName={other?.firstName} lastInitial={other?.lastInitial} size={40} online={other ? online.has(other.id) : false} />
+                <Avatar
+                  src={other?.avatarUrl}
+                  firstName={other?.firstName}
+                  lastInitial={other?.lastInitial}
+                  size={40}
+                  online={other ? online.has(other.id) : false}
+                />
               )}
               <span className="min-w-0">
-                <span className="block truncate text-body font-semibold text-ink">{thread.title}</span>
+                <span className="block truncate text-body font-semibold text-ink">
+                  {thread.title}
+                </span>
                 <span className="block truncate text-caption text-ink-3">{subtitle}</span>
               </span>
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Conversation options">
+                <Button variant="ghost" size="icon" aria-label={t("thread.options")}>
                   <MoreHorizontal strokeWidth={1.75} />
                 </Button>
               </DropdownMenuTrigger>
@@ -336,7 +393,7 @@ export function ChatThread({
                 {!blocked ? (
                   <>
                     <DropdownMenuItem onSelect={() => setTimesOpen(true)}>
-                      <CalendarClock /> Find a time to meet
+                      <CalendarClock /> {t("thread.findTime")}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -345,27 +402,27 @@ export function ChatThread({
                   <>
                     <DropdownMenuItem asChild>
                       <Link href={`/groups/${thread.groupId}`}>
-                        <Users /> View group
+                        <Users /> {t("thread.viewGroup")}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem destructive onSelect={() => void onLeaveGroup()}>
-                      <ShieldOff /> Leave group
+                      <ShieldOff /> {t("thread.leaveGroup")}
                     </DropdownMenuItem>
                   </>
                 ) : other ? (
                   <>
                     <DropdownMenuItem asChild>
                       <Link href={`/profile/${other.id}`}>
-                        <UserRound /> View profile
+                        <UserRound /> {t("thread.viewProfile")}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => setReportOpen(true)}>
-                      <Flag /> Report {other.firstName}
+                      <Flag /> {t("thread.report", { name: other.firstName })}
                     </DropdownMenuItem>
                     <DropdownMenuItem destructive onSelect={() => setBlockOpen(true)}>
-                      <ShieldOff /> Block {other.firstName}
+                      <ShieldOff /> {t("thread.block", { name: other.firstName })}
                     </DropdownMenuItem>
                   </>
                 ) : null}
@@ -375,12 +432,18 @@ export function ChatThread({
         </header>
 
         {/* Messages */}
-        <div ref={scroller} className="relative flex-1 overflow-y-auto overscroll-contain" role="log" aria-live="polite" aria-label={`Conversation with ${thread.title}`}>
+        <div
+          ref={scroller}
+          className="relative flex-1 overflow-y-auto overscroll-contain"
+          role="log"
+          aria-live="polite"
+          aria-label={t("thread.log", { name: thread.title })}
+        >
           <div className="mx-auto flex max-w-[820px] flex-col px-3 pt-4 pb-6 sm:px-6">
             <div ref={topSentinel} aria-hidden className="h-px" />
             {loadingOlder ? (
               <div className="flex justify-center py-3 text-ink-3">
-                <Spinner className="size-5" label="Loading earlier messages" />
+                <Spinner className="size-5" label={t("thread.loadingOlder")} />
               </div>
             ) : null}
             {!hasMore ? <ThreadStart thread={thread} others={others} /> : null}
@@ -401,13 +464,17 @@ export function ChatThread({
                     exit={{ opacity: 0 }}
                     className="text-caption text-ink-3"
                   >
-                    {thread.kind === "direct" ? "Seen" : `Seen by ${seenBy.map((m) => m.firstName).join(", ")}`}
+                    {thread.kind === "direct"
+                      ? t("thread.seen")
+                      : t("thread.seenBy", { names: seenBy.map((m) => m.firstName).join(", ") })}
                   </motion.span>
                 ) : null}
               </AnimatePresence>
             </div>
             <AnimatePresence>
-              {typingNames.length > 0 ? <TypingBubble key="typing" names={typingNames} group={thread.kind === "group"} /> : null}
+              {typingNames.length > 0 ? (
+                <TypingBubble key="typing" names={typingNames} group={thread.kind === "group"} />
+              ) : null}
             </AnimatePresence>
           </div>
           <AnimatePresence>
@@ -423,7 +490,8 @@ export function ChatThread({
                 }}
                 className="sticky bottom-4 left-1/2 mx-auto flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-body-sm font-medium text-ink-inverse shadow-lg"
               >
-                <ArrowDown className="size-4" strokeWidth={2} aria-hidden /> New messages
+                <ArrowDown className="size-4" strokeWidth={2} aria-hidden />{" "}
+                {t("thread.newMessages")}
               </motion.button>
             ) : null}
           </AnimatePresence>
@@ -440,62 +508,64 @@ export function ChatThread({
         />
 
         {/* Composer */}
-        <div className="glass pb-safe border-t border-[var(--glass-border)]">
+        <div className="glass border-t border-[var(--glass-border)] pb-safe">
           {blocked ? (
             <p className="mx-auto max-w-[820px] px-4 py-4 text-center text-body-sm text-ink-3">
-              You can&apos;t send messages in this conversation.
+              {t("thread.blocked")}
             </p>
           ) : (
             <>
-            {starters.length > 0 && !draft ? (
-              <StarterChips
-                conversationId={thread.id}
-                starters={starters}
-                onPick={(line) => {
-                  setDraft(line);
-                  composer.current?.focus();
+              {starters.length > 0 && !draft ? (
+                <StarterChips
+                  conversationId={thread.id}
+                  starters={starters}
+                  onPick={(line) => {
+                    setDraft(line);
+                    composer.current?.focus();
+                  }}
+                />
+              ) : null}
+              <form
+                className="mx-auto flex max-w-[820px] items-end gap-2 px-3 py-2.5 sm:px-6 sm:py-3"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  send();
                 }}
-              />
-            ) : null}
-            <form
-              className="mx-auto flex max-w-[820px] items-end gap-2 px-3 py-2.5 sm:px-6 sm:py-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send();
-              }}
-            >
-              <Textarea
-                ref={composer}
-                aria-label={`Message ${thread.title}`}
-                placeholder={thread.kind === "group" ? `Message ${thread.title}` : `Message ${other?.firstName ?? ""}`}
-                rows={1}
-                maxHeight={160}
-                maxLength={2000}
-                value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  if (e.target.value) broadcastTyping();
-                }}
-                onKeyDown={(e) => {
-                  const coarse = window.matchMedia("(pointer: coarse)").matches;
-                  if (e.key === "Enter" && !e.shiftKey && !coarse && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    send();
-                  }
-                }}
-                className="min-h-11 flex-1 rounded-[22px] py-2.5"
-              />
-              <motion.button
-                type="submit"
-                aria-label="Send message"
-                disabled={!draft.trim()}
-                whileTap={{ scale: 0.9 }}
-                transition={springSnappy}
-                className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-ink-inverse shadow-sm transition-opacity disabled:opacity-30"
               >
-                <ArrowUp className="size-5" strokeWidth={2.25} />
-              </motion.button>
-            </form>
+                <Textarea
+                  ref={composer}
+                  aria-label={t("thread.messageTo", { name: thread.title })}
+                  placeholder={t("thread.messageTo", {
+                    name: thread.kind === "group" ? thread.title : (other?.firstName ?? ""),
+                  })}
+                  rows={1}
+                  maxHeight={160}
+                  maxLength={2000}
+                  value={draft}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    if (e.target.value) broadcastTyping();
+                  }}
+                  onKeyDown={(e) => {
+                    const coarse = window.matchMedia("(pointer: coarse)").matches;
+                    if (e.key === "Enter" && !e.shiftKey && !coarse && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      send();
+                    }
+                  }}
+                  className="min-h-11 flex-1 rounded-[22px] py-2.5"
+                />
+                <motion.button
+                  type="submit"
+                  aria-label={t("thread.send")}
+                  disabled={!draft.trim()}
+                  whileTap={{ scale: 0.9 }}
+                  transition={springSnappy}
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-ink-inverse shadow-sm transition-opacity disabled:opacity-30"
+                >
+                  <ArrowUp className="size-5" strokeWidth={2.25} />
+                </motion.button>
+              </form>
             </>
           )}
         </div>
@@ -503,7 +573,13 @@ export function ChatThread({
 
       {other ? (
         <>
-          <ReportSheet open={reportOpen} onOpenChange={setReportOpen} reportedId={other.id} firstName={other.firstName} conversationId={thread.id} />
+          <ReportSheet
+            open={reportOpen}
+            onOpenChange={setReportOpen}
+            reportedId={other.id}
+            firstName={other.firstName}
+            conversationId={thread.id}
+          />
           <BlockSheet
             open={blockOpen}
             onOpenChange={setBlockOpen}
@@ -521,7 +597,9 @@ export function ChatThread({
 }
 
 function upsertMessage(list: ChatMessage[], message: ChatMessage) {
-  const index = list.findIndex((m) => m.id === message.id || (message.clientId && m.clientId === message.clientId));
+  const index = list.findIndex(
+    (m) => m.id === message.id || (message.clientId && m.clientId === message.clientId),
+  );
   if (index >= 0) {
     const next = [...list];
     next[index] = { ...message, status: undefined };
@@ -531,18 +609,22 @@ function upsertMessage(list: ChatMessage[], message: ChatMessage) {
 }
 
 function ThreadStart({ thread, others }: { thread: Thread; others: ChatMember[] }) {
+  const t = useT("chat");
   return (
     <div className="flex flex-col items-center gap-3 px-6 pt-6 pb-8 text-center">
       {thread.kind === "group" ? (
         <GroupAvatar members={others} size={64} />
       ) : (
-        <Avatar src={others[0]?.avatarUrl} firstName={others[0]?.firstName} lastInitial={others[0]?.lastInitial} size={64} />
+        <Avatar
+          src={others[0]?.avatarUrl}
+          firstName={others[0]?.firstName}
+          lastInitial={others[0]?.lastInitial}
+          size={64}
+        />
       )}
       <p className="font-display text-display-sm text-ink">{thread.title}</p>
       <p className="max-w-xs text-body-sm text-ink-3">
-        {thread.kind === "group"
-          ? "Plan your place together. Everyone here is a mutual match."
-          : "You're connected. Talk budgets, neighborhoods and move-in dates — and tour places together before paying anything."}
+        {thread.kind === "group" ? t("thread.startGroup") : t("thread.startDirect")}
       </p>
     </div>
   );
@@ -562,6 +644,18 @@ function MessageList({
   onRetry: (m: ChatMessage) => void;
 }) {
   const local = useHydrated();
+  const t = useT("chat");
+  const ts = t;
+  const intl = useIntlLocale();
+  const systemText = (body: string) =>
+    translateTemplate(body, en.chat.system, {
+      safety: ts("system.safety"),
+      started: ts("system.started"),
+      joined: ts("system.joined"),
+      left: ts("system.left"),
+      bothYes: ts("system.bothYes"),
+      everyoneYes: ts("system.everyoneYes"),
+    }) ?? body;
   return (
     <AnimatePresence initial={false}>
       {messages.map((message, i) => {
@@ -571,31 +665,51 @@ function MessageList({
         const newDay = !prev || !sameDay(prev.createdAt, message.createdAt, local);
         const gap = prev ? at - Date.parse(prev.createdAt) > 60 * 60 * 1000 : false;
         const joinsPrev =
-          prev && !newDay && prev.senderId === message.senderId && prev.kind === "text" && message.kind === "text" &&
+          prev &&
+          !newDay &&
+          prev.senderId === message.senderId &&
+          prev.kind === "text" &&
+          message.kind === "text" &&
           at - Date.parse(prev.createdAt) < GROUP_GAP_MS;
         const joinsNext =
-          next && next.senderId === message.senderId && next.kind === "text" && message.kind === "text" &&
-          sameDay(next.createdAt, message.createdAt, local) && Date.parse(next.createdAt) - at < GROUP_GAP_MS;
+          next &&
+          next.senderId === message.senderId &&
+          next.kind === "text" &&
+          message.kind === "text" &&
+          sameDay(next.createdAt, message.createdAt, local) &&
+          Date.parse(next.createdAt) - at < GROUP_GAP_MS;
         const mine = message.senderId === userId;
         const sender = message.senderId ? memberById.get(message.senderId) : undefined;
 
         return (
           <React.Fragment key={message.clientId ?? message.id}>
             {newDay || gap ? (
-              <p className="my-4 text-center text-caption font-medium text-ink-3" suppressHydrationWarning>
-                {newDay ? `${dayLabel(message.createdAt, local)} · ${formatTime(message.createdAt, local)}` : formatTime(message.createdAt, local)}
+              <p
+                className="my-4 text-center text-caption font-medium text-ink-3"
+                suppressHydrationWarning
+              >
+                {newDay
+                  ? `${dayLabel(message.createdAt, local, undefined, intl)} · ${formatTime(message.createdAt, local, intl)}`
+                  : formatTime(message.createdAt, local, intl)}
               </p>
             ) : null}
             {message.kind === "system" && message.body === PAYMENT_SAFETY_TIP ? (
-              <div role="note" className="mx-auto my-4 flex max-w-[440px] items-start gap-2.5 rounded-lg bg-warning-soft px-3.5 py-3">
-                <ShieldAlert className="mt-0.5 size-4 shrink-0 text-warning" strokeWidth={2} aria-hidden />
+              <div
+                role="note"
+                className="mx-auto my-4 flex max-w-[440px] items-start gap-2.5 rounded-lg bg-warning-soft px-3.5 py-3"
+              >
+                <ShieldAlert
+                  className="mt-0.5 size-4 shrink-0 text-warning"
+                  strokeWidth={2}
+                  aria-hidden
+                />
                 <p className="text-body-sm text-ink">
-                  <span className="font-semibold">Safety tip · </span>
-                  {message.body.replace(/^Safety tip:\s*/, "").replace(/^./, (c) => c.toUpperCase())}
+                  <span className="font-semibold">{t("thread.safetyTip")}</span>
+                  {t("safetyBody")}
                 </p>
               </div>
             ) : message.kind === "system" ? (
-              <p className="my-3 text-center text-caption text-ink-3">{message.body}</p>
+              <p className="my-3 text-center text-caption text-ink-3">{systemText(message.body)}</p>
             ) : (
               <motion.div
                 layout="position"
@@ -603,16 +717,34 @@ function MessageList({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ type: "spring", stiffness: 420, damping: 30 }}
                 style={{ transformOrigin: mine ? "bottom right" : "bottom left" }}
-                className={cn("flex items-end gap-2", mine ? "justify-end" : "justify-start", joinsPrev ? "mt-0.5" : "mt-3")}
+                className={cn(
+                  "flex items-end gap-2",
+                  mine ? "justify-end" : "justify-start",
+                  joinsPrev ? "mt-0.5" : "mt-3",
+                )}
               >
                 {!mine && kind === "group" ? (
                   <span className="w-7 shrink-0">
-                    {!joinsNext ? <Avatar src={sender?.avatarUrl} firstName={sender?.firstName} lastInitial={sender?.lastInitial} size={28} /> : null}
+                    {!joinsNext ? (
+                      <Avatar
+                        src={sender?.avatarUrl}
+                        firstName={sender?.firstName}
+                        lastInitial={sender?.lastInitial}
+                        size={28}
+                      />
+                    ) : null}
                   </span>
                 ) : null}
-                <div className={cn("flex max-w-[78%] flex-col sm:max-w-[65%]", mine ? "items-end" : "items-start")}>
+                <div
+                  className={cn(
+                    "flex max-w-[78%] flex-col sm:max-w-[65%]",
+                    mine ? "items-end" : "items-start",
+                  )}
+                >
                   {!mine && kind === "group" && !joinsPrev ? (
-                    <span className="mb-1 px-3 text-caption text-ink-3">{sender?.firstName ?? "Former member"}</span>
+                    <span className="mb-1 px-3 text-caption text-ink-3">
+                      {sender?.firstName ?? "Former member"}
+                    </span>
                   ) : null}
                   <div
                     title={fullStamp(message.createdAt, local)}
@@ -622,17 +754,22 @@ function MessageList({
                       mine ? (joinsPrev ? "rounded-tr-md" : "") : joinsPrev ? "rounded-tl-md" : "",
                       mine ? (joinsNext ? "rounded-br-md" : "") : joinsNext ? "rounded-bl-md" : "",
                       message.status === "sending" && "opacity-60",
-                      message.status === "failed" && "bg-danger-soft text-danger ring-1 ring-danger/30",
+                      message.status === "failed" &&
+                        "bg-danger-soft text-danger ring-1 ring-danger/30",
                     )}
                   >
                     <Linkified text={message.body} mine={mine && message.status !== "failed"} />
                   </div>
                   {message.status === "failed" ? (
-                    <button type="button" onClick={() => onRetry(message)} className="mt-1 px-1 text-caption font-medium text-danger underline underline-offset-2">
-                      Not sent · Tap to retry
+                    <button
+                      type="button"
+                      onClick={() => onRetry(message)}
+                      className="mt-1 px-1 text-caption font-medium text-danger underline underline-offset-2"
+                    >
+                      {t("thread.notSent")}
                     </button>
                   ) : message.status === "sending" ? (
-                    <span className="mt-1 px-1 text-caption text-ink-3">Sending…</span>
+                    <span className="mt-1 px-1 text-caption text-ink-3">{t("thread.sending")}</span>
                   ) : null}
                 </div>
               </motion.div>
@@ -658,7 +795,10 @@ function Linkified({ text, mine }: { text: string; mine: boolean }) {
             href={part}
             target="_blank"
             rel="noopener noreferrer nofollow ugc"
-            className={cn("underline underline-offset-2 break-all", mine ? "text-ink-inverse" : "text-accent-ink")}
+            className={cn(
+              "break-all underline underline-offset-2",
+              mine ? "text-ink-inverse" : "text-accent-ink",
+            )}
           >
             {part}
           </a>
@@ -671,6 +811,7 @@ function Linkified({ text, mine }: { text: string; mine: boolean }) {
 }
 
 function TypingBubble({ names, group }: { names: string[]; group: boolean }) {
+  const t = useT("chat");
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.9 }}
@@ -681,7 +822,10 @@ function TypingBubble({ names, group }: { names: string[]; group: boolean }) {
       className="mt-3 flex items-center gap-2"
       aria-live="polite"
     >
-      <div className="flex h-9 items-center gap-1 rounded-[20px] bg-surface px-3.5 ring-1 ring-line" aria-hidden>
+      <div
+        className="flex h-9 items-center gap-1 rounded-[20px] bg-surface px-3.5 ring-1 ring-line"
+        aria-hidden
+      >
         {[0, 1, 2].map((i) => (
           <motion.span
             key={i}
@@ -692,7 +836,11 @@ function TypingBubble({ names, group }: { names: string[]; group: boolean }) {
         ))}
       </div>
       <span className="text-caption text-ink-3">
-        {group ? `${names.join(", ")} ${names.length === 1 ? "is" : "are"} typing` : "typing"}
+        {group
+          ? t(names.length === 1 ? "thread.typingOne" : "thread.typingMany", {
+              names: names.join(", "),
+            })
+          : t("thread.typing")}
         <span className="sr-only">…</span>
       </span>
     </motion.div>
