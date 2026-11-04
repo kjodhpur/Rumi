@@ -17,7 +17,13 @@ interface AccordionItemData {
  * FAQ accordion that only animates transform and opacity: answers fade in, and
  * the rows below glide to their new position (layout="position" → translate only).
  */
-export function Accordion({ items, className }: { items: AccordionItemData[]; className?: string }) {
+export function Accordion({
+  items,
+  className,
+}: {
+  items: AccordionItemData[];
+  className?: string;
+}) {
   const [open, setOpen] = React.useState<string>("");
   return (
     <LayoutGroup>

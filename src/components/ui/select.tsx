@@ -13,11 +13,7 @@ export const Select = React.forwardRef<
 >(function Select({ className, children, ...props }, ref) {
   return (
     <div className={cn("relative", className)}>
-      <select
-        ref={ref}
-        className={cn(inputBase, "h-11 appearance-none pr-10 pl-3.5")}
-        {...props}
-      >
+      <select ref={ref} className={cn(inputBase, "h-11 appearance-none pr-10 pl-3.5")} {...props}>
         {children}
       </select>
       <ChevronDown

@@ -36,7 +36,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
       <input
         ref={ref}
         type={type}
-        className={cn(inputBase, "h-11", leading ? "pl-10" : "pl-3.5", trailing ? "pr-11" : "pr-3.5")}
+        className={cn(
+          inputBase,
+          "h-11",
+          leading ? "pl-10" : "pl-3.5",
+          trailing ? "pr-11" : "pr-3.5",
+        )}
         {...props}
       />
       {trailing ? (

@@ -4,8 +4,11 @@ import { fetchFeed, filtersToParams, loadAreaNames, parseFilters } from "@/lib/m
 import { MatchesView } from "@/components/matches/matches-view";
 import { GroupsForYou } from "@/components/groups/groups-for-you";
 import { ErrorState } from "@/components/ui/error-state";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Matches" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getT("matches"))("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function MatchesPage({
@@ -29,12 +32,9 @@ export default async function MatchesPage({
     initial = await fetchFeed(supabase, filters, 0, names);
   } catch (error) {
     console.error("[matches] feed failed", error);
+    const t = await getT("matches");
     return (
-      <ErrorState
-        title="We couldn't load your matches"
-        description="Check your connection and try again."
-        retryHref="/matches"
-      />
+      <ErrorState title={t("loadError")} description={t("loadErrorBody")} retryHref="/matches" />
     );
   }
 

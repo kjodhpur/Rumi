@@ -14,10 +14,13 @@ import type {
   MatchPreferences,
   MatchProfile,
   Reason,
+  ScenarioAnswer,
   SchoolRule,
 } from "./types";
 import { passesSchoolRules } from "./rules";
 import { accommodationConflict } from "./accommodations";
+import { interpolate } from "@/lib/i18n/core";
+import { en, messagesFor, type Messages } from "@/lib/i18n/messages";
 
 /** Importance level → weight. "Must match" counts six times "nice to have". */
 export const IMPORTANCE_WEIGHTS: Record<Importance, number> = { 0: 0, 1: 1, 2: 3, 3: 6 };
@@ -420,6 +423,8 @@ function describe(
   viewerSatisfaction: number,
   ctx: DescribeContext,
 ): DirectionalResult {
+  // Sentences are written in the viewer's language.
+  const m = messagesFor(viewer.locale ?? "en");
   const breakdown: FactorScore[] = [];
   const candidates: { key: FactorKey; sim: number; weight: number }[] = [];
 
@@ -444,7 +449,8 @@ function describe(
   for (const c of [...candidates]
     .filter((c) => c.sim >= 0.75 && c.weight > 0)
     .sort((x, y) => rank(y) - rank(x) || y.sim - x.sim)) {
-    const label = scenarioReason(c.key, viewer, other) ?? reasonText(c.key, viewer, other, ctx);
+    const label =
+      scenarioReason(c.key, viewer, other, m) ?? reasonText(c.key, viewer, other, ctx, m.reasons);
     if (label) reasons.push({ key: c.key, label });
     if (reasons.length === 3) break;
   }
@@ -453,7 +459,8 @@ function describe(
   for (const c of [...candidates]
     .filter((c) => c.sim <= 0.5 && IMPORTANCE_WEIGHTS[importanceOf(viewer.prefs, c.key)] > 0)
     .sort((x, y) => (1 - y.sim) * y.weight - (1 - x.sim) * x.weight)) {
-    const label = scenarioWatchout(c.key, viewer, other) ?? watchoutText(c.key, viewer, other);
+    const label =
+      scenarioWatchout(c.key, viewer, other, m) ?? watchoutText(c.key, viewer, other, m.reasons);
     if (label) watchouts.push({ key: c.key, label });
     if (watchouts.length === 2) break;
   }
@@ -499,11 +506,20 @@ function salience(key: FactorKey, a: MatchPreferences, b: MatchPreferences, ctx:
 }
 
 /** "Both say: …" when the two picked the same answer to a scenario on this factor. */
-function scenarioReason(key: FactorKey, viewer: MatchProfile, other: MatchProfile): string | null {
+type Phrases = Messages["reasons"];
+type ScenarioTexts = Record<string, { topic: string; choices: Record<string, { reason: string }> }>;
+
+/** A shared scenario answer, in the viewer's language for Rumi's own questions. */
+function scenarioReason(
+  key: FactorKey,
+  viewer: MatchProfile,
+  other: MatchProfile,
+  m: Messages,
+): string | null {
   for (const [q, mine] of Object.entries(viewer.scenarios ?? {})) {
     const theirs = other.scenarios?.[q];
     if (mine.factor === key && theirs && theirs.value === mine.value && mine.reason)
-      return mine.reason;
+      return scenarioText(mine, "reason", m) ?? mine.reason;
   }
   return null;
 }
@@ -513,23 +529,33 @@ function scenarioWatchout(
   key: FactorKey,
   viewer: MatchProfile,
   other: MatchProfile,
+  m: Messages,
 ): string | null {
   for (const [q, mine] of Object.entries(viewer.scenarios ?? {})) {
     const theirs = other.scenarios?.[q];
     if (mine.factor === key && theirs && Math.abs(theirs.value - mine.value) >= 3) {
-      return `You'd handle ${mine.topic} differently`;
+      return interpolate(m.reasons.watch.scenario, {
+        topic: scenarioText(mine, "topic", m) ?? mine.topic,
+      });
     }
   }
   return null;
+}
+
+function scenarioText(answer: ScenarioAnswer, field: "reason" | "topic", m: Messages) {
+  if (!answer.builtIn || !answer.questionKey) return null;
+  const q = (m.scenarios as ScenarioTexts)[answer.questionKey];
+  if (!q) return null;
+  return field === "topic" ? q.topic : (q.choices[answer.choiceKey ?? ""]?.reason ?? null);
 }
 
 function formatUsd(n: number) {
   return `$${n.toLocaleString("en-US")}`;
 }
 
-function weeks(days: number) {
+function weeks(days: number, p: Phrases) {
   const w = Math.round(days / 7);
-  return w <= 1 ? "a week" : `${w} weeks`;
+  return w <= 1 ? p.aWeek : interpolate(p.nWeeks, { n: w });
 }
 
 export function reasonText(
@@ -537,85 +563,80 @@ export function reasonText(
   viewer: MatchProfile,
   other: MatchProfile,
   ctx: DescribeContext,
+  p: Phrases = en.reasons,
 ): string | null {
   const a = viewer.prefs;
   const b = other.prefs;
   switch (key) {
     case "budget": {
       const overlap = budgetOverlap(a, b);
-      if (a.budgetMin === b.budgetMin && a.budgetMax === b.budgetMax) return "Same budget range";
-      return overlap >= 25 ? `Budgets overlap by ${formatUsd(overlap)}` : "Budgets line up";
+      if (a.budgetMin === b.budgetMin && a.budgetMax === b.budgetMax) return p.sameBudget;
+      return overlap >= 25
+        ? interpolate(p.budgetOverlap, { amount: formatUsd(overlap) })
+        : p.budgetsLineUp;
     }
     case "areas": {
       const shared = sharedAreas(a, b);
       if (shared.length === 0) return null;
       const names = shared.map((slug) => ctx.areaNames[slug] ?? slug);
       return shared.length === 1
-        ? `Both looking in ${names[0]}`
-        : `Both looking in ${names[0]} & ${names[1]}`;
+        ? interpolate(p.bothIn1, { a: names[0] ?? "" })
+        : interpolate(p.bothIn2, { a: names[0] ?? "", b: names[1] ?? "" });
     }
     case "move_in": {
       const gap = moveInGapDays(a, b);
       if (gap === null) return null;
-      return gap <= 7 ? "Moving in the same week" : `Move-in dates ${weeks(gap)} apart`;
+      return gap <= 7 ? p.sameWeek : interpolate(p.moveInApart, { weeks: weeks(gap, p) });
     }
     case "lease":
-      if (a.leaseLength !== b.leaseLength) return "Lease plans work together";
-      return {
-        semester: "Both want a one-semester lease",
-        academic_year: "Both want an academic-year lease",
-        twelve_months: "Both want a 12-month lease",
-        flexible: "Both flexible on lease length",
-      }[a.leaseLength];
+      if (a.leaseLength !== b.leaseLength) return p.leaseWork;
+      return p.lease[a.leaseLength];
     case "housing_type":
       if (a.housingType === b.housingType && a.housingType !== "either") {
-        return a.housingType === "on_campus"
-          ? "Both want to live on campus"
-          : "Both want off-campus";
+        return a.housingType === "on_campus" ? p.bothOnCampus : p.bothOffCampus;
       }
-      return "Same plan for on vs. off campus";
+      return p.samePlan;
     case "sleep":
-      if (a.sleepSchedule >= 4 && b.sleepSchedule >= 4) return "You're both night owls";
-      if (a.sleepSchedule <= 2 && b.sleepSchedule <= 2) return "You're both early birds";
-      return "Similar sleep schedules";
+      if (a.sleepSchedule >= 4 && b.sleepSchedule >= 4) return p.nightOwls;
+      if (a.sleepSchedule <= 2 && b.sleepSchedule <= 2) return p.earlyBirds;
+      return p.similarSleep;
     case "cleanliness":
-      if (a.cleanliness >= 4 && b.cleanliness >= 4) return "You both keep things spotless";
-      if (a.cleanliness <= 2 && b.cleanliness <= 2) return "Equally relaxed about mess";
-      return "Same standards for tidiness";
+      if (a.cleanliness >= 4 && b.cleanliness >= 4) return p.spotless;
+      if (a.cleanliness <= 2 && b.cleanliness <= 2) return p.relaxedMess;
+      return p.tidiness;
     case "noise":
-      if (a.noise <= 2 && b.noise <= 2) return "You both like a quiet place";
-      if (a.noise >= 4 && b.noise >= 4) return "You both like a lively home";
-      return "Same vibe on noise";
+      if (a.noise <= 2 && b.noise <= 2) return p.quiet;
+      if (a.noise >= 4 && b.noise >= 4) return p.lively;
+      return p.sameNoise;
     case "guests":
-      if (a.guests <= 2 && b.guests <= 2) return "Neither of you has guests over much";
-      if (a.guests >= 4 && b.guests >= 4) return "You both love having people over";
-      return "Similar take on guests";
+      if (a.guests <= 2 && b.guests <= 2) return p.fewGuests;
+      if (a.guests >= 4 && b.guests >= 4) return p.loveGuests;
+      return p.similarGuests;
     case "smoking":
-      if (a.smoking === "never" && b.smoking === "never") return "Smoke-free, both of you";
-      return "On the same page about smoking";
+      if (a.smoking === "never" && b.smoking === "never") return p.smokeFree;
+      return p.smokingPage;
     case "drinking":
-      if (a.drinking === "never" && b.drinking === "never") return "Neither of you drinks";
-      return "Same take on drinking";
+      if (a.drinking === "never" && b.drinking === "never") return p.noDrink;
+      return p.drinkingTake;
     case "pets":
-      if (a.pets === "none" && b.pets === "none") return "Pet-free, both of you";
-      if (a.pets !== "none" && b.pets !== "none") return "You're both pet people";
+      if (a.pets === "none" && b.pets === "none") return p.petFree;
+      if (a.pets !== "none" && b.pets !== "none") return p.petPeople;
       return null;
     case "study":
-      if (a.study === "home_quiet" && b.study === "home_quiet")
-        return "You both study at home and need quiet";
-      if (a.study === "campus" && b.study === "campus") return "You both study on campus";
-      return "Study habits that fit together";
+      if (a.study === "home_quiet" && b.study === "home_quiet") return p.studyQuiet;
+      if (a.study === "campus" && b.study === "campus") return p.studyCampus;
+      return p.studyFit;
     case "music": {
       const top = ctx.sharedArtists[0];
       if (top) {
         return ctx.sharedArtists.length > 1
-          ? `You both listen to ${top.name} + ${ctx.sharedArtists.length - 1} more`
-          : `You both listen to ${top.name}`;
+          ? interpolate(p.listenMore, { artist: top.name, n: ctx.sharedArtists.length - 1 })
+          : interpolate(p.listen1, { artist: top.name });
       }
-      return "Similar music taste";
+      return p.similarMusic;
     }
     case "classes":
-      return "Your class days start and end around the same time";
+      return p.classes;
   }
 }
 
@@ -623,64 +644,61 @@ export function watchoutText(
   key: FactorKey,
   viewer: MatchProfile,
   other: MatchProfile,
+  p: Phrases = en.reasons,
 ): string | null {
   const a = viewer.prefs;
   const b = other.prefs;
-  const name = other.firstName || "They";
+  const w = p.watch;
+  const name = other.firstName || p.they;
+  const say = (text: string) => interpolate(text, { name });
   switch (key) {
     case "budget":
-      return budgetOverlap(a, b) < 0 ? "Budgets don't overlap" : null;
+      return budgetOverlap(a, b) < 0 ? w.noBudget : null;
     case "areas":
-      return sharedAreas(a, b).length === 0 ? "No neighborhoods in common yet" : null;
+      return sharedAreas(a, b).length === 0 ? w.noAreas : null;
     case "move_in": {
       const gap = moveInGapDays(a, b);
-      return gap === null ? null : `Move-in dates ${weeks(gap)} apart`;
+      return gap === null ? null : interpolate(p.moveInApart, { weeks: weeks(gap, p) });
     }
     case "lease":
-      return "Different lease lengths";
+      return w.lease;
     case "housing_type":
-      return a.housingType === "on_campus"
-        ? `You want on campus, ${name} wants off`
-        : `You want off campus, ${name} wants on`;
+      return say(a.housingType === "on_campus" ? w.wantOn : w.wantOff);
     case "sleep":
-      return b.sleepSchedule > a.sleepSchedule
-        ? `${name} stays up a lot later than you`
-        : `${name} is up a lot earlier than you`;
+      return say(b.sleepSchedule > a.sleepSchedule ? w.later : w.earlier);
     case "cleanliness":
-      return b.cleanliness < a.cleanliness
-        ? `${name} is more relaxed about mess`
-        : `${name} is tidier than you`;
+      return say(b.cleanliness < a.cleanliness ? w.relaxed : w.tidier);
     case "noise":
-      return b.noise > a.noise ? `${name} likes it louder` : `${name} prefers it quieter`;
+      return say(b.noise > a.noise ? w.louder : w.quieter);
     case "guests":
-      return b.guests > a.guests
-        ? `${name} has people over more often`
-        : `${name} has guests over less`;
+      return say(b.guests > a.guests ? w.moreGuests : w.fewerGuests);
     case "smoking":
-      return b.smoking === "never" ? `${name} doesn't smoke` : `${name} smokes ${b.smoking}`;
+      return say(
+        b.smoking === "never"
+          ? w.noSmoke
+          : b.smoking === "sometimes"
+            ? w.smokesSometimes
+            : w.smokesRegularly,
+      );
     case "drinking":
-      return b.drinking === "often"
-        ? `${name} drinks more often`
-        : b.drinking === "never"
-          ? `${name} doesn't drink`
-          : `${name} drinks socially`;
+      return say(
+        b.drinking === "often"
+          ? w.drinksMore
+          : b.drinking === "never"
+            ? w.noDrink
+            : w.drinksSocially,
+      );
     case "pets":
-      return b.pets === "have"
-        ? `${name} has a pet`
-        : b.pets === "want"
-          ? `${name} wants a pet`
-          : `${name} prefers no pets`;
+      return say(b.pets === "have" ? w.hasPet : b.pets === "want" ? w.wantsPet : w.noPets);
     case "study":
-      return "Different study habits at home";
+      return w.study;
     case "music":
       return null;
     case "classes": {
       const mine = viewer.classDay;
       const theirs = other.classDay;
       if (!mine || !theirs) return null;
-      return theirs.earliestStart < mine.earliestStart
-        ? `${name}'s classes start a lot earlier`
-        : `${name}'s classes run a lot later`;
+      return say(theirs.earliestStart < mine.earliestStart ? w.classesEarlier : w.classesLater);
     }
   }
 }

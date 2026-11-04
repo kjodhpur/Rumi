@@ -326,6 +326,9 @@ export function toScenarioAnswers(
       value: choice.value,
       reason: choice.reason,
       topic: q.topic,
+      builtIn: !q.schoolId,
+      questionKey: q.key,
+      choiceKey: choice.key,
     };
   }
   return out;

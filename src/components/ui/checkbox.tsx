@@ -14,7 +14,7 @@ export const Checkbox = React.forwardRef<
       ref={ref}
       className={cn(
         "peer flex size-5 shrink-0 items-center justify-center rounded-[6px] bg-surface",
-        "ring-1 ring-line-strong ring-inset transition-colors duration-150",
+        "ring-1 ring-line-strong transition-colors duration-150 ring-inset",
         "data-[state=checked]:bg-ink data-[state=checked]:ring-ink",
         "data-[state=indeterminate]:bg-ink data-[state=indeterminate]:ring-ink",
         "disabled:cursor-not-allowed disabled:opacity-50",

@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { springSheet } from "@/lib/motion";
 import { useIsDesktop } from "@/hooks/use-media-query";
+import { useT } from "@/components/providers/i18n";
 
 interface SheetProps {
   open: boolean;
@@ -55,7 +56,10 @@ function MobileDrawer({
             className,
           )}
         >
-          <div aria-hidden className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line-strong" />
+          <div
+            aria-hidden
+            className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-line-strong"
+          />
           {hideHeader ? (
             <VisuallyHidden.Root>
               <Drawer.Title>{title}</Drawer.Title>
@@ -79,7 +83,7 @@ function MobileDrawer({
               {footer}
             </div>
           ) : (
-            <div className="pb-safe shrink-0" />
+            <div className="shrink-0 pb-safe" />
           )}
         </Drawer.Content>
       </Drawer.Portal>
@@ -98,6 +102,7 @@ function DesktopDialog({
   size = "md",
   className,
 }: SheetProps) {
+  const closeLabel = useT("common")("close");
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
@@ -133,7 +138,9 @@ function DesktopDialog({
                     </VisuallyHidden.Root>
                   ) : (
                     <div className="shrink-0 px-6 pt-6 pr-14 pb-1">
-                      <Dialog.Title className="font-display text-display-sm text-ink">{title}</Dialog.Title>
+                      <Dialog.Title className="font-display text-display-sm text-ink">
+                        {title}
+                      </Dialog.Title>
                       {description ? (
                         <Dialog.Description className="mt-1.5 text-body-sm text-ink-2">
                           {description}
@@ -143,7 +150,7 @@ function DesktopDialog({
                   )}
                   <Dialog.Close
                     className="absolute top-4 right-4 inline-flex size-9 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-surface-hover hover:text-ink"
-                    aria-label="Close"
+                    aria-label={closeLabel}
                   >
                     <X className="size-5" strokeWidth={1.75} />
                   </Dialog.Close>

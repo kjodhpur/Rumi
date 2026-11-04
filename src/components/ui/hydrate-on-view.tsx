@@ -43,7 +43,15 @@ export function HydrateOnView({
   }, [active, margin]);
 
   if (!active) {
-    return <div ref={ref} className={className} style={style} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: "" }} />;
+    return (
+      <div
+        ref={ref}
+        className={className}
+        style={style}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: "" }}
+      />
+    );
   }
   return (
     <div ref={ref} className={className} style={style}>
@@ -56,7 +64,15 @@ export function HydrateOnView({
  * Same idea for chrome that CSS shows at only one breakpoint (the desktop
  * sidebar, the mobile tab bar): it hydrates only where it's actually visible.
  */
-export function HydrateForMedia({ query, children, className }: { query: string; children: React.ReactNode; className?: string }) {
+export function HydrateForMedia({
+  query,
+  children,
+  className,
+}: {
+  query: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
   const [active, setActive] = React.useState(
     () => typeof window === "undefined" || document.documentElement.dataset.hydrated === "true",
   );
@@ -70,6 +86,13 @@ export function HydrateForMedia({ query, children, className }: { query: string;
     return () => media.removeEventListener("change", onChange);
   }, [active, query]);
 
-  if (!active) return <div className={className} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: "" }} />;
+  if (!active)
+    return (
+      <div
+        className={className}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: "" }}
+      />
+    );
   return <div className={className}>{children}</div>;
 }

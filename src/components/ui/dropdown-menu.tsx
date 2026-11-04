@@ -10,7 +10,7 @@ export const DropdownMenuGroup = Primitive.Group;
 
 export const menuSurface = cn(
   "z-50 min-w-[200px] overflow-hidden rounded-lg bg-surface-raised p-1.5 text-ink shadow-lg ring-1 ring-line",
-  "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+  "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
   "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
   "data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1",
   "origin-[var(--radix-dropdown-menu-content-transform-origin)]",
@@ -42,7 +42,7 @@ export const DropdownMenuItem = React.forwardRef<
       ref={ref}
       className={cn(
         "relative flex h-10 cursor-default items-center gap-2.5 rounded-sm px-2.5 text-body-sm outline-none select-none",
-        "data-[highlighted]:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-hover",
         "[&_svg]:size-[18px] [&_svg]:shrink-0 [&_svg]:text-ink-2",
         destructive && "text-danger [&_svg]:text-danger",
         className,
@@ -56,7 +56,10 @@ export function DropdownMenuSeparator({ className }: { className?: string }) {
   return <Primitive.Separator className={cn("-mx-1.5 my-1.5 h-px bg-line", className)} />;
 }
 
-export function DropdownMenuLabel({ className, ...props }: React.ComponentPropsWithoutRef<typeof Primitive.Label>) {
+export function DropdownMenuLabel({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof Primitive.Label>) {
   return (
     <Primitive.Label
       className={cn("px-2.5 py-1.5 text-caption font-medium text-ink-3", className)}

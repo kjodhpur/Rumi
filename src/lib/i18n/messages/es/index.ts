@@ -8,6 +8,9 @@ import { onboarding } from "./onboarding";
 import { consent } from "./consent";
 import { scenarios } from "./scenarios";
 import { matching } from "./matching";
+import { matches } from "./matches";
+import { common } from "./common";
+import { reasons } from "./reasons";
 
 /** Spanish: complete for student flows. The type makes a missing key a compile error. */
 export const es: Messages = {
@@ -20,4 +23,7 @@ export const es: Messages = {
   consent,
   scenarios,
   matching,
+  matches,
+  common,
+  reasons,
 };

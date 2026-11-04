@@ -24,7 +24,9 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { CountBubble } from "@/components/ui/badge";
 import { useProfileOverlay } from "@/components/profile/profile-overlay";
 import { toggleSave } from "@/app/actions/social";
-import { CLASS_YEARS, ROOMMATE_GENDERS, labelOf } from "@/lib/options";
+import { labelOf } from "@/lib/options";
+import { useOptions, useT, type Translator } from "@/components/providers/i18n";
+import type { LocalizedOptions } from "@/lib/i18n/options";
 import {
   activeFilterCount,
   filtersToParams,
@@ -40,12 +42,7 @@ import { whenIdle } from "@/lib/idle";
 import { CARD_PHOTO_SIZES, MatchCard } from "./match-card";
 import type { MatchCardData } from "./types";
 
-const SORT_LABELS: Record<SortKey, string> = {
-  best: "Best match",
-  newest: "Newest",
-  move_in: "Soonest move-in",
-  budget: "Lowest budget",
-};
+const SORT_KEYS: SortKey[] = ["best", "newest", "move_in", "budget"];
 
 interface MatchesViewProps {
   initial: { items: MatchCardData[]; total: number | null; nextOffset: number | null };
@@ -61,11 +58,15 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
   const router = useRouter();
   const pathname = usePathname();
   const overlay = useProfileOverlay();
+  const t = useT("matches");
+  const options = useOptions();
   const [items, setItems] = React.useState(initial.items);
   const entrance = useEntrance(initial.items.map((item) => item.id));
   // The first screen of cards hydrates with the page, the rest as they near the viewport.
   // Fixed per card rather than by position, so no card remounts when the list closes a gap.
-  const [eagerIds] = React.useState(() => new Set(initial.items.slice(0, 3).map((item) => item.id)));
+  const [eagerIds] = React.useState(
+    () => new Set(initial.items.slice(0, 3).map((item) => item.id)),
+  );
   const [nextOffset, setNextOffset] = React.useState(initial.nextOffset);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [loadError, setLoadError] = React.useState(false);
@@ -167,7 +168,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
     }
   }
 
-  const chips = filterChips(filters, areas);
+  const chips = filterChips(filters, areas, t, options);
 
   const renderCard = (card: MatchCardData, index: number) => (
     <MatchCard
@@ -181,19 +182,19 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
   return (
     <div>
       <PageHeader
-        title={filters.saved ? "Saved" : "Your matches"}
+        title={filters.saved ? t("saved") : t("yourMatches")}
         description={
           filters.saved
-            ? "People you've bookmarked to come back to."
+            ? t("savedBody")
             : total > 0
-              ? `${total} ${total === 1 ? "person fits" : "people fit"} how you live — best first.`
-              : "Ranked by how well you'd actually live together."
+              ? t("countBody", { count: total })
+              : t("rankedBody")
         }
       />
 
       <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <SegmentedControl
-          aria-label="View"
+          aria-label={t("view")}
           className="md:w-[240px]"
           value={filters.saved ? "saved" : "all"}
           onValueChange={(v) => navigate({ ...filters, saved: v === "saved" })}
@@ -202,7 +203,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
               value: "all",
               label: (
                 <>
-                  <Sparkles className="size-4" strokeWidth={1.75} aria-hidden /> For you
+                  <Sparkles className="size-4" strokeWidth={1.75} aria-hidden /> {t("forYou")}
                 </>
               ),
             },
@@ -210,7 +211,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
               value: "saved",
               label: (
                 <>
-                  <Bookmark className="size-4" strokeWidth={1.75} aria-hidden /> Saved
+                  <Bookmark className="size-4" strokeWidth={1.75} aria-hidden /> {t("saved")}
                 </>
               ),
             },
@@ -219,8 +220,8 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
         <div className="flex items-center gap-2">
           <Input
             type="search"
-            aria-label="Search matches by name, major or bio"
-            placeholder="Search name, major…"
+            aria-label={t("searchLabel")}
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             leading={<Search strokeWidth={1.75} />}
@@ -229,7 +230,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  aria-label="Clear search"
+                  aria-label={t("clearSearch")}
                   className="flex size-8 items-center justify-center rounded-full text-ink-3 hover:bg-surface-hover hover:text-ink"
                 >
                   <X className="size-4" strokeWidth={2} />
@@ -239,15 +240,15 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
             className="min-w-0 flex-1 md:w-[260px] md:flex-none"
           />
           <label className="relative">
-            <span className="sr-only">Sort by</span>
+            <span className="sr-only">{t("sortBy")}</span>
             <select
               value={filters.sort}
               onChange={(e) => navigate({ ...filters, sort: e.target.value as SortKey })}
               className="h-11 appearance-none rounded-md bg-surface pr-3 pl-10 text-body-sm font-medium text-ink shadow-xs ring-1 ring-line-strong outline-none ring-inset focus-visible:ring-2 focus-visible:ring-focus max-sm:w-11 max-sm:pr-0 max-sm:text-transparent"
             >
-              {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+              {SORT_KEYS.map((key) => (
                 <option key={key} value={key} className="text-ink">
-                  {SORT_LABELS[key]}
+                  {t(`sort.${key}`)}
                 </option>
               ))}
             </select>
@@ -261,10 +262,10 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
             variant="secondary"
             onClick={() => setFiltersOpen(true)}
             className="h-11 shrink-0 max-sm:w-11 max-sm:px-0"
-            aria-label={filterCount ? `Filters, ${filterCount} active` : "Filters"}
+            aria-label={filterCount ? t("filtersActive", { count: filterCount }) : t("filters")}
           >
             <SlidersHorizontal strokeWidth={1.75} />
-            <span className="max-sm:hidden">Filters</span>
+            <span className="max-sm:hidden">{t("filters")}</span>
             {filterCount > 0 ? (
               <CountBubble
                 count={filterCount}
@@ -289,7 +290,7 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
                 type="button"
                 onClick={() => navigate(chip.remove(filters))}
                 className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-ink pr-2 pl-3 text-body-sm font-medium text-ink-inverse transition-transform active:scale-95"
-                aria-label={`Remove filter: ${chip.label}`}
+                aria-label={t("removeFilter", { label: chip.label })}
               >
                 {chip.label}
                 <X className="size-3.5" strokeWidth={2.25} aria-hidden />
@@ -325,10 +326,14 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
           />
         ) : (
           <>
-            <h2 className="sr-only">{filters.saved ? "Saved profiles" : "Ranked matches"}</h2>
+            <h2 className="sr-only">{filters.saved ? t("savedProfiles") : t("ranked")}</h2>
             <ul className="grid gap-x-5 gap-y-9 sm:grid-cols-2 xl:grid-cols-3">
               {items.map((card, index) => (
-                <li key={card.id} className={entrance(card.id)} style={revealDelay(index, PAGE_SIZE)}>
+                <li
+                  key={card.id}
+                  className={entrance(card.id)}
+                  style={revealDelay(index, PAGE_SIZE)}
+                >
                   {eagerIds.has(card.id) ? (
                     renderCard(card, index)
                   ) : (
@@ -346,21 +351,25 @@ export function MatchesView({ initial, filters, areas, children }: MatchesViewPr
         <div ref={sentinel} aria-hidden className="h-px" />
         {loadError ? (
           <div className="mt-8 flex flex-col items-center gap-3 text-center">
-            <p className="text-body-sm text-ink-2">Couldn&apos;t load more matches.</p>
+            <p className="text-body-sm text-ink-2">{t("loadMoreError")}</p>
             <Button variant="secondary" size="sm" onClick={() => void loadMore()}>
-              Try again
+              {t("tryAgain")}
             </Button>
           </div>
         ) : null}
         {nextOffset === null && items.length > 6 ? (
-          <p className="mt-12 text-center text-body-sm text-ink-3">
-            That&apos;s everyone for now. New matches show up as people join.
-          </p>
+          <p className="mt-12 text-center text-body-sm text-ink-3">{t("everyone")}</p>
         ) : null}
       </div>
 
       {filtersUsed || filtersOpen ? (
-        <FiltersSheet open={filtersOpen} onOpenChange={setFiltersOpen} filters={filters} areas={areas} onApply={navigate} />
+        <FiltersSheet
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          filters={filters}
+          areas={areas}
+          onApply={navigate}
+        />
       ) : null}
     </div>
   );
@@ -388,15 +397,16 @@ function Empty({
   filterCount: number;
   onClear: () => void;
 }) {
+  const t = useT("matches");
   if (filters.saved) {
     return (
       <EmptyState
         icon={<Bookmark strokeWidth={1.5} />}
-        title="Nothing saved yet"
-        description="Tap the bookmark on anyone you'd like to come back to. They won't be notified."
+        title={t("empty.savedTitle")}
+        description={t("empty.savedBody")}
         action={
           <Button asChild variant="secondary">
-            <Link href="/matches">Browse matches</Link>
+            <Link href="/matches">{t("empty.browse")}</Link>
           </Button>
         }
       />
@@ -406,20 +416,20 @@ function Empty({
     return (
       <EmptyState
         icon={<SearchX strokeWidth={1.5} />}
-        title="No one matches that"
-        description="Try a wider budget, more neighborhoods, or clearing your search."
-        action={<Button onClick={onClear}>Clear filters</Button>}
+        title={t("empty.filteredTitle")}
+        description={t("empty.filteredBody")}
+        action={<Button onClick={onClear}>{t("empty.clearFilters")}</Button>}
       />
     );
   }
   return (
     <EmptyState
       art={<GhostCards />}
-      title="Your matches are on their way"
-      description="We only show people who pass both of your dealbreakers. Loosening one or widening your budget usually helps — and new students join every day."
+      title={t("empty.noneTitle")}
+      description={t("empty.noneBody")}
       action={
         <Button asChild>
-          <Link href="/settings/profile">Adjust preferences</Link>
+          <Link href="/settings/profile">{t("empty.adjust")}</Link>
         </Button>
       }
     />
@@ -452,12 +462,17 @@ function GhostCards() {
   );
 }
 
-function filterChips(f: FeedFilters, areas: { slug: string; name: string }[]) {
+function filterChips(
+  f: FeedFilters,
+  areas: { slug: string; name: string }[],
+  t: Translator<"matches">,
+  options: LocalizedOptions,
+) {
   const chips: { key: string; label: string; remove: (f: FeedFilters) => FeedFilters }[] = [];
   if (f.budgetMin || f.budgetMax) {
     chips.push({
       key: "budget",
-      label: `${f.budgetMin ? formatMoney(f.budgetMin) : "Any"} – ${f.budgetMax ? formatMoney(f.budgetMax) : "any"}`,
+      label: `${f.budgetMin ? formatMoney(f.budgetMin) : t("chips.any")} – ${f.budgetMax ? formatMoney(f.budgetMax) : t("chips.anyLower")}`,
       remove: (x) => ({ ...x, budgetMin: null, budgetMax: null }),
     });
   }
@@ -472,21 +487,21 @@ function filterChips(f: FeedFilters, areas: { slug: string; name: string }[]) {
   if (f.moveFrom || f.moveTo) {
     chips.push({
       key: "move",
-      label: `Move-in ${f.moveFrom ?? "…"} → ${f.moveTo ?? "…"}`,
+      label: t("chips.moveIn", { from: f.moveFrom ?? "…", to: f.moveTo ?? "…" }),
       remove: (x) => ({ ...x, moveFrom: null, moveTo: null }),
     });
   }
   for (const g of f.genders) {
     chips.push({
       key: `g-${g}`,
-      label: labelOf(ROOMMATE_GENDERS, g),
+      label: labelOf(options.ROOMMATE_GENDERS, g),
       remove: (x) => ({ ...x, genders: x.genders.filter((v) => v !== g) }),
     });
   }
   for (const y of f.years) {
     chips.push({
       key: `y-${y}`,
-      label: labelOf(CLASS_YEARS, y),
+      label: labelOf(options.CLASS_YEARS, y),
       remove: (x) => ({ ...x, years: x.years.filter((v) => v !== y) }),
     });
   }

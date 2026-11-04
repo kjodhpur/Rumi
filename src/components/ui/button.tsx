@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useT } from "@/components/providers/i18n";
 import { Slot } from "radix-ui";
 import { AnimatePresence, motion, type HTMLMotionProps } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -10,7 +11,7 @@ import { Spinner } from "./spinner";
 
 const buttonVariants = cva(
   [
-    "relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap font-medium",
+    "relative inline-flex shrink-0 items-center justify-center gap-2 font-medium whitespace-nowrap select-none",
     "transition-[background-color,color,box-shadow,opacity] duration-150 ease-out-quint",
     "disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -47,9 +48,7 @@ const buttonVariants = cva(
 
 type MotionButtonProps = Omit<HTMLMotionProps<"button">, "children">;
 
-export interface ButtonProps
-  extends MotionButtonProps,
-    VariantProps<typeof buttonVariants> {
+export interface ButtonProps extends MotionButtonProps, VariantProps<typeof buttonVariants> {
   children?: React.ReactNode;
   /** Renders the child element (e.g. a Link) with button styles; press feedback falls back to CSS. */
   asChild?: boolean;
@@ -69,7 +68,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
     asChild,
     loading = false,
     success = false,
-    successLabel = "Done",
+    successLabel,
     disabled,
     children,
     type = "button",
@@ -77,6 +76,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   },
   ref,
 ) {
+  const t = useT("common");
+  const doneLabel = successLabel ?? t("done");
   if (asChild) {
     return (
       <Slot.Root
@@ -140,7 +141,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
           >
             <AnimatedCheck />
             {size === "icon" || size === "icon-sm" || size === "icon-lg" ? null : (
-              <span>{successLabel}</span>
+              <span>{doneLabel}</span>
             )}
           </motion.span>
         ) : null}

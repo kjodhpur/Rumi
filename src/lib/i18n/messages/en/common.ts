@@ -1,0 +1,15 @@
+export const common = {
+  done: "Done",
+  copy: "Copy",
+  copied: "Copied",
+  copyFailed: "Couldn't copy. Select the text and copy it instead.",
+  close: "Close",
+  somethingWrong: "Something went wrong",
+  tryMoment: "Please try again in a moment.",
+  tryAgain: "Try again",
+  cancel: "Cancel",
+  save: "Save",
+  back: "Back",
+  optional: "Optional",
+  loading: "Loading",
+};

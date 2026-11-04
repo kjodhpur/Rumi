@@ -3,6 +3,8 @@
 import * as React from "react";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_INFO, type Locale } from "@/lib/i18n/config";
 import { createTranslator, type Namespace, type Translator } from "@/lib/i18n/core";
+
+export type { Translator };
 import { en, type Messages } from "@/lib/i18n/messages/en";
 import { localizeOptions } from "@/lib/i18n/options";
 import { localizeErrorWith } from "@/lib/i18n/errors";

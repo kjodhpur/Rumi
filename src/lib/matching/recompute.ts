@@ -1,4 +1,5 @@
 import "server-only";
+import { isSelectableLocale, type Locale } from "@/lib/i18n/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/types/database";
 import type { FactorKey, Importance } from "@/lib/options";
@@ -43,6 +44,7 @@ export interface ProfileExtras {
   accommodations?: AccommodationConstraintKey[];
   scenarios?: Record<string, ScenarioAnswer>;
   classDay?: MatchProfile["classDay"];
+  locale?: Locale;
 }
 
 export function toMatchProfile(
@@ -70,6 +72,7 @@ export function toMatchProfile(
     accommodations: extras.accommodations ?? [],
     scenarios: extras.scenarios ?? {},
     classDay: extras.classDay ?? null,
+    locale: extras.locale,
     music: music && artists.length > 0 ? { artists, genres: music.top_genres ?? [] } : null,
     prefs: {
       budgetMin: prefs.budget_min,
@@ -181,7 +184,7 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
     loadActiveQuestions(schoolId),
   ]);
   const ids = people.map((p) => p.id);
-  const [answers, schedules] = await Promise.all([
+  const [answers, schedules, languages] = await Promise.all([
     selectByIds(ids, (chunk, from, to) =>
       admin
         .from("school_question_answers")
@@ -199,7 +202,22 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
         .order("user_id")
         .range(from, to),
     ),
+    // Reasons and watch-outs are written in each viewer's language.
+    selectByIds(ids, (chunk, from, to) =>
+      admin
+        .from("user_settings")
+        .select("user_id, locale")
+        .in("user_id", chunk)
+        .neq("locale", "en")
+        .order("user_id")
+        .range(from, to),
+    ),
   ]);
+  const locales = new Map(
+    languages
+      .filter((l) => isSelectableLocale(l.locale))
+      .map((l) => [l.user_id, l.locale as Locale]),
+  );
 
   const accommodations = new Map<string, AccommodationConstraintKey[]>();
   for (const c of constraints) {
@@ -224,6 +242,7 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
         accommodations: accommodations.get(person.id),
         scenarios: toScenarioAnswers(answersByUser.get(person.id) ?? [], questions),
         classDay: classDays.get(person.id) ?? null,
+        locale: locales.get(person.id),
       }),
     );
   }

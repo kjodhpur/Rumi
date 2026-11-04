@@ -4,16 +4,18 @@ import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/components/providers/i18n";
 
 export function CopyButton({
   value,
-  label = "Copy",
+  label,
   size = "sm",
 }: {
   value: string;
   label?: string;
   size?: "sm" | "md";
 }) {
+  const t = useT("common");
   const [copied, setCopied] = React.useState(false);
   async function copy() {
     try {
@@ -21,7 +23,7 @@ export function CopyButton({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      toast.error("Couldn't copy. Select the text and copy it instead.");
+      toast.error(t("copyFailed"));
     }
   }
   return (
@@ -33,7 +35,7 @@ export function CopyButton({
       aria-live="polite"
     >
       {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-      {copied ? "Copied" : label}
+      {copied ? t("copied") : (label ?? t("copy"))}
     </Button>
   );
 }

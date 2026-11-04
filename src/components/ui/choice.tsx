@@ -86,7 +86,9 @@ export function MultiChips<T extends string>({
           pressed={value.includes(option.value)}
           icon={option.icon}
           onPressedChange={(pressed) =>
-            onValueChange(pressed ? [...value, option.value] : value.filter((v) => v !== option.value))
+            onValueChange(
+              pressed ? [...value, option.value] : value.filter((v) => v !== option.value),
+            )
           }
         >
           {option.label}
@@ -143,7 +145,9 @@ export function OptionCards<T extends string>({
               )}
             >
               <span className="pr-5 text-body-sm font-medium text-ink">{option.label}</span>
-              {option.hint ? <span className="mt-0.5 text-caption text-ink-3">{option.hint}</span> : null}
+              {option.hint ? (
+                <span className="mt-0.5 text-caption text-ink-3">{option.hint}</span>
+              ) : null}
               <AnimatePresence initial={false}>
                 {selected ? (
                   <motion.span

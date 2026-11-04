@@ -12,6 +12,7 @@ import { springSnappy } from "@/lib/motion";
 import { imagePlaceholder } from "@/lib/photos";
 import { housingLine, metaLine } from "./card-meta";
 import type { MatchCardData } from "./types";
+import { useIntlLocale, useOptions, useT } from "@/components/providers/i18n";
 
 /** Photo `sizes` for the card. The profile overlay reuses it to show the already-loaded copy. */
 export const CARD_PHOTO_SIZES = "(min-width: 1280px) 330px, (min-width: 640px) 45vw, 100vw";
@@ -30,9 +31,20 @@ interface MatchCardProps {
   morph?: boolean;
 }
 
-export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animateScore, morph = true }: MatchCardProps) {
+export function MatchCard({
+  data,
+  onOpen,
+  onToggleSave,
+  priority,
+  hidden,
+  animateScore,
+  morph = true,
+}: MatchCardProps) {
+  const t = useT("matches");
+  const intl = useIntlLocale();
+  const { CLASS_YEARS } = useOptions();
   const name = displayName(data.firstName, data.lastInitial);
-  const meta = metaLine(data.classYear, data.major);
+  const meta = metaLine(data.classYear, data.major, CLASS_YEARS);
 
   return (
     <motion.article
@@ -43,19 +55,20 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
         "group relative flex flex-col transition-opacity duration-150",
         hidden && "opacity-0",
       )}
-      aria-label={`${name}, ${data.score}% match`}
+      aria-label={t("card.label", { name, score: data.score })}
     >
       <Link
         href={`/profile/${data.id}`}
         scroll={false}
         onClick={(event) => {
-          if (!onOpen || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+          if (!onOpen || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0)
+            return;
           event.preventDefault();
           onOpen(data);
         }}
         className="absolute inset-0 z-10 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
       >
-        <span className="sr-only">Open {name}&apos;s profile</span>
+        <span className="sr-only">{t("card.open", { name })}</span>
       </Link>
 
       <motion.div
@@ -75,7 +88,12 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
             placeholder={imagePlaceholder(data.placeholder)}
           />
         ) : (
-          <Monogram name={data.firstName} seed={data.id} rounded="rounded-none" className="absolute inset-0 [container-type:size]" />
+          <Monogram
+            name={data.firstName}
+            seed={data.id}
+            rounded="rounded-none"
+            className="[container-type:size] absolute inset-0"
+          />
         )}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/25 to-transparent" />
       </motion.div>
@@ -103,11 +121,15 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
             {name}
           </motion.h3>
           {data.verified ? (
-            <BadgeCheck className="size-[18px] shrink-0 text-accent" strokeWidth={2} aria-label="Verified student" />
+            <BadgeCheck
+              className="size-[18px] shrink-0 text-accent"
+              strokeWidth={2}
+              aria-label={t("card.verified")}
+            />
           ) : null}
           {data.introStatus ? (
             <span className="ml-auto shrink-0 rounded-full bg-surface-sunken px-2 py-0.5 text-micro font-medium text-ink-2">
-              {data.introStatus === "accepted" ? "Connected" : "Intro sent"}
+              {data.introStatus === "accepted" ? t("card.connected") : t("card.introSent")}
             </span>
           ) : null}
         </div>
@@ -116,7 +138,11 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
           <ul className="mt-2 flex flex-col gap-1">
             {data.reasons.slice(0, 2).map((reason) => (
               <li key={reason} className="flex items-start gap-2 text-body-sm text-ink">
-                <Sparkle className="mt-[3px] size-3.5 shrink-0 fill-accent text-accent" strokeWidth={0} aria-hidden />
+                <Sparkle
+                  className="mt-[3px] size-3.5 shrink-0 fill-accent text-accent"
+                  strokeWidth={0}
+                  aria-hidden
+                />
                 <span className="line-clamp-1">{reason}</span>
               </li>
             ))}
@@ -130,14 +156,32 @@ export function MatchCard({ data, onOpen, onToggleSave, priority, hidden, animat
               <span aria-hidden>·</span>
             </>
           ) : null}
-          <span className="truncate">{housingLine(data.budgetMin, data.budgetMax, data.moveInDate, data.areaNames[0])}</span>
+          <span className="truncate">
+            {housingLine(
+              data.budgetMin,
+              data.budgetMax,
+              data.moveInDate,
+              data.areaNames[0],
+              (date) => t("card.moves", { date }),
+              intl,
+            )}
+          </span>
         </p>
       </div>
     </motion.article>
   );
 }
 
-function SaveButton({ saved, name, onToggle }: { saved: boolean; name: string; onToggle: () => void }) {
+function SaveButton({
+  saved,
+  name,
+  onToggle,
+}: {
+  saved: boolean;
+  name: string;
+  onToggle: () => void;
+}) {
+  const t = useT("matches");
   return (
     <motion.button
       type="button"
@@ -145,8 +189,8 @@ function SaveButton({ saved, name, onToggle }: { saved: boolean; name: string; o
       whileTap={{ scale: 0.85 }}
       transition={springSnappy}
       aria-pressed={saved}
-      aria-label={saved ? `Remove ${name} from saved` : `Save ${name}`}
-      className="absolute top-3 right-3 z-20 flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md outline-none transition-transform focus-visible:ring-2 focus-visible:ring-focus"
+      aria-label={saved ? t("card.unsave", { name }) : t("card.save", { name })}
+      className="absolute top-3 right-3 z-20 flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-md transition-transform outline-none focus-visible:ring-2 focus-visible:ring-focus"
     >
       <motion.span
         key={saved ? "saved" : "unsaved"}

@@ -352,3 +352,60 @@ describe("explanations", () => {
     }
   });
 });
+
+describe("evaluateMatch — language", () => {
+  it("writes each side's reasons and watch-outs in that student's language", () => {
+    const ana = person("ana", { sleepSchedule: 5, noise: 1 }, { locale: "es" });
+    const ben = person("ben", { sleepSchedule: 5, noise: 1, pets: "have" });
+    const result = evaluateMatch(ana, ben);
+    const es = result!.forA.reasons.map((r) => r.label);
+    const en = result!.forB.reasons.map((r) => r.label);
+    expect(es).toContain("Los dos son noctámbulos");
+    expect(en).toContain("You're both night owls");
+    expect(result!.forA.watchouts.map((w) => w.label)).toContain("BEN tiene una mascota");
+  });
+
+  it("translates Rumi's scenario reasons but keeps school-added ones as written", () => {
+    const shared = {
+      factor: "guests" as const,
+      value: 1,
+      reason: "Neither of you wants regular overnight guests",
+      topic: "overnight guests",
+      builtIn: true,
+      questionKey: "partner_overnight",
+      choiceKey: "not_okay",
+    };
+    const school = {
+      ...shared,
+      builtIn: false,
+      reason: "Same answer on dorm visitors",
+      questionKey: "dorm",
+    };
+    const a = person(
+      "a",
+      { guests: 1, weights: { guests: 3 } },
+      { locale: "es", scenarios: { "partner_overnight@1": shared } },
+    );
+    const b = person(
+      "b",
+      { guests: 1, weights: { guests: 3 } },
+      { scenarios: { "partner_overnight@1": shared } },
+    );
+    expect(evaluateMatch(a, b)!.forA.reasons.map((r) => r.label)).toContain(
+      "Ninguno de los dos quiere visitas frecuentes que se queden a dormir",
+    );
+    const c = person(
+      "c",
+      { guests: 1, weights: { guests: 3 } },
+      { locale: "es", scenarios: { "dorm@1": school } },
+    );
+    const d = person(
+      "d",
+      { guests: 1, weights: { guests: 3 } },
+      { scenarios: { "dorm@1": school } },
+    );
+    expect(evaluateMatch(c, d)!.forA.reasons.map((r) => r.label)).toContain(
+      "Same answer on dorm visitors",
+    );
+  });
+});

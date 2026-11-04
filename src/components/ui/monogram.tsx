@@ -45,7 +45,11 @@ export function Monogram({
   return (
     <span
       aria-hidden
-      className={cn("relative flex items-center justify-center overflow-hidden", rounded, className)}
+      className={cn(
+        "relative flex items-center justify-center overflow-hidden",
+        rounded,
+        className,
+      )}
       style={
         {
           "--m-from": from,

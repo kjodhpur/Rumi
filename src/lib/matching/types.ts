@@ -1,3 +1,4 @@
+import type { Locale } from "@/lib/i18n/config";
 import type {
   Dealbreaker,
   Drinking,
@@ -64,6 +65,10 @@ export interface ScenarioAnswer {
   reason: string;
   /** Short topic for a watch-out ("overnight guests"). */
   topic: string;
+  /** Rumi's own question (translated for the viewer) rather than a school-added one. */
+  builtIn?: boolean;
+  questionKey?: string;
+  choiceKey?: string;
 }
 
 export type Track = "freshman" | "returning" | "transfer" | "grad";
@@ -90,6 +95,8 @@ export interface MatchProfile {
   scenarios?: Record<string, ScenarioAnswer>;
   /** Earliest weekday class start and latest class end, minutes after midnight. */
   classDay?: { earliestStart: number; latestEnd: number } | null;
+  /** The student's language: the reasons and watch-outs written for them use it. */
+  locale?: Locale;
 }
 
 export interface Reason {
