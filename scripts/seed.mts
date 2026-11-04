@@ -3,6 +3,7 @@
  *
  *   npm run seed                      # local Supabase (refuses remote URLs)
  *   npm run seed -- --demo you@asu.edu  # also gives that account intros + a chat
+ *   npm run seed -- --demo-school       # "Demo University" with staff, outcomes and check-ins (scripts/seed-demo-school.mts)
  *   SEED_ALLOW_REMOTE=true npm run seed # for a staging/preview project only
  *
  * Re-running replaces previous seed users. Photos are generated warm monogram
@@ -33,7 +34,9 @@ if (!isLocal && process.env.SEED_ALLOW_REMOTE !== "true") {
 
 const SEED_DOMAIN = "seed.asu.edu";
 const args = process.argv.slice(2);
-const demoEmail = args.includes("--demo") ? args[args.indexOf("--demo") + 1]?.toLowerCase() : undefined;
+const demoEmail = args.includes("--demo")
+  ? args[args.indexOf("--demo") + 1]?.toLowerCase()
+  : undefined;
 
 // Imported after env is loaded (these modules read env lazily).
 const { createAdminClient } = await import("../src/lib/supabase/admin.ts");
@@ -64,18 +67,29 @@ const PALETTES = [
 
 const UNSPLASH: Record<"woman" | "man", string[]> = {
   woman: [
-    "photo-1494790108377-be9c29b29330", "photo-1438761681033-6461ffad8d80", "photo-1534528741775-53994a69daeb",
-    "photo-1517841905240-472988babdf9", "photo-1580489944761-15a19d654956", "photo-1573496359142-b8d87734a5a2",
-    "photo-1554151228-14d9def656e4", "photo-1544005313-94ddf0286df2",
+    "photo-1494790108377-be9c29b29330",
+    "photo-1438761681033-6461ffad8d80",
+    "photo-1534528741775-53994a69daeb",
+    "photo-1517841905240-472988babdf9",
+    "photo-1580489944761-15a19d654956",
+    "photo-1573496359142-b8d87734a5a2",
+    "photo-1554151228-14d9def656e4",
+    "photo-1544005313-94ddf0286df2",
   ],
   man: [
-    "photo-1507003211169-0a1dd7228f2d", "photo-1500648767791-00dcc994a43e", "photo-1506794778202-cad84cf45f1d",
-    "photo-1539571696357-5a69c17a67c6", "photo-1472099645785-5658abf4ff4e", "photo-1535713875002-d1d0cf377fde",
+    "photo-1507003211169-0a1dd7228f2d",
+    "photo-1500648767791-00dcc994a43e",
+    "photo-1506794778202-cad84cf45f1d",
+    "photo-1539571696357-5a69c17a67c6",
+    "photo-1472099645785-5658abf4ff4e",
+    "photo-1535713875002-d1d0cf377fde",
   ],
 };
 const usedUnsplash = new Set<string>();
 
-const serif = fontkit.openSync(path.resolve("src/fonts/InstrumentSerif-latin.woff2")) as fontkit.Font;
+const serif = fontkit.openSync(
+  path.resolve("src/fonts/InstrumentSerif-latin.woff2"),
+) as fontkit.Font;
 
 /** A warm duotone portrait with an Instrument Serif initial — the app's own photo fallback. */
 async function monogramPhoto(initial: string, index: number) {
@@ -103,9 +117,12 @@ async function unsplashPhoto(gender: "woman" | "man" | "nonbinary") {
   if (!id) return null;
   usedUnsplash.add(id);
   try {
-    const res = await fetch(`https://images.unsplash.com/${id}?w=960&h=1200&fit=crop&crop=faces&q=80&fm=jpg`, {
-      signal: AbortSignal.timeout(8000),
-    });
+    const res = await fetch(
+      `https://images.unsplash.com/${id}?w=960&h=1200&fit=crop&crop=faces&q=80&fm=jpg`,
+      {
+        signal: AbortSignal.timeout(8000),
+      },
+    );
     if (!res.ok || !res.headers.get("content-type")?.startsWith("image/")) return null;
     return Buffer.from(await res.arrayBuffer());
   } catch {
@@ -135,10 +152,14 @@ function moveInDate() {
 }
 
 async function removeExistingSeed() {
-  const { data } = await admin.from("user_settings").select("user_id, email").like("email", `%@${SEED_DOMAIN}`);
+  const { data } = await admin
+    .from("user_settings")
+    .select("user_id, email")
+    .like("email", `%@${SEED_DOMAIN}`);
   for (const row of data ?? []) {
     const { data: files } = await admin.storage.from("photos").list(row.user_id);
-    if (files?.length) await admin.storage.from("photos").remove(files.map((f) => `${row.user_id}/${f.name}`));
+    if (files?.length)
+      await admin.storage.from("photos").remove(files.map((f) => `${row.user_id}/${f.name}`));
     await admin.auth.admin.deleteUser(row.user_id);
   }
   // Direct chats with seed people are left without members — remove them.
@@ -155,24 +176,42 @@ async function removeExistingSeed() {
 async function createPerson(person: (typeof PEOPLE)[number], index: number) {
   const slug = `${person.first}.${person.last}`.toLowerCase().replace(/[^a-z.]/g, "");
   const email = `rumi-${slug}@${SEED_DOMAIN}`;
-  const { data: created, error } = await admin.auth.admin.createUser({ email, email_confirm: true });
+  const { data: created, error } = await admin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+  });
   if (error || !created.user) throw error ?? new Error("createUser failed");
   const id = created.user.id;
 
   // Lifestyle with gentle correlations (night owls skew social, studio majors skew late).
-  const lateMajor = ["Architecture", "Film", "Graphic Design", "Digital Culture"].includes(person.major);
+  const lateMajor = ["Architecture", "Film", "Graphic Design", "Digital Culture"].includes(
+    person.major,
+  );
   const bioQuiet = /quiet|calm|early|bed by|asleep/i.test(person.bio);
   const sleep = clamp(lateMajor ? between(3, 5) : bioQuiet ? between(1, 3) : between(2, 4));
   const noise = clamp(bioQuiet ? between(1, 2) : between(2, 4));
-  const guests = clamp(/social|friends over|hosting|dinner|game nights/i.test(person.bio) ? between(3, 4) : between(1, 3));
-  const cleanliness = clamp(/clean|tidy|organized|neat/i.test(person.bio) ? between(4, 5) : between(2, 4));
+  const guests = clamp(
+    /social|friends over|hosting|dinner|game nights/i.test(person.bio)
+      ? between(3, 4)
+      : between(1, 3),
+  );
+  const cleanliness = clamp(
+    /clean|tidy|organized|neat/i.test(person.bio) ? between(4, 5) : between(2, 4),
+  );
   const preferredAreas = MAJOR_CAMPUS[person.major] ?? ["tempe-campus"];
   const extraArea = pick(["tempe-south", "mesa", "scottsdale", "tempe-campus", "central-phoenix"]);
-  const areas = [...new Set([...preferredAreas.slice(0, chance(0.5) ? 2 : 1), ...(chance(0.6) ? [extraArea] : [])])];
+  const areas = [
+    ...new Set([
+      ...preferredAreas.slice(0, chance(0.5) ? 2 : 1),
+      ...(chance(0.6) ? [extraArea] : []),
+    ]),
+  ];
   const budgetMin = between(11, 20) * 50;
   const budgetMax = budgetMin + between(4, 9) * 50;
   const pets = /cat|dog|gecko/i.test(person.bio) ? "have" : chance(0.12) ? "want" : "none";
-  const drinking = /don't drink|don’t drink|not drink/i.test(person.bio) ? "never" : pick(["socially", "socially", "socially", "never", "often"]);
+  const drinking = /don't drink|don’t drink|not drink/i.test(person.bio)
+    ? "never"
+    : pick(["socially", "socially", "socially", "never", "often"]);
 
   const dealbreakers = ["budget", "area"] as string[];
   if (chance(0.45)) dealbreakers.push("smoking");
@@ -181,20 +220,42 @@ async function createPerson(person: (typeof PEOPLE)[number], index: number) {
   if (chance(0.15)) dealbreakers.push("pets");
 
   const weights: Record<string, number> = {};
-  for (const key of ["budget", "areas", "sleep", "cleanliness", "noise", "guests", "smoking", "study"]) {
+  for (const key of [
+    "budget",
+    "areas",
+    "sleep",
+    "cleanliness",
+    "noise",
+    "guests",
+    "smoking",
+    "study",
+  ]) {
     if (chance(0.35)) weights[key] = pick([1, 2, 3]);
   }
 
-  const uploads: { storage_path: string; position: number; width: number; height: number; placeholder: string }[] = [];
+  const uploads: {
+    storage_path: string;
+    position: number;
+    width: number;
+    height: number;
+    placeholder: string;
+  }[] = [];
   const photoCount = 1;
   for (let position = 0; position < photoCount; position++) {
-    const image = (await unsplashPhoto(person.gender)) ?? (await monogramPhoto(person.first.charAt(0), index));
+    const image =
+      (await unsplashPhoto(person.gender)) ?? (await monogramPhoto(person.first.charAt(0), index));
     const storagePath = `${id}/${randomUUID()}.jpg`;
     const { error: uploadError } = await admin.storage
       .from("photos")
       .upload(storagePath, image, { contentType: "image/jpeg", cacheControl: "31536000" });
     if (uploadError) throw uploadError;
-    uploads.push({ storage_path: storagePath, position, width: 960, height: 1200, placeholder: await placeholderFor(image) });
+    uploads.push({
+      storage_path: storagePath,
+      position,
+      width: 960,
+      height: 1200,
+      placeholder: await placeholderFor(image),
+    });
   }
 
   const daysAgo = between(0, 40);
@@ -234,9 +295,17 @@ async function createPerson(person: (typeof PEOPLE)[number], index: number) {
         budget_max: budgetMax,
         areas,
         move_in_date: moveInDate(),
-        lease_length: pick(["academic_year", "academic_year", "twelve_months", "twelve_months", "flexible", "semester"]),
+        lease_length: pick([
+          "academic_year",
+          "academic_year",
+          "twelve_months",
+          "twelve_months",
+          "flexible",
+          "semester",
+        ]),
         housing_type: pick(["off_campus", "off_campus", "off_campus", "either", "on_campus"]),
-        gender_pref: person.gender === "nonbinary" ? [] : chance(0.55) ? [person.gender, "nonbinary"] : [],
+        gender_pref:
+          person.gender === "nonbinary" ? [] : chance(0.55) ? [person.gender, "nonbinary"] : [],
         sleep_schedule: sleep,
         cleanliness,
         noise,
@@ -244,7 +313,9 @@ async function createPerson(person: (typeof PEOPLE)[number], index: number) {
         smoking: chance(0.9) ? "never" : pick(["sometimes", "regularly"]),
         drinking,
         pets,
-        study: bioQuiet ? pick(["home_quiet", "campus"]) : pick(["campus", "mix", "home_social", "home_quiet"]),
+        study: bioQuiet
+          ? pick(["home_quiet", "campus"])
+          : pick(["campus", "mix", "home_social", "home_quiet"]),
         dealbreakers,
         weights,
       })
@@ -255,51 +326,97 @@ async function createPerson(person: (typeof PEOPLE)[number], index: number) {
   if (person.taste && chance(0.75)) {
     const pool = [...TASTES[person.taste]];
     const crossover = TASTES[pick(Object.keys(TASTES) as (keyof typeof TASTES)[])];
-    const chosen = [...pool.sort(() => rand() - 0.5).slice(0, between(5, 8)), ...[...crossover].sort(() => rand() - 0.5).slice(0, 2)];
+    const chosen = [
+      ...pool.sort(() => rand() - 0.5).slice(0, between(5, 8)),
+      ...[...crossover].sort(() => rand() - 0.5).slice(0, 2),
+    ];
     const unique = [...new Map(chosen.map((a) => [a[0], a])).values()];
     const genres = [...new Set(unique.flatMap((a) => a[2]))];
     await admin.from("music_profiles").upsert({
       user_id: id,
-      top_artists: unique.map(([artistId, name, artistGenres]) => ({ id: artistId, name, image: null, genres: artistGenres })),
+      top_artists: unique.map(([artistId, name, artistGenres]) => ({
+        id: artistId,
+        name,
+        image: null,
+        genres: artistGenres,
+      })),
       top_genres: genres,
       synced_at: new Date().toISOString(),
     });
   }
 
-  await admin.from("profiles").update({ onboarding_completed_at: new Date(Date.now() - daysAgo * 86_400_000).toISOString() }).eq("id", id);
+  await admin
+    .from("profiles")
+    .update({ onboarding_completed_at: new Date(Date.now() - daysAgo * 86_400_000).toISOString() })
+    .eq("id", id);
   return { id, first: person.first };
 }
 
 async function createGroups(people: { id: string; first: string }[]) {
   for (const group of GROUPS) {
-    const members = group.members.map((first) => people.find((p) => p.first === first)).filter(Boolean) as { id: string; first: string }[];
+    const members = group.members
+      .map((first) => people.find((p) => p.first === first))
+      .filter(Boolean) as { id: string; first: string }[];
     if (members.length === 0) continue;
     const { data: g, error } = await admin
       .from("groups")
-      .insert({ school_id: "asu", name: group.name, owner_id: members[0].id, target_size: group.target })
+      .insert({
+        school_id: "asu",
+        name: group.name,
+        owner_id: members[0].id,
+        target_size: group.target,
+      })
       .select("id")
       .single();
     if (error) throw error;
     const { error: gmError } = await admin
       .from("group_members")
-      .insert(members.map((m, i) => ({ group_id: g.id, user_id: m.id, role: i === 0 ? "owner" : "member" })));
+      .insert(
+        members.map((m, i) => ({
+          group_id: g.id,
+          user_id: m.id,
+          role: i === 0 ? "owner" : "member",
+        })),
+      );
     if (gmError) throw gmError;
-    const { data: c, error: cError } = await admin.from("conversations").insert({ kind: "group", group_id: g.id }).select("id").single();
+    const { data: c, error: cError } = await admin
+      .from("conversations")
+      .insert({ kind: "group", group_id: g.id })
+      .select("id")
+      .single();
     if (cError) throw cError;
-    const { error: cmError } = await admin.from("conversation_members").insert(members.map((m) => ({ conversation_id: c!.id, user_id: m.id })));
+    const { error: cmError } = await admin
+      .from("conversation_members")
+      .insert(members.map((m) => ({ conversation_id: c!.id, user_id: m.id })));
     if (cmError) throw cmError;
-    await admin.from("messages").insert({ conversation_id: c!.id, kind: "system", body: `${members[0].first} started ${group.name}` });
+    await admin
+      .from("messages")
+      .insert({
+        conversation_id: c!.id,
+        kind: "system",
+        body: `${members[0].first} started ${group.name}`,
+      });
   }
 }
 
 async function seedDemoFor(email: string) {
-  const { data: settings } = await admin.from("user_settings").select("user_id").eq("email", email).maybeSingle();
+  const { data: settings } = await admin
+    .from("user_settings")
+    .select("user_id")
+    .eq("email", email)
+    .maybeSingle();
   if (!settings) {
-    console.warn(`No Rumi account for ${email} yet — sign in once, finish onboarding, then re-run with --demo.`);
+    console.warn(
+      `No Rumi account for ${email} yet — sign in once, finish onboarding, then re-run with --demo.`,
+    );
     return;
   }
   const userId = settings.user_id;
-  const { data: me } = await admin.from("profiles").select("onboarding_completed_at").eq("id", userId).single();
+  const { data: me } = await admin
+    .from("profiles")
+    .select("onboarding_completed_at")
+    .eq("id", userId)
+    .single();
   if (!me?.onboarding_completed_at) {
     console.warn(`${email} hasn't finished onboarding — finish it first, then re-run with --demo.`);
     return;
@@ -330,14 +447,32 @@ async function seedDemoFor(email: string) {
   const partner = seeds[0];
   const { data: intro } = await admin
     .from("intros")
-    .insert({ sender_id: partner.candidate_id, recipient_id: userId, message: DEMO_MESSAGES[0][1], status: "accepted", responded_at: new Date().toISOString() })
+    .insert({
+      sender_id: partner.candidate_id,
+      recipient_id: userId,
+      message: DEMO_MESSAGES[0][1],
+      status: "accepted",
+      responded_at: new Date().toISOString(),
+    })
     .select("id")
     .single();
-  const { data: convo } = await admin.from("conversations").insert({ kind: "direct" }).select("id").single();
+  const { data: convo } = await admin
+    .from("conversations")
+    .insert({ kind: "direct" })
+    .select("id")
+    .single();
   // Bulk inserts send every column for every row, so give both rows a read marker.
   const { error: membersError } = await admin.from("conversation_members").insert([
-    { conversation_id: convo!.id, user_id: userId, last_read_at: new Date(Date.now() - 3_600_000).toISOString() },
-    { conversation_id: convo!.id, user_id: partner.candidate_id, last_read_at: new Date().toISOString() },
+    {
+      conversation_id: convo!.id,
+      user_id: userId,
+      last_read_at: new Date(Date.now() - 3_600_000).toISOString(),
+    },
+    {
+      conversation_id: convo!.id,
+      user_id: partner.candidate_id,
+      last_read_at: new Date().toISOString(),
+    },
   ]);
   if (membersError) throw membersError;
   await admin.from("intros").update({ conversation_id: convo!.id }).eq("id", intro!.id);
@@ -355,6 +490,21 @@ async function seedDemoFor(email: string) {
 }
 
 async function main() {
+  if (args.includes("--demo-school")) {
+    const { seedDemoSchool } = await import("./seed-demo-school.mts");
+    const { recomputeSchool } = await import("../src/lib/matching/recompute.ts");
+    const { buildDraft } = await import("../src/lib/agreements/template.ts");
+    const { assignPairs } = await import("../src/lib/matching/assign.ts");
+    await seedDemoSchool({
+      admin,
+      monogramPhoto,
+      placeholderFor,
+      recomputeSchool,
+      buildDraft,
+      assignPairs,
+    });
+    return;
+  }
   console.log(`Seeding ${PEOPLE.length} fictional students into ${url}…`);
   const removed = await removeExistingSeed();
   if (removed) console.log(`Removed ${removed} previous seed users.`);

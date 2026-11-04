@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Sparkles,
   Link2,
+  PieChart,
+  Shuffle,
   GraduationCap,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +48,18 @@ export const STAFF_NAV: StaffNavSection[] = [
         capability: "viewDashboard",
       },
       { href: "/staff/outcomes", label: "Outcomes", icon: BarChart3, capability: "viewDashboard" },
+      {
+        href: "/staff/analytics/segments",
+        label: "Segments",
+        icon: PieChart,
+        capability: "viewAnalytics",
+      },
+      {
+        href: "/staff/analytics/room-changes",
+        label: "Room changes",
+        icon: Shuffle,
+        capability: "viewAnalytics",
+      },
       {
         href: "/staff/students",
         label: "Students",

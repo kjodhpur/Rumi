@@ -24,17 +24,23 @@ export interface PendingInvite {
   invitedBy: string | null;
 }
 
-export async function loadTeam(schoolId: string): Promise<{ members: TeamMember[]; invites: PendingInvite[] }> {
+export async function loadTeam(
+  schoolId: string,
+): Promise<{ members: TeamMember[]; invites: PendingInvite[] }> {
   const db = createAdminClient();
   const [{ data: members }, { data: invites }] = await Promise.all([
     db
       .from("staff_members")
-      .select("id, user_id, role, scopes, disabled_at, created_at, profiles!staff_members_user_id_fkey(first_name, last_initial)")
+      .select(
+        "id, user_id, role, scopes, disabled_at, created_at, profiles!staff_members_user_id_fkey(first_name, last_initial)",
+      )
       .eq("school_id", schoolId)
       .order("created_at"),
     db
       .from("staff_invites")
-      .select("id, email, role, scopes, expires_at, created_at, profiles!staff_invites_created_by_fkey(first_name)")
+      .select(
+        "id, email, role, scopes, expires_at, created_at, profiles!staff_invites_created_by_fkey(first_name)",
+      )
       .eq("school_id", schoolId)
       .is("accepted_at", null)
       .is("revoked_at", null)
@@ -55,7 +61,9 @@ export async function loadTeam(schoolId: string): Promise<{ members: TeamMember[
         return {
           id: m.id,
           userId: m.user_id,
-          name: profile?.first_name ? `${profile.first_name}${profile.last_initial ? ` ${profile.last_initial}.` : ""}` : email.split("@")[0],
+          name: profile?.first_name
+            ? `${profile.first_name}${profile.last_initial ? ` ${profile.last_initial}.` : ""}`
+            : email.split("@")[0],
           email,
           role: m.role as StaffRole,
           scopes: parseScopes(m.scopes),
@@ -77,8 +85,13 @@ export async function loadTeam(schoolId: string): Promise<{ members: TeamMember[
   };
 }
 
-export async function loadRetention(schoolId: string): Promise<{ policy: RetentionPolicy; customized: string[] }> {
-  const { data } = await createAdminClient().from("retention_policies").select("entity, days").eq("school_id", schoolId);
+export async function loadRetention(
+  schoolId: string,
+): Promise<{ policy: RetentionPolicy; customized: string[] }> {
+  const { data } = await createAdminClient()
+    .from("retention_policies")
+    .select("entity, days")
+    .eq("school_id", schoolId);
   return { policy: effectivePolicy(data ?? []), customized: (data ?? []).map((r) => r.entity) };
 }
 
@@ -112,11 +125,18 @@ export async function loadAudit(
     db.from("audit_log").select("action").eq("school_id", schoolId).order("action").limit(1000),
   ]);
   const rows = (data ?? []).slice(0, AUDIT_PAGE_SIZE);
-  const actorIds = [...new Set(rows.map((r) => r.actor_id).filter((id): id is string => Boolean(id)))];
+  const actorIds = [
+    ...new Set(rows.map((r) => r.actor_id).filter((id): id is string => Boolean(id))),
+  ];
   const { data: actors } = actorIds.length
     ? await db.from("profiles").select("id, first_name, last_initial").in("id", actorIds)
     : { data: [] as { id: string; first_name: string; last_initial: string }[] };
-  const nameOf = new Map((actors ?? []).map((a) => [a.id, `${a.first_name}${a.last_initial ? ` ${a.last_initial}.` : ""}`]));
+  const nameOf = new Map(
+    (actors ?? []).map((a) => [
+      a.id,
+      `${a.first_name}${a.last_initial ? ` ${a.last_initial}.` : ""}`,
+    ]),
+  );
   return {
     rows: rows.map((r) => ({
       id: r.id,

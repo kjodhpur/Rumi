@@ -15,6 +15,7 @@ import { firstError } from "@/lib/validation";
 import { fail, ok, type ActionResult } from "@/lib/action";
 import { loadSchoolPool } from "@/lib/matching/recompute";
 import { blockingRule } from "@/lib/matching/blocking";
+import { selectAll, selectByIds } from "@/lib/supabase/paginate";
 import type { Json } from "@/types/database";
 
 const schoolId = z.string().regex(/^[a-z0-9-]{2,32}$/);
@@ -223,40 +224,60 @@ export async function sendNudges(
 
   const db = createAdminClient();
   // Only sharing, onboarded students of this school who aren't in a pair or group.
-  const [{ data: eligible }, { data: recent }] = await Promise.all([
-    db
-      .rpc("school_students", { p_school: school })
-      .select("id")
-      .in("id", userIds)
-      .not("onboarding_completed_at", "is", null),
-    db
-      .from("campaign_sends")
-      .select("user_id")
-      .in("user_id", userIds)
-      .gte("sent_at", new Date(Date.now() - NUDGE_COOLDOWN_DAYS * 86_400_000).toISOString()),
+  const since = new Date(Date.now() - NUDGE_COOLDOWN_DAYS * 86_400_000).toISOString();
+  const [eligible, recent, consents, grouped] = await Promise.all([
+    selectByIds(userIds, (chunk, from, to) =>
+      db
+        .rpc("school_students", { p_school: school })
+        .select("id")
+        .in("id", chunk)
+        .not("onboarding_completed_at", "is", null)
+        .order("id")
+        .range(from, to),
+    ),
+    selectByIds(userIds, (chunk, from, to) =>
+      db
+        .from("campaign_sends")
+        .select("campaign_id, user_id")
+        .in("user_id", chunk)
+        .gte("sent_at", since)
+        .order("campaign_id")
+        .order("user_id")
+        .range(from, to),
+    ),
+    selectByIds(userIds, (chunk, from, to) =>
+      db
+        .from("consents")
+        .select("id, user_id")
+        .eq("kind", "share_with_housing")
+        .is("revoked_at", null)
+        .in("user_id", chunk)
+        .order("id")
+        .range(from, to),
+    ),
+    selectByIds(userIds, (chunk, from, to) =>
+      db
+        .from("group_members")
+        .select("user_id, group_id")
+        .in("user_id", chunk)
+        .order("user_id")
+        .order("group_id")
+        .range(from, to),
+    ),
   ]);
-  const { data: consents } = await db
-    .from("consents")
-    .select("user_id")
-    .eq("kind", "share_with_housing")
-    .is("revoked_at", null)
-    .in("user_id", userIds);
-  const { data: grouped } = await db
-    .from("group_members")
-    .select("user_id, group_id")
-    .in("user_id", userIds);
   const groupSizes = new Map<string, number>();
-  if (grouped?.length) {
-    const { data: all } = await db
-      .from("group_members")
-      .select("group_id")
-      .in(
-        "group_id",
-        grouped.map((g) => g.group_id),
-      );
-    for (const row of all ?? [])
-      groupSizes.set(row.group_id, (groupSizes.get(row.group_id) ?? 0) + 1);
-  }
+  const all = await selectByIds(
+    grouped.map((g) => g.group_id),
+    (chunk, from, to) =>
+      db
+        .from("group_members")
+        .select("group_id, user_id")
+        .in("group_id", chunk)
+        .order("group_id")
+        .order("user_id")
+        .range(from, to),
+  );
+  for (const row of all) groupSizes.set(row.group_id, (groupSizes.get(row.group_id) ?? 0) + 1);
   const inPair = new Set(
     (grouped ?? []).filter((g) => (groupSizes.get(g.group_id) ?? 0) >= 2).map((g) => g.user_id),
   );
@@ -283,10 +304,14 @@ export async function sendNudges(
   if (error || !campaign) return fail("Couldn't send the nudge.");
 
   const office = await officeName(school);
-  const { data: settings } = await db
-    .from("user_settings")
-    .select("user_id, email, notify_email_matches, notify_inapp_matches")
-    .in("user_id", targets);
+  const settings = await selectByIds(targets, (chunk, from, to) =>
+    db
+      .from("user_settings")
+      .select("user_id, email, notify_email_matches, notify_inapp_matches")
+      .in("user_id", chunk)
+      .order("user_id")
+      .range(from, to),
+  );
   await db
     .from("campaign_sends")
     .insert(targets.map((user_id) => ({ campaign_id: campaign.id, user_id })));
@@ -334,11 +359,15 @@ export async function runAutoPair(
     return fail("Give it a few minutes between runs.");
 
   const db = createAdminClient();
-  const { data: students } = await db
-    .rpc("school_students", { p_school: school })
-    .select("id, created_at, first_name, last_initial")
-    .not("onboarding_completed_at", "is", null);
-  const pool = (students ?? []) as {
+  const students = await selectAll((from, to) =>
+    db
+      .rpc("school_students", { p_school: school })
+      .select("id, created_at, first_name, last_initial")
+      .not("onboarding_completed_at", "is", null)
+      .order("id")
+      .range(from, to),
+  );
+  const pool = students as {
     id: string;
     created_at: string;
     first_name: string;
@@ -347,25 +376,38 @@ export async function runAutoPair(
   const ids = pool.map((s) => s.id);
 
   // Sharing students only, not in any group, without a suggestion they're still answering.
-  const [{ data: consents }, { data: grouped }, { data: pending }] = await Promise.all([
-    db
-      .from("consents")
-      .select("user_id")
-      .eq("kind", "share_with_housing")
-      .is("revoked_at", null)
-      .in("user_id", ids),
-    db.from("group_members").select("user_id").in("user_id", ids),
-    db
-      .from("auto_pair_proposals")
-      .select("member_ids")
-      .eq("school_id", school)
-      .eq("status", "sent"),
+  const [consents, grouped, pending] = await Promise.all([
+    selectByIds(ids, (chunk, from, to) =>
+      db
+        .from("consents")
+        .select("id, user_id")
+        .eq("kind", "share_with_housing")
+        .is("revoked_at", null)
+        .in("user_id", chunk)
+        .order("id")
+        .range(from, to),
+    ),
+    selectByIds(ids, (chunk, from, to) =>
+      db
+        .from("group_members")
+        .select("user_id, group_id")
+        .in("user_id", chunk)
+        .order("user_id")
+        .order("group_id")
+        .range(from, to),
+    ),
+    selectAll((from, to) =>
+      db
+        .from("auto_pair_proposals")
+        .select("id, member_ids")
+        .eq("school_id", school)
+        .eq("status", "sent")
+        .order("id")
+        .range(from, to),
+    ),
   ]);
-  const shared = new Set((consents ?? []).map((c) => c.user_id));
-  const busy = new Set([
-    ...(grouped ?? []).map((g) => g.user_id),
-    ...(pending ?? []).flatMap((p) => p.member_ids),
-  ]);
+  const shared = new Set(consents.map((c) => c.user_id));
+  const busy = new Set([...grouped.map((g) => g.user_id), ...pending.flatMap((p) => p.member_ids)]);
   const candidates = pool.filter((s) => shared.has(s.id) && !busy.has(s.id));
   if (candidates.length < 2)
     return fail("Fewer than two sharing students are waiting for a roommate.");
@@ -374,13 +416,21 @@ export async function runAutoPair(
   // Existing mutual scores already exclude every pair that fails a hard filter.
   // Both directions share the score; keep whichever side has reasons to show staff.
   const byPair = new Map<string, { a: string; b: string; score: number; reasons: Json }>();
-  for (let i = 0; i < candidateIds.length; i += 200) {
-    const { data } = await db
-      .from("match_scores")
-      .select("viewer_id, candidate_id, score, reasons")
-      .in("viewer_id", candidateIds.slice(i, i + 200))
-      .in("candidate_id", candidateIds);
-    for (const row of data ?? []) {
+  const candidateSet = new Set(candidateIds);
+  const scoreRows = await selectByIds(
+    candidateIds,
+    (chunk, from, to) =>
+      db
+        .from("match_scores")
+        .select("viewer_id, candidate_id, score, reasons")
+        .in("viewer_id", chunk)
+        .order("viewer_id")
+        .order("candidate_id")
+        .range(from, to),
+    50,
+  );
+  {
+    for (const row of scoreRows.filter((r) => candidateSet.has(r.candidate_id))) {
       const [a, b] =
         row.viewer_id < row.candidate_id
           ? [row.viewer_id, row.candidate_id]

@@ -308,10 +308,13 @@ as $$
 declare
   ra_only boolean;
 begin
-  if not public.has_role(p_school, array['housing_admin', 'housing_staff', 'analyst', 'ra']) then
+  -- The nightly snapshot (refresh_segment_metrics) runs as the service role over everyone.
+  if auth.role() is distinct from 'service_role'
+     and not public.has_role(p_school, array['housing_admin', 'housing_staff', 'analyst', 'ra']) then
     raise exception 'not_allowed';
   end if;
-  ra_only := not public.has_role(p_school, array['housing_admin', 'housing_staff', 'analyst']);
+  ra_only := auth.role() is distinct from 'service_role'
+     and not public.has_role(p_school, array['housing_admin', 'housing_staff', 'analyst']);
   return query
   with students as (
     select s.* from public.school_students(p_school) s
@@ -439,6 +442,61 @@ $$;
 
 revoke execute on function public.staff_segments(text, text, text) from public, anon;
 grant execute on function public.staff_segments(text, text, text) to authenticated;
+
+-- Nightly snapshot per term (1.A), kept for the term report after the term closes.
+create table public.segment_metrics (
+  school_id    text not null references public.schools (id) on delete cascade,
+  term_id      uuid not null references public.terms (id) on delete cascade,
+  dimension    text not null check (char_length(dimension) <= 40),
+  value        text not null check (char_length(value) <= 80),
+  metric       text not null check (char_length(metric) <= 40),
+  n            integer,
+  numerator    integer,
+  average      numeric,
+  suppressed   boolean not null,
+  computed_at  timestamptz not null default now(),
+  primary key (school_id, term_id, dimension, value, metric)
+);
+
+alter table public.segment_metrics enable row level security;
+revoke all on public.segment_metrics from anon, authenticated;
+grant select on public.segment_metrics to authenticated;
+create policy "segment_metrics: staff read" on public.segment_metrics
+  for select to authenticated using (public.has_role(school_id, array['housing_admin', 'housing_staff', 'analyst']));
+
+create or replace function public.refresh_segment_metrics(p_school text)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_term uuid;
+  v_dim text;
+  v_metric text;
+  v_count integer := 0;
+begin
+  select id into v_term from public.terms where school_id = p_school and active;
+  if v_term is null then
+    return 0;
+  end if;
+  delete from public.segment_metrics where school_id = p_school and term_id = v_term;
+  foreach v_dim in array array['class_year', 'academic_college', 'residential_college', 'llc', 'campus',
+                               'gender_inclusive', 'housing_type', 'track', 'pre_arrival'] loop
+    foreach v_metric in array array['onboarding', 'matched', 'best_score', 'intro_acceptance', 'agreement',
+                                    'checkin_avg', 'room_change'] loop
+      insert into public.segment_metrics (school_id, term_id, dimension, value, metric, n, numerator, average, suppressed)
+      select p_school, v_term, v_dim, x.value, v_metric, x.n, x.numerator, x.average, x.suppressed
+      from public.staff_segments(p_school, v_dim, v_metric) x;
+      v_count := v_count + 1;
+    end loop;
+  end loop;
+  return v_count;
+end;
+$$;
+
+revoke execute on function public.refresh_segment_metrics(text) from public, anon, authenticated;
+grant execute on function public.refresh_segment_metrics(text) to service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1.B Room-change analytics

@@ -2229,6 +2229,32 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"segment_metrics": {
+                  Row: {
+                    "average": number | null,"computed_at": string,"dimension": string,"metric": string,"n": number | null,"numerator": number | null,"school_id": string,"suppressed": boolean,"term_id": string,"value": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "average"?: number | null,"computed_at"?: string,"dimension": string,"metric": string,"n"?: number | null,"numerator"?: number | null,"school_id": string,"suppressed": boolean,"term_id": string,"value": string
+                  }
+                  Update: {
+                    "average"?: number | null,"computed_at"?: string,"dimension"?: string,"metric"?: string,"n"?: number | null,"numerator"?: number | null,"school_id"?: string,"suppressed"?: boolean,"term_id"?: string,"value"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "segment_metrics_school_id_fkey"
+      columns: ["school_id"]
+isOneToOne: false
+      referencedRelation: "schools"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "segment_metrics_term_id_fkey"
+      columns: ["term_id"]
+isOneToOne: false
+      referencedRelation: "terms"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"settlements": {
                   Row: {
                     "amount_cents": number,"created_at": string,"group_id": string,"id": string,"note": string | null,"payer_id": string,"receiver_id": string
@@ -2691,6 +2717,9 @@ isOneToOne: false
                            },
 "rate_limit":
 { Args: { "p_key": string,"p_max": number,"p_window_seconds": number }; Returns: boolean
+                           },
+"refresh_segment_metrics":
+{ Args: { "p_school": string }; Returns: number
                            },
 "reorder_photos":
 { Args: { "p_ids": (string)[] }; Returns: undefined

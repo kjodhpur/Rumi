@@ -129,7 +129,9 @@ export async function loadStaffEscalationRoutes(schoolId: string): Promise<Escal
   const admin = createAdminClient();
   const { data } = await admin
     .from("escalation_routes")
-    .select("id, school_id, category, destination_label, url, phone, email, active, created_at, updated_at")
+    .select(
+      "id, school_id, category, destination_label, url, phone, email, active, created_at, updated_at",
+    )
     .eq("school_id", schoolId)
     .order("created_at", { ascending: true });
 
@@ -147,19 +149,24 @@ export async function loadStaffEscalationRoutes(schoolId: string): Promise<Escal
   }));
 }
 
-export async function loadStaffEscalations(schoolId: string, reportIds: string[]): Promise<StaffEscalationItem[]> {
+export async function loadStaffEscalations(
+  schoolId: string,
+  reportIds: string[],
+): Promise<StaffEscalationItem[]> {
   if (!reportIds.length) return [];
   const admin = createAdminClient();
   const { data } = await admin
     .from("escalations")
-    .select(`
+    .select(
+      `
       id, report_id, category, destination_label, student_consented, status, forwarded_at, notes, created_at,
       forwarded_by_profile:profiles!escalations_forwarded_by_fkey(first_name, last_initial),
       report:reports!escalations_report_id_fkey(
         reported:profiles!reports_reported_id_fkey(id, first_name, last_initial),
         reporter:profiles!reports_reporter_id_fkey(id, first_name, last_initial)
       )
-    `)
+    `,
+    )
     .eq("school_id", schoolId)
     .in("report_id", reportIds)
     .order("created_at", { ascending: false });
@@ -167,7 +174,10 @@ export async function loadStaffEscalations(schoolId: string, reportIds: string[]
   if (!data) return [];
 
   return data.map((row) => {
-    const fwd = row.forwarded_by_profile as unknown as { first_name: string; last_initial: string } | null;
+    const fwd = row.forwarded_by_profile as unknown as {
+      first_name: string;
+      last_initial: string;
+    } | null;
     const rep = row.report as unknown as {
       reported: { id: string; first_name: string; last_initial: string };
       reporter: { id: string; first_name: string; last_initial: string } | null;
@@ -198,7 +208,11 @@ export async function loadStaffEscalations(schoolId: string, reportIds: string[]
   });
 }
 
-export function safetyStats(reports: StaffReportItem[], routes: EscalationRoute[], escalations: StaffEscalationItem[]): StaffSafetyStats {
+export function safetyStats(
+  reports: StaffReportItem[],
+  routes: EscalationRoute[],
+  escalations: StaffEscalationItem[],
+): StaffSafetyStats {
   return {
     open: reports.filter((r) => r.status === "open").length,
     reviewing: reports.filter((r) => r.status === "reviewing").length,
@@ -214,11 +228,13 @@ export async function loadStaffSafetyLog(schoolId: string): Promise<SafetyLogIte
   const admin = createAdminClient();
   const { data } = await admin
     .from("moderation_log")
-    .select(`
+    .select(
+      `
       id, action, meta, created_at,
       actor:profiles!moderation_log_actor_id_fkey(first_name, last_initial),
       target:profiles!moderation_log_target_id_fkey(first_name, last_initial)
-    `)
+    `,
+    )
     .eq("meta->>school_id", schoolId)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -256,14 +272,18 @@ export async function loadHiddenMedia(schoolId: string): Promise<HiddenMediaItem
   const admin = createAdminClient();
   const { data } = await admin
     .from("profile_media")
-    .select("user_id, kind, path, transcript, profiles!inner(first_name, last_initial, school_id), profile_media_reports(reason)")
+    .select(
+      "user_id, kind, path, transcript, profiles!inner(first_name, last_initial, school_id), profile_media_reports(reason)",
+    )
     .eq("status", "hidden")
     .eq("profiles.school_id", schoolId);
   return Promise.all(
     (data ?? []).map(async (row) => {
       const p = row.profiles as unknown as { first_name: string; last_initial: string };
       const reports = (row.profile_media_reports as { reason: string }[] | null) ?? [];
-      const { data: signed } = await admin.storage.from("intros-media").createSignedUrl(row.path, 600);
+      const { data: signed } = await admin.storage
+        .from("intros-media")
+        .createSignedUrl(row.path, 600);
       return {
         userId: row.user_id,
         name: `${p.first_name} ${p.last_initial}.`,

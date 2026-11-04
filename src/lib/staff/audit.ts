@@ -24,14 +24,16 @@ export async function logAudit(entry: AuditEntry) {
   } catch {
     // Outside a request (cron): no IP.
   }
-  const { error } = await createAdminClient().from("audit_log").insert({
-    actor_id: entry.actorId,
-    school_id: entry.schoolId,
-    action: entry.action,
-    entity: entry.entity,
-    entity_id: entry.entityId ?? null,
-    meta: (entry.meta ?? {}) as NonNullable<Json>,
-    ip,
-  });
+  const { error } = await createAdminClient()
+    .from("audit_log")
+    .insert({
+      actor_id: entry.actorId,
+      school_id: entry.schoolId,
+      action: entry.action,
+      entity: entry.entity,
+      entity_id: entry.entityId ?? null,
+      meta: (entry.meta ?? {}) as NonNullable<Json>,
+      ip,
+    });
   if (error) console.error("[audit] insert failed", entry.action, error);
 }

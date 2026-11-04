@@ -1,4 +1,5 @@
 import type { ServerSupabase } from "@/lib/supabase/server";
+import { selectAll } from "@/lib/supabase/paginate";
 import { photoUrl } from "@/lib/photos";
 
 export interface IntroRequest {
@@ -27,7 +28,13 @@ export interface GroupInvite {
   message: string | null;
   inviterName: string;
   createdAt: string;
-  members: { id: string; firstName: string; lastInitial: string; avatarUrl: string | null; score: number | null }[];
+  members: {
+    id: string;
+    firstName: string;
+    lastInitial: string;
+    avatarUrl: string | null;
+    score: number | null;
+  }[];
 }
 
 export async function loadRequests(supabase: ServerSupabase, userId: string) {
@@ -47,27 +54,54 @@ export async function loadRequests(supabase: ServerSupabase, userId: string) {
       .order("created_at", { ascending: false }),
   ]);
 
-  const otherIds = (intros ?? []).map((i) => (i.sender_id === userId ? i.recipient_id : i.sender_id));
+  const otherIds = (intros ?? []).map((i) =>
+    i.sender_id === userId ? i.recipient_id : i.sender_id,
+  );
   const groupIds = (invites ?? []).map((i) => i.group_id);
 
-  const [{ data: profiles }, { data: scores }, { data: groupMembers }, { data: photos }] = await Promise.all([
-    otherIds.length
-      ? supabase.from("profiles").select("id, first_name, last_initial, avatar_path, class_year, major").in("id", otherIds)
-      : Promise.resolve({ data: [] as never[] }),
-    supabase.from("match_scores").select("candidate_id, score, reasons").eq("viewer_id", userId),
-    groupIds.length
-      ? supabase.from("group_members").select("group_id, user_id, profiles(first_name, last_initial, avatar_path)").in("group_id", groupIds)
-      : Promise.resolve({ data: [] as never[] }),
-    otherIds.length
-      ? supabase.from("photos").select("user_id, placeholder").in("user_id", otherIds).eq("position", 0)
-      : Promise.resolve({ data: [] as never[] }),
-  ]);
+  const [{ data: profiles }, { data: scores }, { data: groupMembers }, { data: photos }] =
+    await Promise.all([
+      otherIds.length
+        ? supabase
+            .from("profiles")
+            .select("id, first_name, last_initial, avatar_path, class_year, major")
+            .in("id", otherIds)
+        : Promise.resolve({ data: [] as never[] }),
+      // Every score this student has (paged: a large school passes the 1,000-row cap).
+      selectAll((from, to) =>
+        supabase
+          .from("match_scores")
+          .select("candidate_id, score, reasons")
+          .eq("viewer_id", userId)
+          .order("candidate_id")
+          .range(from, to),
+      ).then((data) => ({ data })),
+      groupIds.length
+        ? supabase
+            .from("group_members")
+            .select("group_id, user_id, profiles(first_name, last_initial, avatar_path)")
+            .in("group_id", groupIds)
+        : Promise.resolve({ data: [] as never[] }),
+      otherIds.length
+        ? supabase
+            .from("photos")
+            .select("user_id, placeholder")
+            .in("user_id", otherIds)
+            .eq("position", 0)
+        : Promise.resolve({ data: [] as never[] }),
+    ]);
 
   const profileBy = new Map((profiles ?? []).map((p) => [p.id, p]));
   const scoreBy = new Map((scores ?? []).map((s) => [s.candidate_id, s]));
   const placeholderBy = new Map((photos ?? []).map((p) => [p.user_id, p.placeholder]));
   const { data: inviters } = invites?.length
-    ? await supabase.from("profiles").select("id, first_name").in("id", invites.map((i) => i.created_by))
+    ? await supabase
+        .from("profiles")
+        .select("id, first_name")
+        .in(
+          "id",
+          invites.map((i) => i.created_by),
+        )
     : { data: [] as { id: string; first_name: string }[] };
   const inviterBy = new Map((inviters ?? []).map((p) => [p.id, p.first_name]));
 
@@ -92,7 +126,9 @@ export async function loadRequests(supabase: ServerSupabase, userId: string) {
         major: p.major,
       },
       score: s?.score ?? null,
-      reasons: Array.isArray(s?.reasons) ? (s!.reasons as { label: string }[]).map((r) => r.label) : [],
+      reasons: Array.isArray(s?.reasons)
+        ? (s!.reasons as { label: string }[]).map((r) => r.label)
+        : [],
     });
   }
 
@@ -109,7 +145,11 @@ export async function loadRequests(supabase: ServerSupabase, userId: string) {
       members: (groupMembers ?? [])
         .filter((m) => m.group_id === invite.group_id)
         .map((m) => {
-          const p = m.profiles as unknown as { first_name: string; last_initial: string; avatar_path: string | null } | null;
+          const p = m.profiles as unknown as {
+            first_name: string;
+            last_initial: string;
+            avatar_path: string | null;
+          } | null;
           return {
             id: m.user_id,
             firstName: p?.first_name ?? "Member",

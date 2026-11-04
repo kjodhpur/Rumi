@@ -5,7 +5,12 @@ export interface Term {
   name: string;
   startsOn: string;
   endsOn: string;
-  deadlines: { roommateRequest?: string; selectionOpens?: string; selectionCloses?: string; agreementDue?: string };
+  deadlines: {
+    roommateRequest?: string;
+    selectionOpens?: string;
+    selectionCloses?: string;
+    agreementDue?: string;
+  };
 }
 
 export const DEADLINE_LABELS: Record<keyof Term["deadlines"], string> = {
@@ -18,8 +23,13 @@ export const DEADLINE_LABELS: Record<keyof Term["deadlines"], string> = {
 /** The next deadline on or after today, for the overview header. */
 export function nextDeadline(term: Term | null, today = new Date().toISOString().slice(0, 10)) {
   if (!term) return null;
-  const upcoming = (Object.entries(term.deadlines) as [keyof Term["deadlines"], string | undefined][])
-    .filter((entry): entry is [keyof Term["deadlines"], string] => Boolean(entry[1]) && entry[1]! >= today)
+  const upcoming = (
+    Object.entries(term.deadlines) as [keyof Term["deadlines"], string | undefined][]
+  )
+    .filter(
+      (entry): entry is [keyof Term["deadlines"], string] =>
+        Boolean(entry[1]) && entry[1]! >= today,
+    )
     .sort((a, b) => a[1].localeCompare(b[1]));
   if (upcoming.length === 0) return null;
   const [key, date] = upcoming[0];

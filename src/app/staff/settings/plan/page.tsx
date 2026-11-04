@@ -35,7 +35,7 @@ export default async function PlanPage() {
     { data: cohorts },
     { data: colleges },
     { data: terms },
-    { data: students },
+    { count: onboardedCount },
   ] = await Promise.all([
     db.from("schools").select("plan, licensed_beds").eq("id", school).maybeSingle(),
     db
@@ -60,9 +60,11 @@ export default async function PlanPage() {
       .select("id, name")
       .eq("school_id", school)
       .order("starts_on", { ascending: false }),
-    db.rpc("school_students", { p_school: school }),
+    db
+      .rpc("school_students", { p_school: school }, { count: "exact", head: true })
+      .not("onboarding_completed_at", "is", null),
   ]);
-  const onboarded = (students ?? []).filter((s) => s.onboarding_completed_at).length;
+  const onboarded = onboardedCount ?? 0;
   const beds = row?.licensed_beds ?? null;
   const plan = row?.plan === "standard" ? "Standard" : "Pilot";
   const metrics = (pilot?.success_metrics ?? {}) as PilotView["metrics"];

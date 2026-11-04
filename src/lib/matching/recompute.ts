@@ -8,6 +8,7 @@ import { isAccommodationKey } from "./accommodations";
 import { loadActiveQuestions } from "./questions";
 import { toScenarioAnswers } from "./scenarios";
 import { loadSchoolDefaultWeights } from "./default-weights";
+import { ID_CHUNK, selectAll, selectByIds } from "@/lib/supabase/paginate";
 import type {
   AccommodationConstraintKey,
   MatchEvaluation,
@@ -143,27 +144,34 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
   ]);
   const limits = parseTermConfig(term?.config).maxImportance;
   const defaultWeights = await loadSchoolDefaultWeights(schoolId);
-  let poolQuery = admin
-    .from("profiles")
-    .select(
-      "id, first_name, gender, track, pre_arrival, admit_term_id, academic_college, residential_college, llc, is_hidden, preferences(*), music_profiles(*)",
-    )
-    .eq("school_id", schoolId)
-    .not("onboarding_completed_at", "is", null)
-    .is("banned_at", null)
-    .eq("is_staff", false);
-  if (school?.hide_seed_profiles) poolQuery = poolQuery.eq("is_seed", false);
   const scope =
     pilot && pilot.starts_on <= today && today <= pilot.ends_on ? pilotColleges(pilot.scope) : [];
-  if (scope.length) poolQuery = poolQuery.in("residential_college", scope);
+  const poolPage = (from: number, to: number) => {
+    let q = admin
+      .from("profiles")
+      .select(
+        "id, first_name, gender, track, pre_arrival, admit_term_id, academic_college, residential_college, llc, is_hidden, preferences(*), music_profiles(*)",
+      )
+      .eq("school_id", schoolId)
+      .not("onboarding_completed_at", "is", null)
+      .is("banned_at", null)
+      .eq("is_staff", false);
+    if (school?.hide_seed_profiles) q = q.eq("is_seed", false);
+    if (scope.length) q = q.in("residential_college", scope);
+    return q.order("id").range(from, to).returns<PoolRow[]>();
+  };
 
   const [people, areas, constraints, rules, questions] = await Promise.all([
-    poolQuery.returns<PoolRow[]>(),
+    selectAll(poolPage),
     admin.from("areas").select("slug, name").eq("school_id", schoolId),
-    admin
-      .from("accommodation_constraints")
-      .select("user_id, constraint_key, expires_on")
-      .eq("school_id", schoolId),
+    selectAll((from, to) =>
+      admin
+        .from("accommodation_constraints")
+        .select("id, user_id, constraint_key, expires_on")
+        .eq("school_id", schoolId)
+        .order("id")
+        .range(from, to),
+    ),
     admin
       .from("school_rules")
       .select("rule_type, params, active")
@@ -171,20 +179,29 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
       .eq("active", true),
     loadActiveQuestions(schoolId),
   ]);
-  if (people.error) throw people.error;
-  const ids = (people.data ?? []).map((p) => p.id);
-  const [answers, schedules] = ids.length
-    ? await Promise.all([
-        admin
-          .from("school_question_answers")
-          .select("user_id, question_key, question_version, choice_key")
-          .in("user_id", ids),
-        admin.from("class_schedules").select("user_id, blocks").in("user_id", ids),
-      ])
-    : [{ data: [] }, { data: [] }];
+  const ids = people.map((p) => p.id);
+  const [answers, schedules] = await Promise.all([
+    selectByIds(ids, (chunk, from, to) =>
+      admin
+        .from("school_question_answers")
+        .select("user_id, question_key, question_version, choice_key")
+        .in("user_id", chunk)
+        .order("user_id")
+        .order("question_key")
+        .range(from, to),
+    ),
+    selectByIds(ids, (chunk, from, to) =>
+      admin
+        .from("class_schedules")
+        .select("user_id, blocks")
+        .in("user_id", chunk)
+        .order("user_id")
+        .range(from, to),
+    ),
+  ]);
 
   const accommodations = new Map<string, AccommodationConstraintKey[]>();
-  for (const c of constraints.data ?? []) {
+  for (const c of constraints) {
     if ((c.expires_on && c.expires_on < today) || !isAccommodationKey(c.constraint_key)) continue;
     accommodations.set(c.user_id, [...(accommodations.get(c.user_id) ?? []), c.constraint_key]);
   }
@@ -192,12 +209,12 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
     string,
     { question_key: string; question_version: number; choice_key: string }[]
   >();
-  for (const a of answers.data ?? [])
+  for (const a of answers)
     answersByUser.set(a.user_id, [...(answersByUser.get(a.user_id) ?? []), a]);
-  const classDays = new Map((schedules.data ?? []).map((s) => [s.user_id, classDayOf(s.blocks)]));
+  const classDays = new Map(schedules.map((s) => [s.user_id, classDayOf(s.blocks)]));
 
   const pool: MatchProfile[] = [];
-  for (const person of people.data ?? []) {
+  for (const person of people) {
     // Hidden profiles keep their existing matches but a withdrawn admit drops out entirely.
     if (person.pre_arrival && person.is_hidden) continue;
     if (!person.preferences) continue;
@@ -298,11 +315,15 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
   }
 
   // Everyone else's current view of this user, to detect newly strong matches.
-  const { data: previous } = await admin
-    .from("match_scores")
-    .select("viewer_id, score, notified_at")
-    .eq("candidate_id", userId);
-  const before = new Map((previous ?? []).map((r) => [r.viewer_id, r]));
+  const previous = await selectAll((from, to) =>
+    admin
+      .from("match_scores")
+      .select("viewer_id, score, notified_at")
+      .eq("candidate_id", userId)
+      .order("viewer_id")
+      .range(from, to),
+  );
+  const before = new Map(previous.map((r) => [r.viewer_id, r]));
 
   const now = new Date().toISOString();
   const rows: ScoreInsert[] = [];
@@ -349,19 +370,28 @@ async function notifyStrongMatches(
   const admin = createAdminClient();
   const viewerIds = strong.map((s) => s.viewerId);
 
-  const [{ data: settings }, { data: existing }] = await Promise.all([
-    admin.from("user_settings").select("user_id, notify_inapp_matches").in("user_id", viewerIds),
-    admin
-      .from("notifications")
-      .select("user_id")
-      .eq("type", "strong_match")
-      .eq("entity_id", userId)
-      .in("user_id", viewerIds),
+  const [settings, existing] = await Promise.all([
+    selectByIds(viewerIds, (chunk, from, to) =>
+      admin
+        .from("user_settings")
+        .select("user_id, notify_inapp_matches")
+        .in("user_id", chunk)
+        .order("user_id")
+        .range(from, to),
+    ),
+    selectByIds(viewerIds, (chunk, from, to) =>
+      admin
+        .from("notifications")
+        .select("id, user_id")
+        .eq("type", "strong_match")
+        .eq("entity_id", userId)
+        .in("user_id", chunk)
+        .order("id")
+        .range(from, to),
+    ),
   ]);
-  const allowed = new Set(
-    (settings ?? []).filter((s) => s.notify_inapp_matches).map((s) => s.user_id),
-  );
-  const already = new Set((existing ?? []).map((n) => n.user_id));
+  const allowed = new Set(settings.filter((s) => s.notify_inapp_matches).map((s) => s.user_id));
+  const already = new Set(existing.map((n) => n.user_id));
 
   const notifications = strong
     .filter((s) => allowed.has(s.viewerId) && !already.has(s.viewerId))
@@ -379,11 +409,14 @@ async function notifyStrongMatches(
     const { error } = await admin.from("notifications").insert(notifications);
     if (error) console.error("[recompute] strong-match notifications failed", error);
   }
-  await admin
-    .from("match_scores")
-    .update({ notified_at: new Date().toISOString() })
-    .eq("candidate_id", userId)
-    .in("viewer_id", viewerIds);
+  const notifiedAt = new Date().toISOString();
+  for (let i = 0; i < viewerIds.length; i += ID_CHUNK) {
+    await admin
+      .from("match_scores")
+      .update({ notified_at: notifiedAt })
+      .eq("candidate_id", userId)
+      .in("viewer_id", viewerIds.slice(i, i + ID_CHUNK));
+  }
   return notifications.length;
 }
 

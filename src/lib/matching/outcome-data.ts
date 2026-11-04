@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { selectAll, selectByIds } from "@/lib/supabase/paginate";
 import { pairMismatches, type LifestyleAnswers, type OutcomeRecord } from "./weights-optimizer";
 
 /**
@@ -20,69 +21,83 @@ export async function buildOutcomeRecords(
     .lt("ends_on", today);
   if (!terms?.length) return { records: [], termIds: [] };
   const termIds = terms.map((t) => t.id);
-  const { data: pairings } = await db
-    .from("pairings")
-    .select("group_id, term_id, member_ids")
-    .eq("school_id", schoolId)
-    .eq("status", "approved")
-    .in("term_id", termIds);
-  const members = [...new Set((pairings ?? []).flatMap((p) => p.member_ids))];
+  const pairings = await selectAll((from, to) =>
+    db
+      .from("pairings")
+      .select("id, group_id, term_id, member_ids")
+      .eq("school_id", schoolId)
+      .eq("status", "approved")
+      .in("term_id", termIds)
+      .order("id")
+      .range(from, to),
+  );
+  const members = [...new Set(pairings.flatMap((p) => p.member_ids))];
   if (!members.length) return { records: [], termIds };
 
-  const chunks = <T>(list: T[]) =>
-    Array.from({ length: Math.ceil(list.length / 500) }, (_, i) =>
-      list.slice(i * 500, i * 500 + 500),
-    );
   const consented = new Set<string>();
   const prefs = new Map<string, LifestyleAnswers>();
   const changes = new Set<string>();
   const unhappy = new Set<string>();
-  for (const ids of chunks(members)) {
-    const [{ data: c }, { data: p }, { data: rc }, { data: s }] = await Promise.all([
+  const [c, p, rc, sv] = await Promise.all([
+    selectByIds(members, (ids, f, t) =>
       db
         .from("consents")
-        .select("user_id")
+        .select("id, user_id")
         .eq("kind", "research_outcomes")
         .is("revoked_at", null)
-        .in("user_id", ids),
+        .in("user_id", ids)
+        .order("id")
+        .range(f, t),
+    ),
+    selectByIds(members, (ids, f, t) =>
       db
         .from("preferences")
         .select(
           "user_id, sleep_schedule, cleanliness, noise, guests, smoking, drinking, pets, study",
         )
-        .in("user_id", ids),
+        .in("user_id", ids)
+        .order("user_id")
+        .range(f, t),
+    ),
+    selectByIds(members, (ids, f, t) =>
       db
         .from("room_change_requests")
-        .select("user_id, term_id")
+        .select("id, user_id, term_id")
         .eq("school_id", schoolId)
         .in("user_id", ids)
-        .in("term_id", termIds),
+        .in("term_id", termIds)
+        .order("id")
+        .range(f, t),
+    ),
+    selectByIds(members, (ids, f, t) =>
       db
         .from("outcome_surveys")
-        .select("user_id, term_id, room_again, score")
+        .select("id, user_id, term_id, room_again, score")
         .eq("school_id", schoolId)
         .in("user_id", ids)
-        .in("term_id", termIds),
-    ]);
-    for (const r of c ?? []) consented.add(r.user_id);
-    for (const r of p ?? [])
-      prefs.set(r.user_id, {
-        sleepSchedule: r.sleep_schedule,
-        cleanliness: r.cleanliness,
-        noise: r.noise,
-        guests: r.guests,
-        smoking: r.smoking,
-        drinking: r.drinking,
-        pets: r.pets,
-        study: r.study,
-      });
-    for (const r of rc ?? []) changes.add(`${r.user_id}:${r.term_id}`);
-    for (const r of s ?? [])
-      if (r.room_again === "no" || r.score <= 2) unhappy.add(`${r.user_id}:${r.term_id}`);
-  }
+        .in("term_id", termIds)
+        .order("id")
+        .range(f, t),
+    ),
+  ]);
+  for (const r of c) consented.add(r.user_id);
+  for (const r of p)
+    prefs.set(r.user_id, {
+      sleepSchedule: r.sleep_schedule,
+      cleanliness: r.cleanliness,
+      noise: r.noise,
+      guests: r.guests,
+      smoking: r.smoking,
+      drinking: r.drinking,
+      pets: r.pets,
+      study: r.study,
+    });
+  for (const r of rc) changes.add(`${r.user_id}:${r.term_id}`);
+  for (const r of sv)
+    if (r.room_again === "no" || r.score <= 2) unhappy.add(`${r.user_id}:${r.term_id}`);
 
   const records: OutcomeRecord[] = [];
-  for (const pairing of pairings ?? []) {
+  for (const pairing of pairings) {
     const ids = pairing.member_ids;
     if (ids.length < 2 || !ids.every((id) => consented.has(id) && prefs.has(id))) continue;
     const hadFriction = ids.some(

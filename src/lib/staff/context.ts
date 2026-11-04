@@ -4,7 +4,14 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { CAN, isStaffRole, parseScopes, type Capability, type StaffRole, type StaffScopes } from "./roles";
+import {
+  CAN,
+  isStaffRole,
+  parseScopes,
+  type Capability,
+  type StaffRole,
+  type StaffScopes,
+} from "./roles";
 
 export const STAFF_SCHOOL_COOKIE = "rumi_staff_school";
 
@@ -58,7 +65,10 @@ export const getStaffContext = cache(async (): Promise<StaffContext | null> => {
     .order("created_at");
   const { data: schoolRows } = isPlatformAdmin
     ? await schoolQuery
-    : await schoolQuery.in("id", active.map((m) => m.school_id));
+    : await schoolQuery.in(
+        "id",
+        active.map((m) => m.school_id),
+      );
   const schools: StaffSchool[] = (schoolRows ?? []).map((s) => ({
     id: s.id,
     name: s.name,
@@ -80,12 +90,17 @@ export const getStaffContext = cache(async (): Promise<StaffContext | null> => {
     schools,
     school,
     role: isPlatformAdmin ? "platform_admin" : (membership!.role as StaffRole),
-    scopes: isPlatformAdmin ? { buildings: [], communities: [], accommodations: true } : parseScopes(membership!.scopes),
+    scopes: isPlatformAdmin
+      ? { buildings: [], communities: [], accommodations: true }
+      : parseScopes(membership!.scopes),
   };
 });
 
 export function can(context: StaffContext, capability: Capability) {
-  return context.role === "platform_admin" || (CAN[capability] as readonly string[]).includes(context.role);
+  return (
+    context.role === "platform_admin" ||
+    (CAN[capability] as readonly string[]).includes(context.role)
+  );
 }
 
 /** For server actions: re-checks the role in SQL (not just the cached context) before any write. */

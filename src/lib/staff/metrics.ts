@@ -16,7 +16,8 @@ export interface OverviewKpis {
   openReports: number;
 }
 
-export type FunnelStage = "signed_up" | "verified" | "onboarded" | "intro" | "intro_accepted" | "matched";
+export type FunnelStage =
+  "signed_up" | "verified" | "onboarded" | "intro" | "intro_accepted" | "matched";
 
 export interface Overview {
   kpis: OverviewKpis;
@@ -76,11 +77,17 @@ export function days(value: number | null): string {
 }
 
 /** Rows for the by-segment table: one per segment value, a count per bin, suppressed. */
-export function segmentTable(segments: Overview["segments"], dimension: "class_year" | "housing_type") {
-  const values = [...new Set(segments.filter((s) => s.dimension === dimension).map((s) => s.value))];
+export function segmentTable(
+  segments: Overview["segments"],
+  dimension: "class_year" | "housing_type",
+) {
+  const values = [
+    ...new Set(segments.filter((s) => s.dimension === dimension).map((s) => s.value)),
+  ];
   return values.map((value) => {
     const cells = Object.fromEntries(SCORE_BINS.map((bin) => [bin, 0])) as Record<ScoreBin, number>;
-    for (const s of segments) if (s.dimension === dimension && s.value === value) cells[s.bin] = s.n;
+    for (const s of segments)
+      if (s.dimension === dimension && s.value === value) cells[s.bin] = s.n;
     const total = Object.values(cells).reduce((a, b) => a + b, 0);
     return { value, cells, total };
   });

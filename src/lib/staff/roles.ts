@@ -1,5 +1,11 @@
 /** School staff roles. Platform admins (the Rumi team) live in `admins` and pass every check. */
-export const STAFF_ROLES = ["housing_admin", "housing_staff", "ra", "analyst", "moderator"] as const;
+export const STAFF_ROLES = [
+  "housing_admin",
+  "housing_staff",
+  "ra",
+  "analyst",
+  "moderator",
+] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 export const ROLE_INFO: Record<StaffRole, { label: string; description: string }> = {
@@ -44,6 +50,8 @@ export const CAN = {
   /** Aggregates for analysts and leads; RAs see their own buildings only (enforced in SQL). */
   viewAnalytics: ["housing_admin", "housing_staff", "analyst", "ra"],
   configureSchool: ["housing_admin"],
+  /** Room-change reason tags (1.B); RAs only within their buildings. */
+  tagRoomChanges: ["housing_admin", "housing_staff", "ra"],
 } as const satisfies Record<string, readonly StaffRole[]>;
 
 export type Capability = keyof typeof CAN;
@@ -57,8 +65,13 @@ export interface StaffScopes {
 
 export function parseScopes(value: unknown): StaffScopes {
   const record = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
-  return { buildings: list(record.buildings), communities: list(record.communities), accommodations: record.accommodations === true };
+  const list = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  return {
+    buildings: list(record.buildings),
+    communities: list(record.communities),
+    accommodations: record.accommodations === true,
+  };
 }
 
 export function roleCan(role: StaffRole | "platform_admin", capability: Capability) {

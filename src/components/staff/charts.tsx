@@ -45,7 +45,13 @@ function ChartFrame({
   const [view, setView] = React.useState<"chart" | "table">("chart");
   const id = React.useId();
   return (
-    <section aria-labelledby={`${id}-title`} className={cn("flex flex-col rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line", className)}>
+    <section
+      aria-labelledby={`${id}-title`}
+      className={cn(
+        "flex flex-col rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line",
+        className,
+      )}
+    >
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id={`${id}-title`} className="text-body font-semibold text-ink">
@@ -53,7 +59,11 @@ function ChartFrame({
           </h2>
           {description ? <p className="mt-0.5 text-caption text-ink-3">{description}</p> : null}
         </div>
-        <div role="group" aria-label={`${title}: view`} className="flex shrink-0 rounded-md bg-surface-sunken p-0.5">
+        <div
+          role="group"
+          aria-label={`${title}: view`}
+          className="flex shrink-0 rounded-md bg-surface-sunken p-0.5"
+        >
           {(["chart", "table"] as const).map((v) => (
             <button
               key={v}
@@ -138,12 +148,28 @@ export function ColumnChart({
   const ticks = Number.isInteger(max / 2) ? [0, max / 2, max] : [0, max];
 
   return (
-    <ChartFrame title={title} description={description} table={<DataTable data={data} valueLabel={valueLabel} />}>
+    <ChartFrame
+      title={title}
+      description={description}
+      table={<DataTable data={data} valueLabel={valueLabel} />}
+    >
       {/* Each column is a focusable button with its own label; the table view lists every value. */}
-      <div className="flex gap-2 pt-2" role="group" aria-label={`${title}, ${valueLabel.toLowerCase()} per bar`}>
-        <div aria-hidden className="relative w-7 shrink-0 text-right text-micro text-ink-3 tabular-nums" style={{ height }}>
+      <div
+        className="flex gap-2 pt-2"
+        role="group"
+        aria-label={`${title}, ${valueLabel.toLowerCase()} per bar`}
+      >
+        <div
+          aria-hidden
+          className="relative w-7 shrink-0 text-right text-micro text-ink-3 tabular-nums"
+          style={{ height }}
+        >
           {ticks.map((t) => (
-            <span key={t} className="absolute right-0 -translate-y-1/2" style={{ bottom: `${(t / max) * 100}%` }}>
+            <span
+              key={t}
+              className="absolute right-0 -translate-y-1/2"
+              style={{ bottom: `${(t / max) * 100}%` }}
+            >
               {t.toLocaleString("en-US")}
             </span>
           ))}
@@ -151,7 +177,12 @@ export function ColumnChart({
         <div className="min-w-0 flex-1">
           <div className="relative" style={{ height }}>
             {ticks.map((t) => (
-              <span key={t} aria-hidden className="absolute inset-x-0 h-px bg-line" style={{ bottom: `${(t / max) * 100}%` }} />
+              <span
+                key={t}
+                aria-hidden
+                className="absolute inset-x-0 h-px bg-line"
+                style={{ bottom: `${(t / max) * 100}%` }}
+              />
             ))}
             <div className="absolute inset-0 flex items-end gap-0.5">
               {data.map((d, i) => {
@@ -217,7 +248,11 @@ export function BarList({
   const [active, setActive] = React.useState<number | null>(null);
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
-    <ChartFrame title={title} description={description} table={<DataTable data={data} valueLabel={valueLabel} />}>
+    <ChartFrame
+      title={title}
+      description={description}
+      table={<DataTable data={data} valueLabel={valueLabel} />}
+    >
       <ol className="flex flex-col gap-3">
         {data.map((d, i) => {
           const share = d.value === 0 ? 0 : isSuppressed(d.value) ? STUB : d.value / max;
@@ -228,7 +263,9 @@ export function BarList({
                 <span className="truncate text-ink-2">{d.detail ?? d.label}</span>
                 <span className="shrink-0 text-ink tabular-nums">
                   <span className="font-semibold">{fmt(d.value)}</span>
-                  {note && !isSuppressed(d.value) ? <span className="ml-1.5 text-caption text-ink-3">{note}</span> : null}
+                  {note && !isSuppressed(d.value) ? (
+                    <span className="ml-1.5 text-caption text-ink-3">{note}</span>
+                  ) : null}
                 </span>
               </div>
               <button
@@ -252,6 +289,110 @@ export function BarList({
             </li>
           );
         })}
+      </ol>
+    </ChartFrame>
+  );
+}
+
+export interface MetricDatum {
+  label: string;
+  /** 0–1 bar length; null hides the bar (a suppressed or empty segment). */
+  bar: number | null;
+  display: string;
+  /** Denominator, already formatted ("<5" when small). */
+  n: string;
+}
+
+/**
+ * Rates and averages per segment (1.A). Single series in --chart-1; suppressed rows show
+ * "<5" with no bar, so a length can never reveal a small count.
+ */
+export function MetricBars({
+  title,
+  description,
+  data,
+  valueLabel,
+  nLabel,
+}: {
+  title: string;
+  description?: string;
+  data: MetricDatum[];
+  valueLabel: string;
+  nLabel: string;
+}) {
+  const [active, setActive] = React.useState<number | null>(null);
+  const table = (
+    <table className="w-full text-left text-body-sm">
+      <thead className="text-caption text-ink-3">
+        <tr className="border-b border-line">
+          <th scope="col" className="py-2 font-medium">
+            &nbsp;
+          </th>
+          <th scope="col" className="py-2 text-right font-medium">
+            {valueLabel}
+          </th>
+          <th scope="col" className="py-2 text-right font-medium">
+            {nLabel}
+          </th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-line">
+        {data.map((d) => (
+          <tr key={d.label}>
+            <th scope="row" className="py-2 font-normal text-ink-2">
+              {d.label}
+            </th>
+            <td className="py-2 text-right text-ink tabular-nums">{d.display}</td>
+            <td className="py-2 text-right text-ink-2 tabular-nums">{d.n}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+  return (
+    <ChartFrame title={title} description={description} table={table}>
+      <ol className="flex flex-col gap-3">
+        {data.map((d, i) => (
+          <li key={d.label}>
+            <div className="flex items-baseline justify-between gap-3 text-body-sm">
+              <span className="truncate text-ink-2">{d.label}</span>
+              <span className="shrink-0 text-ink tabular-nums">
+                <span className="font-semibold">{d.display}</span>
+                <span className="ml-1.5 text-caption text-ink-3">n {d.n}</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              aria-label={`${d.label}: ${d.display}, ${nLabel} ${d.n}`}
+              onPointerEnter={() => setActive(i)}
+              onPointerLeave={() => setActive((a) => (a === i ? null : a))}
+              onFocus={() => setActive(i)}
+              onBlur={() => setActive((a) => (a === i ? null : a))}
+              className="relative mt-1.5 block h-3 w-full rounded-full bg-surface-sunken outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              {d.bar !== null ? (
+                <span
+                  className={cn(
+                    "absolute inset-y-0 left-0 rounded-r-[4px] bg-chart-1 transition-opacity duration-150",
+                    active !== null && active !== i && "opacity-50",
+                  )}
+                  style={{ width: `${Math.max(0, Math.min(1, d.bar)) * 100}%` }}
+                />
+              ) : null}
+              {active === i ? (
+                <span
+                  role="tooltip"
+                  className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 rounded-md bg-ink px-2.5 py-1.5 text-left whitespace-nowrap text-ink-inverse shadow-md"
+                >
+                  <span className="block text-body-sm font-semibold tabular-nums">{d.display}</span>
+                  <span className="block text-caption opacity-80">
+                    {d.label} · {nLabel} {d.n}
+                  </span>
+                </span>
+              ) : null}
+            </button>
+          </li>
+        ))}
       </ol>
     </ChartFrame>
   );

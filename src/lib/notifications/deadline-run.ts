@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { CAMPUS_TZ } from "@/lib/time";
 import { deadlineNudgeEmail } from "@/lib/email/templates";
 import { dispatch } from "./dispatch";
+import { selectAll, selectByIds } from "@/lib/supabase/paginate";
 import {
   DEADLINE_KEYS,
   dueOffset,
@@ -54,20 +55,39 @@ export async function runDeadlineNudges(
       .filter((x): x is { rule: NudgeRule; offset: number } => x.offset !== null);
     if (!due.length) continue;
 
-    const { data: students } = await db.rpc("school_students", { p_school: term.school_id });
-    const onboarded = (students ?? []).filter((s) => s.onboarding_completed_at);
+    const students = await selectAll((from, to) =>
+      db.rpc("school_students", { p_school: term.school_id }).order("id").range(from, to),
+    );
+    const onboarded = students.filter((s) => s.onboarding_completed_at);
     const ids = onboarded.map((s) => s.id);
-    const { data: members } = ids.length
-      ? await db.from("group_members").select("user_id, group_id").in("user_id", ids)
-      : { data: [] };
-    const groupIds = [...new Set((members ?? []).map((m) => m.group_id))];
-    const [{ data: sizes }, { data: agreements }] = await Promise.all([
-      groupIds.length
-        ? db.from("group_members").select("group_id").in("group_id", groupIds)
-        : Promise.resolve({ data: [] as { group_id: string }[] }),
-      groupIds.length
-        ? db.from("agreements").select("group_id, status").in("group_id", groupIds)
-        : Promise.resolve({ data: [] as { group_id: string; status: string }[] }),
+    const members = await selectByIds(ids, (c, f, t) =>
+      db
+        .from("group_members")
+        .select("user_id, group_id")
+        .in("user_id", c)
+        .order("user_id")
+        .order("group_id")
+        .range(f, t),
+    );
+    const groupIds = [...new Set(members.map((m) => m.group_id))];
+    const [sizes, agreements] = await Promise.all([
+      selectByIds(groupIds, (c, f, t) =>
+        db
+          .from("group_members")
+          .select("group_id, user_id")
+          .in("group_id", c)
+          .order("group_id")
+          .order("user_id")
+          .range(f, t),
+      ),
+      selectByIds(groupIds, (c, f, t) =>
+        db
+          .from("agreements")
+          .select("id, group_id, status")
+          .in("group_id", c)
+          .order("id")
+          .range(f, t),
+      ),
     ]);
     const size = new Map<string, number>();
     for (const g of sizes ?? []) size.set(g.group_id, (size.get(g.group_id) ?? 0) + 1);
@@ -110,15 +130,13 @@ export async function runDeadlineNudges(
           })
         )
           continue;
-        const { error } = await db
-          .from("nudge_sends")
-          .insert({
-            rule_id: ruleId,
-            user_id: id,
-            deadline_on: deadline,
-            offset_days: offset,
-            channels: rule.channels,
-          });
+        const { error } = await db.from("nudge_sends").insert({
+          rule_id: ruleId,
+          user_id: id,
+          deadline_on: deadline,
+          offset_days: offset,
+          channels: rule.channels,
+        });
         if (error) continue; // already sent (unique) or failed: never double-send
         await dispatch({
           kind: "deadlines",

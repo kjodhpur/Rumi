@@ -37,7 +37,11 @@ describe("roleCan", () => {
 
 describe("parseScopes", () => {
   it("tolerates junk and keeps only string building names", () => {
-    expect(parseScopes({ buildings: ["A", 3, null, "B"] })).toEqual({ buildings: ["A", "B"], communities: [], accommodations: false });
+    expect(parseScopes({ buildings: ["A", 3, null, "B"] })).toEqual({
+      buildings: ["A", "B"],
+      communities: [],
+      accommodations: false,
+    });
     expect(parseScopes({ accommodations: true }).accommodations).toBe(true);
     expect(parseScopes(null)).toEqual({ buildings: [], communities: [], accommodations: false });
   });
