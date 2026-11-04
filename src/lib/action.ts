@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { LOCALE_COOKIE, localizeError, requestLocale } from "@/lib/i18n/errors";
+
 /** Uniform result shape for Server Actions consumed by client components. */
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? { data?: undefined } : { data: T }))
@@ -9,8 +12,16 @@ export function ok<T>(data?: T) {
   return { ok: true, data } as ActionResult<T>;
 }
 
-export function fail(error: string, fieldErrors?: Record<string, string>): { ok: false; error: string; fieldErrors?: Record<string, string> } {
-  return { ok: false, error, fieldErrors };
+/**
+ * A failed result. The message is written in English at the call site and answered in the
+ * student's language (from the language cookie) when the dictionary knows it.
+ */
+export function fail(
+  error: string,
+  fieldErrors?: Record<string, string>,
+): { ok: false; error: string; fieldErrors?: Record<string, string> } {
+  const locale = requestLocale(() => cookies().get(LOCALE_COOKIE)?.value);
+  return { ok: false, error: localizeError(error, locale), fieldErrors };
 }
 
 /** Maps Postgres exception names raised by our RPCs to friendly copy. */

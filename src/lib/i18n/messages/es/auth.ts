@@ -1,0 +1,52 @@
+import type { Messages } from "../en";
+
+export const auth: Messages["auth"] = {
+  title: "Iniciar sesión",
+  description: "Inicia sesión en Rumi con tu correo escolar.",
+  home: "Inicio de Rumi",
+  footer: "Gratis para estudiantes · Sin afiliación con {school}",
+  errors: {
+    schoolEmail: "Esa cuenta no es escolar. Inicia sesión con tu correo @{domain}.",
+    oauth: "El inicio de sesión no terminó. Inténtalo de nuevo o usa tu correo.",
+    linkExpired: "Ese enlace de inicio de sesión venció. Pide un código nuevo abajo.",
+    suspended: "Esta cuenta está suspendida. Escribe a {email} si crees que es un error.",
+    google: "El inicio con Google no está disponible ahora. Usa tu correo.",
+  },
+  heading: "Encuentra a tu gente.",
+  intro:
+    "Inicia sesión o crea una cuenta con tu correo de {school}. Te enviaremos un código de 6 dígitos, sin contraseñas.",
+  emailLabel: "Correo escolar",
+  continue: "Continuar",
+  continueWithSso: "Continuar con el inicio de sesión de {school}",
+  or: "o",
+  google: "Continuar con Google",
+  googleHint: "Usa tu cuenta de Google de {school}",
+  agreeStart: "Al continuar aceptas nuestros",
+  terms: "Términos",
+  and: "y la",
+  privacy: "Política de privacidad",
+  differentEmail: "Usar otro correo",
+  checkInbox: "Revisa tu correo.",
+  enterCode: "Escribe el código que enviamos a",
+  signedIn: "Sesión iniciada",
+  verify: "Verificar y continuar",
+  spam: "¿No te llegó? Revisa el correo no deseado.",
+  resendIn: "Reenviar en {seconds} s",
+  resend: "Reenviar código",
+  devHint: "Desarrollo local: lee el código en Mailpit en",
+  showcase: {
+    title: "Tus mejores compatibles,",
+    subtitle: "ordenados con razones.",
+    reasons: {
+      m1: "Los dos son noctámbulos",
+      m2: "Los dos mantienen todo impecable",
+      m3: "A los dos les gusta un lugar tranquilo",
+    },
+    footer:
+      "Cada puntuación viene con las tres razones principales por las que se llevarían bien, y lo que conviene hablar primero.",
+  },
+  confirm: "Iniciar sesión en Rumi",
+  confirmTitle: "Un toque más.",
+  confirmBody: "Termina de iniciar sesión en Rumi en este dispositivo.",
+  language: "Idioma",
+};

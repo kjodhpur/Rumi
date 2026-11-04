@@ -13,6 +13,7 @@ import { OtpInput } from "@/components/ui/otp-input";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 import { spring } from "@/lib/motion";
 import { GoogleMark } from "@/components/brand/google-mark";
+import { useT } from "@/components/providers/i18n";
 
 const RESEND_SECONDS = 30;
 
@@ -34,6 +35,7 @@ export function LoginForm({
   sso?: { id: string; shortName: string }[];
 }) {
   const router = useRouter();
+  const tr = useT("auth");
   const [step, setStep] = React.useState<"email" | "code">("email");
   const [email, setEmail] = React.useState(initialEmail ?? "");
   const [code, setCode] = React.useState("");
@@ -109,7 +111,7 @@ export function LoginForm({
     });
     if (oauthError) {
       setGooglePending(false);
-      setError("Google sign-in isn't available right now. Use your email instead.");
+      setError(tr("errors.google"));
     }
   }
 
@@ -124,14 +126,13 @@ export function LoginForm({
             exit={{ opacity: 0, x: -24 }}
             transition={spring}
           >
-            <h1 className="font-display text-display-lg text-ink">Find your people.</h1>
+            <h1 className="font-display text-display-lg text-ink">{tr("heading")}</h1>
             <p className="mt-3 text-body text-ink-2">
-              Sign in or create an account with your {LAUNCH_SCHOOL.shortName} email. We&apos;ll
-              send a 6-digit code — no passwords.
+              {tr("intro", { school: LAUNCH_SCHOOL.shortName })}
             </p>
 
             <form onSubmit={sendCode} className="mt-8 flex flex-col gap-4" noValidate>
-              <Field label="School email" error={error}>
+              <Field label={tr("emailLabel")} error={error}>
                 {({ id, describedBy, invalid }) => (
                   <Input
                     id={id}
@@ -153,7 +154,7 @@ export function LoginForm({
               </Field>
               {next ? <input type="hidden" name="next" value={next} /> : null}
               <Button type="submit" size="lg" block loading={pending}>
-                Continue
+                {tr("continue")}
               </Button>
             </form>
 
@@ -168,7 +169,7 @@ export function LoginForm({
                     loading={ssoPending === school.id}
                     onClick={() => void signInWithSso(school.id)}
                   >
-                    Continue with {school.shortName} sign-in
+                    {tr("continueWithSso", { school: school.shortName })}
                   </Button>
                 ))}
               </div>
@@ -178,7 +179,7 @@ export function LoginForm({
               <>
                 <div className="my-6 flex items-center gap-4 text-caption text-ink-3">
                   <span className="h-px flex-1 bg-line" />
-                  or
+                  {tr("or")}
                   <span className="h-px flex-1 bg-line" />
                 </div>
                 <Button
@@ -189,28 +190,28 @@ export function LoginForm({
                   loading={googlePending}
                 >
                   <GoogleMark />
-                  Continue with Google
+                  {tr("google")}
                 </Button>
                 <p className="mt-2 text-center text-caption text-ink-3">
-                  Use your {LAUNCH_SCHOOL.shortName} Google account
+                  {tr("googleHint", { school: LAUNCH_SCHOOL.shortName })}
                 </p>
               </>
             ) : null}
 
             <p className="mt-8 text-caption text-ink-3">
-              By continuing you agree to our{" "}
+              {tr("agreeStart")}{" "}
               <Link
                 href="/terms"
                 className="text-ink-2 underline underline-offset-2 hover:text-ink"
               >
-                Terms
+                {tr("terms")}
               </Link>{" "}
-              and{" "}
+              {tr("and")}{" "}
               <Link
                 href="/privacy"
                 className="text-ink-2 underline underline-offset-2 hover:text-ink"
               >
-                Privacy Policy
+                {tr("privacy")}
               </Link>
               .
             </p>
@@ -232,11 +233,11 @@ export function LoginForm({
               className="mb-6 -ml-2 inline-flex h-9 items-center gap-1.5 rounded-full px-2 text-body-sm font-medium text-ink-2 transition-colors hover:bg-surface-hover hover:text-ink"
             >
               <ArrowLeft className="size-4" strokeWidth={1.75} aria-hidden />
-              Use a different email
+              {tr("differentEmail")}
             </button>
-            <h1 className="font-display text-display-lg text-ink">Check your inbox.</h1>
+            <h1 className="font-display text-display-lg text-ink">{tr("checkInbox")}</h1>
             <p className="mt-3 text-body text-ink-2">
-              Enter the code we sent to <span className="font-medium text-ink">{email}</span>.
+              {tr("enterCode")} <span className="font-medium text-ink">{email}</span>.
             </p>
 
             <form
@@ -278,28 +279,28 @@ export function LoginForm({
                 block
                 loading={pending && !success}
                 success={success}
-                successLabel="Signed in"
+                successLabel={tr("signedIn")}
                 disabled={code.length !== 6}
               >
-                Verify and continue
+                {tr("verify")}
               </Button>
             </form>
 
             <div className="mt-6 flex items-center justify-between text-body-sm">
-              <span className="text-ink-3">Didn&apos;t get it? Check spam.</span>
+              <span className="text-ink-3">{tr("spam")}</span>
               <button
                 type="button"
                 onClick={() => void sendCode()}
                 disabled={cooldown > 0 || pending}
                 className="font-medium text-accent-ink underline-offset-4 hover:underline disabled:text-ink-3 disabled:no-underline"
               >
-                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
+                {cooldown > 0 ? tr("resendIn", { seconds: cooldown }) : tr("resend")}
               </button>
             </div>
 
             {showDevHint ? (
               <p className="mt-8 rounded-md bg-surface-sunken px-3 py-2.5 text-caption text-ink-2">
-                Local dev: read the code in Mailpit at{" "}
+                {tr("devHint")}{" "}
                 <a
                   className="font-medium underline"
                   href="http://127.0.0.1:54324"
