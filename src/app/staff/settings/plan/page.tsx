@@ -1,115 +1,163 @@
 import type { Metadata } from "next";
+import { HeartHandshake } from "lucide-react";
 import { requireStaffPage } from "@/lib/staff/context";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { publicEnv } from "@/lib/env";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
-import { Check, ShieldCheck, Sparkles, Building2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import {
+  CohortManager,
+  PilotManager,
+  type CohortView,
+  type PilotView,
+} from "@/components/staff/pilot-manager";
 
-export const metadata: Metadata = { title: "Campus Plan & Bed Licensing" };
+export const metadata: Metadata = { title: "Plan & pilot" };
+export const dynamic = "force-dynamic";
 
-export default async function CampusPlanPage() {
+const list = (v: unknown, key: string) => {
+  const raw = v && typeof v === "object" ? (v as Record<string, unknown>)[key] : null;
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
+};
+
+/** Phase 9: plan display (no billing), pilot scope and comparison groups. */
+export default async function PlanPage() {
   const context = await requireStaffPage("viewDashboard");
+  const school = context.school.id;
+  const canEdit = context.role === "housing_admin" || context.role === "platform_admin";
   const db = createAdminClient();
+  const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: school }, { count: studentCount }] = await Promise.all([
-    db.from("schools").select("id, name, plan, licensed_beds").eq("id", context.school.id).maybeSingle(),
-    db.from("profiles").select("id", { count: "exact", head: true }),
+  const [
+    { data: row },
+    { data: pilot },
+    { data: cohorts },
+    { data: colleges },
+    { data: terms },
+    { data: students },
+  ] = await Promise.all([
+    db.from("schools").select("plan, licensed_beds").eq("id", school).maybeSingle(),
+    db
+      .from("pilot_configs")
+      .select("scope, starts_on, ends_on, success_metrics")
+      .eq("school_id", school)
+      .maybeSingle(),
+    db
+      .from("pilot_cohorts")
+      .select("id, name, arm, term_id, rule")
+      .eq("school_id", school)
+      .order("created_at"),
+    db
+      .from("school_options")
+      .select("value, label")
+      .eq("school_id", school)
+      .eq("kind", "residential_college")
+      .eq("active", true)
+      .order("position"),
+    db
+      .from("terms")
+      .select("id, name")
+      .eq("school_id", school)
+      .order("starts_on", { ascending: false }),
+    db.rpc("school_students", { p_school: school }),
   ]);
-
-  const plan = school?.plan || "pilot";
-  const licensedBeds = school?.licensed_beds || 500;
-  const activeStudents = studentCount || 86;
-  const utilization = Math.min(100, Math.round((activeStudents / licensedBeds) * 100));
+  const onboarded = (students ?? []).filter((s) => s.onboarding_completed_at).length;
+  const beds = row?.licensed_beds ?? null;
+  const plan = row?.plan === "standard" ? "Standard" : "Pilot";
+  const metrics = (pilot?.success_metrics ?? {}) as PilotView["metrics"];
 
   return (
-    <div className="flex flex-col gap-8 max-w-4xl">
+    <div className="flex max-w-[860px] flex-col gap-6">
       <PageHeader
-        title="Campus Plan & Licensing"
-        description="Per-bed SaaS licensing and residential college pilot parameters. 100% free for all students."
+        title="Plan & pilot"
+        description="Your plan, who the pilot covers, and the groups your outcomes report compares."
+        className="pb-0 lg:pb-0"
       />
 
-      {/* Plan Status Banner */}
-      <div className="rounded-xl bg-surface p-6 shadow-xs ring-1 ring-line flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-caption font-semibold bg-ember/10 text-ember mb-2">
-            <Sparkles className="size-3.5" />
-            <span className="uppercase tracking-wide">{plan} Plan — Active</span>
+      <section
+        className="rounded-xl bg-surface p-5 ring-1 ring-line sm:p-6"
+        aria-labelledby="plan-title"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 id="plan-title" className="text-body font-semibold text-ink">
+            {plan} plan
+          </h2>
+          <Badge variant="accent">{context.school.name}</Badge>
+        </div>
+        {beds ? (
+          <div className="mt-4">
+            <div className="flex items-baseline justify-between text-body-sm">
+              <span className="text-ink-2">
+                Students with a finished profile{pilot ? " in the pilot" : ""}
+              </span>
+              <span className="text-ink tabular-nums">
+                {onboarded.toLocaleString("en-US")} of {beds.toLocaleString("en-US")} licensed beds
+              </span>
+            </div>
+            <ProgressBar value={onboarded / beds} label="Licensed beds used" className="mt-2" />
           </div>
-          <h2 className="text-title font-semibold text-ink">{school?.name || "Arizona State University"}</h2>
-          <p className="text-body-sm text-ink-2 mt-0.5">
-            Designated for Barrett, The Honors College and Tooker House residential colleges.
+        ) : (
+          <p className="mt-2 text-body-sm text-ink-2">
+            {onboarded.toLocaleString("en-US")} students with a finished profile
+            {pilot ? " in the pilot" : ""}. No bed count is set for your plan.
           </p>
-        </div>
-        <Button variant="secondary">
-          Request Bed Quota Increase
-        </Button>
-      </div>
-
-      {/* Bed Utilization Meter */}
-      <section className="rounded-xl bg-surface p-6 shadow-xs ring-1 ring-line space-y-4">
-        <div className="flex justify-between items-baseline">
-          <div>
-            <h3 className="font-semibold text-ink">Bed Allocation &amp; Student Adoption</h3>
-            <p className="text-caption text-ink-3">Active student profiles using Rumi this term</p>
-          </div>
-          <div className="text-right">
-            <span className="font-mono text-xl font-bold text-ink">{activeStudents}</span>
-            <span className="text-body-sm text-ink-3"> / {licensedBeds} beds</span>
-          </div>
-        </div>
-
-        <div className="w-full bg-sand rounded-full h-3 overflow-hidden">
-          <div
-            className="bg-ember h-full rounded-full transition-all duration-500"
-            style={{ width: `${utilization}%` }}
-          />
-        </div>
-
-        <div className="flex justify-between text-caption text-ink-3">
-          <span>{utilization}% Capacity utilized</span>
-          <span>{licensedBeds - activeStudents} Beds remaining in pilot scope</span>
-        </div>
-      </section>
-
-      {/* Feature Matrix */}
-      <section className="rounded-xl bg-surface p-6 shadow-xs ring-1 ring-line space-y-4">
-        <h3 className="font-semibold text-ink">Plan Inclusions</h3>
-        <ul className="grid sm:grid-cols-2 gap-3 text-body-sm text-ink-2">
-          <li className="flex items-center gap-2.5">
-            <Check className="size-4 text-emerald-600 shrink-0" />
-            <span>StarRez REST integration &amp; CSV export</span>
-          </li>
-          <li className="flex items-center gap-2.5">
-            <Check className="size-4 text-emerald-600 shrink-0" />
-            <span>Pre-arrival admitted student allowlist matching</span>
-          </li>
-          <li className="flex items-center gap-2.5">
-            <Check className="size-4 text-emerald-600 shrink-0" />
-            <span>Digital roommate agreements with version history</span>
-          </li>
-          <li className="flex items-center gap-2.5">
-            <Check className="size-4 text-emerald-600 shrink-0" />
-            <span>Pulse check-ins &amp; early RA conflict alerts</span>
-          </li>
-          <li className="flex items-center gap-2.5">
-            <Check className="size-4 text-emerald-600 shrink-0" />
-            <span>A/B Pilot Outcomes research reporting</span>
-          </li>
-          <li className="flex items-center gap-2.5">
-            <Check className="size-4 text-emerald-600 shrink-0" />
-            <span>Enterprise FERPA &amp; Title IX compliance workflows</span>
-          </li>
-        </ul>
-      </section>
-
-      {/* Zero Student Paywall Guarantee */}
-      <div className="flex items-start gap-3 p-4 rounded-lg bg-surface-sunken text-body-sm text-ink-2">
-        <ShieldCheck className="size-5 text-emerald-600 shrink-0 mt-0.5" />
-        <p>
-          <strong>Rumi Student Promise:</strong> Students are never charged, paywalled, or subjected to advertisements.
-          Institutional licensing guarantees universal and equitable access for all residents.
+        )}
+        <p className="mt-4 text-body-sm text-ink-2">
+          Plan and bed changes go through Rumi:{" "}
+          <a
+            className="font-medium text-accent-ink underline-offset-4 hover:underline"
+            href={`mailto:${publicEnv.supportEmail}?subject=${encodeURIComponent(`Plan for ${context.school.name}`)}`}
+          >
+            {publicEnv.supportEmail}
+          </a>
+          . There&apos;s no billing in the app.
         </p>
-      </div>
+        <p className="mt-4 flex items-start gap-2.5 rounded-md bg-surface-sunken p-3 text-body-sm text-ink-2">
+          <HeartHandshake className="mt-0.5 size-4 shrink-0 text-accent-ink" aria-hidden />
+          Students never pay and never see ads, on any plan.
+        </p>
+      </section>
+
+      {canEdit ? (
+        <>
+          <PilotManager
+            schoolId={school}
+            today={today}
+            colleges={colleges ?? []}
+            pilot={
+              pilot
+                ? {
+                    residentialColleges: list(pilot.scope, "residential_colleges"),
+                    startsOn: pilot.starts_on,
+                    endsOn: pilot.ends_on,
+                    metrics,
+                  }
+                : null
+            }
+          />
+          <CohortManager
+            schoolId={school}
+            colleges={colleges ?? []}
+            terms={terms ?? []}
+            cohorts={(cohorts ?? []).map((c): CohortView => ({
+              id: c.id,
+              name: c.name,
+              arm: c.arm === "control" ? "control" : "rumi",
+              termId: c.term_id,
+              residentialColleges: list(c.rule, "residential_colleges"),
+              buildings: list(c.rule, "buildings"),
+            }))}
+          />
+        </>
+      ) : pilot ? (
+        <section className="rounded-xl bg-surface p-5 ring-1 ring-line sm:p-6">
+          <h2 className="text-body font-semibold text-ink">Pilot</h2>
+          <p className="mt-1 text-body-sm text-ink-2">
+            {pilot.starts_on} to {pilot.ends_on}. Housing admins can change it.
+          </p>
+        </section>
+      ) : null}
     </div>
   );
 }
