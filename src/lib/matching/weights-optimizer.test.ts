@@ -1,66 +1,111 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_OUTCOME_ROWS,
+  auc,
   fitOutcomeWeights,
-  LIFESTYLE_FACTORS,
-  MIN_OUTCOME_SAMPLE_SIZE,
-  type OutcomeRecord,
+  invert,
+  pairMismatches,
+  plantedOutcomes,
 } from "./weights-optimizer";
-import type { FactorKey } from "@/lib/options";
+import { DEFAULT_IMPORTANCE } from "@/lib/options";
 
-function generateRecord(id: string, plantedSleep: boolean): OutcomeRecord {
-  const mismatches = {} as Record<FactorKey, number>;
-  for (const factor of LIFESTYLE_FACTORS) {
-    mismatches[factor] = Math.random() * 0.4; // baseline random small mismatch
-  }
-
-  if (plantedSleep) {
-    mismatches.sleep = 0.8 + Math.random() * 0.2; // severe sleep mismatch
-  }
-
-  // Planted effect: high sleep mismatch causes friction 80% of the time; otherwise 10%
-  const frictionProb = plantedSleep ? 0.8 : 0.1;
-  const hadFriction = Math.random() < frictionProb;
-
-  return {
-    pairId: `pair-${id}`,
-    mismatches,
-    hadFriction,
-  };
-}
-
-describe("Phase 1.G Outcome-Trained Weights Optimizer", () => {
-  it("strictly refuses to fit when sample size is below the 200 threshold", () => {
-    const smallRecords: OutcomeRecord[] = [];
-    for (let i = 0; i < 150; i++) {
-      smallRecords.push(generateRecord(String(i), i % 2 === 0));
-    }
-
-    const res = fitOutcomeWeights(smallRecords);
-    expect(res.status).toBe("insufficient_data");
-    expect(res.sampleSize).toBe(150);
-    expect(res.message).toContain(`Needs at least ${MIN_OUTCOME_SAMPLE_SIZE}`);
+describe("outcome-trained weights", () => {
+  it("refuses with fewer than 200 rows, or too few of either outcome", () => {
+    const few = fitOutcomeWeights(plantedOutcomes(MIN_OUTCOME_ROWS - 1, { sleep: 2 }));
+    expect(few).toMatchObject({ status: "insufficient_data", rows: 199 });
+    if (few.status === "insufficient_data") expect(few.message).toMatch(/not enough data/i);
+    const allCalm = plantedOutcomes(400, {}, -12);
+    expect(fitOutcomeWeights(allCalm).status).toBe("insufficient_data");
+    expect(fitOutcomeWeights(plantedOutcomes(MIN_OUTCOME_ROWS, { sleep: 2 })).status).toBe("ok");
   });
 
-  it("fits regularized logistic model on >=200 records and recovers planted sleep effect", () => {
-    // Generate 300 records with planted sleep effect
-    const records: OutcomeRecord[] = [];
-    for (let i = 0; i < 300; i++) {
-      records.push(generateRecord(String(i), i % 3 === 0));
-    }
+  it("recovers a planted effect with honest intervals", () => {
+    const fit = fitOutcomeWeights(
+      plantedOutcomes(4000, { sleep: 2.5, cleanliness: 1.5 }, -2, 11),
+      0.01,
+    );
+    expect(fit.status).toBe("ok");
+    if (fit.status !== "ok") return;
+    const by = Object.fromEntries(fit.estimates.map((e) => [e.factor, e]));
+    expect(by.sleep.evidence).toBe("positive");
+    expect(by.cleanliness.evidence).toBe("positive");
+    // The true values sit inside the 95% intervals.
+    expect(by.sleep.low).toBeLessThan(2.5);
+    expect(by.sleep.high).toBeGreaterThan(2.5);
+    expect(by.cleanliness.low).toBeLessThan(1.5);
+    expect(by.cleanliness.high).toBeGreaterThan(1.5);
+    // Factors with no effect mostly show no evidence.
+    const nulls = ["noise", "guests", "smoking", "drinking", "pets", "study"].filter(
+      (f) => by[f].evidence === "none",
+    );
+    expect(nulls.length).toBeGreaterThanOrEqual(5);
+    // Suggested defaults: stronger effect → Important; never Must; no-evidence → Rumi default.
+    expect(fit.suggestedWeights.sleep).toBe(2);
+    expect(Object.values(fit.suggestedWeights)).not.toContain(3);
+    for (const f of nulls)
+      expect(fit.suggestedWeights[f as keyof typeof fit.suggestedWeights]).toBe(
+        DEFAULT_IMPORTANCE[f as keyof typeof DEFAULT_IMPORTANCE],
+      );
+    expect(fit.auc).toBeGreaterThan(0.6);
+  });
 
-    const res = fitOutcomeWeights(records);
-    expect(res.status).toBe("success");
-    expect(res.sampleSize).toBe(300);
-    expect(res.frictionCount).toBeGreaterThan(0);
+  it("measures mismatch between two students' answers", () => {
+    const a = {
+      sleepSchedule: 1,
+      cleanliness: 5,
+      noise: 1,
+      guests: 3,
+      smoking: "never",
+      drinking: "never",
+      pets: "none",
+      study: "home_quiet",
+    };
+    const b = {
+      sleepSchedule: 5,
+      cleanliness: 5,
+      noise: 3,
+      guests: 3,
+      smoking: "regularly",
+      drinking: "socially",
+      pets: "have",
+      study: "home_social",
+    };
+    expect(pairMismatches(a, b)).toEqual({
+      sleep: 1,
+      cleanliness: 0,
+      noise: 0.5,
+      guests: 0,
+      smoking: 1,
+      drinking: 0.5,
+      pets: 1,
+      study: 1,
+    });
+    expect(pairMismatches(a, a)).toEqual({
+      sleep: 0,
+      cleanliness: 0,
+      noise: 0,
+      guests: 0,
+      smoking: 0,
+      drinking: 0,
+      pets: 0,
+      study: 0,
+    });
+  });
 
-    // Sleep coefficient should be positive and substantially higher than noise factors
-    const sleepWeight = res.coefficients.sleep.weight;
-    const studyWeight = res.coefficients.study.weight;
-    expect(sleepWeight).toBeGreaterThan(0);
-    expect(sleepWeight).toBeGreaterThan(studyWeight);
-
-    // Sleep should be recommended as highest importance (3)
-    expect(res.suggestedWeights.sleep).toBe(3);
-    expect(res.coefficients.sleep.ciHigh).toBeGreaterThan(res.coefficients.sleep.ciLow);
+  it("inverts matrices and computes AUC", () => {
+    const inv = invert([
+      [4, 7],
+      [2, 6],
+    ]);
+    expect(inv?.[0][0]).toBeCloseTo(0.6);
+    expect(inv?.[1][1]).toBeCloseTo(0.4);
+    expect(
+      invert([
+        [1, 2],
+        [2, 4],
+      ]),
+    ).toBeNull();
+    expect(auc([0.9, 0.8, 0.2, 0.1], [true, true, false, false])).toBe(1);
+    expect(auc([0.5, 0.5], [true, false])).toBe(0.5);
   });
 });

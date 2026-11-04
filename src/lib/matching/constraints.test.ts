@@ -26,11 +26,27 @@ function prefs(overrides: Partial<MatchPreferences> = {}): MatchPreferences {
   };
 }
 
-function person(id: string, extra: Partial<MatchProfile> = {}, p: Partial<MatchPreferences> = {}): MatchProfile {
-  return { id, firstName: id.toUpperCase(), gender: "woman", prefs: prefs(p), music: null, ...extra };
+function person(
+  id: string,
+  extra: Partial<MatchProfile> = {},
+  p: Partial<MatchPreferences> = {},
+): MatchProfile {
+  return {
+    id,
+    firstName: id.toUpperCase(),
+    gender: "woman",
+    prefs: prefs(p),
+    music: null,
+    ...extra,
+  };
 }
 
-const guests = (value: number): ScenarioAnswer => ({ factor: "guests", value, reason: "Both want a heads-up before overnight guests", topic: "overnight guests" });
+const guests = (value: number): ScenarioAnswer => ({
+  factor: "guests",
+  value,
+  reason: "Both want a heads-up before overnight guests",
+  topic: "overnight guests",
+});
 
 describe("pools", () => {
   it("keeps tracks apart unless the school merges them", () => {
@@ -43,11 +59,23 @@ describe("pools", () => {
 
   it("matches pre-arrival students with each other and with incoming students only", () => {
     const admit = person("a", { preArrival: true, track: "freshman", admitTermId: "t1" });
-    expect(hardFilterFailure(admit, person("b", { preArrival: true, track: "freshman", admitTermId: "t1" }))).toBeNull();
-    expect(hardFilterFailure(admit, person("c", { preArrival: true, track: "freshman", admitTermId: "t2" }))?.kind).toBe("pre_arrival_pool");
+    expect(
+      hardFilterFailure(
+        admit,
+        person("b", { preArrival: true, track: "freshman", admitTermId: "t1" }),
+      ),
+    ).toBeNull();
+    expect(
+      hardFilterFailure(
+        admit,
+        person("c", { preArrival: true, track: "freshman", admitTermId: "t2" }),
+      )?.kind,
+    ).toBe("pre_arrival_pool");
     expect(hardFilterFailure(admit, person("d", { track: "freshman" }))).toBeNull();
     expect(hardFilterFailure(admit, person("e", { track: "transfer" }))).toBeNull();
-    expect(hardFilterFailure(admit, person("f", { track: "returning" }))?.kind).toBe("pre_arrival_pool");
+    expect(hardFilterFailure(admit, person("f", { track: "returning" }))?.kind).toBe(
+      "pre_arrival_pool",
+    );
     expect(hardFilterFailure(admit, person("g"))?.kind).toBe("pre_arrival_pool");
   });
 });
@@ -75,7 +103,9 @@ describe("accommodations", () => {
   });
 
   it("room-level accommodations don't change who can be paired", () => {
-    const a = person("a", { accommodations: ["ground_floor", "single_bathroom", "mobility_accessible"] });
+    const a = person("a", {
+      accommodations: ["ground_floor", "single_bathroom", "mobility_accessible"],
+    });
     expect(hardFilterFailure(a, person("b"))).toBeNull();
   });
 
@@ -94,54 +124,100 @@ describe("school rules", () => {
     const b = person("b", { llc: null });
     expect(evaluateMatch(a, b, { schoolRules: rules })).toBeNull();
     expect(evaluateMatch(a, b)).not.toBeNull();
-    expect(evaluateMatch(a, person("c", { llc: "honors_stem" }), { schoolRules: rules })).not.toBeNull();
+    expect(
+      evaluateMatch(a, person("c", { llc: "honors_stem" }), { schoolRules: rules }),
+    ).not.toBeNull();
   });
 
   it("ignores inactive rules", () => {
-    expect(evaluateMatch(person("a", { llc: "x" }), person("b"), { schoolRules: [{ type: "llc_exclusive", active: false }] })).not.toBeNull();
+    expect(
+      evaluateMatch(person("a", { llc: "x" }), person("b"), {
+        schoolRules: [{ type: "llc_exclusive", active: false }],
+      }),
+    ).not.toBeNull();
   });
 });
 
 describe("scenario questions", () => {
   it("only counts questions both students answered at the same version", () => {
-    const a = person("a", { scenarios: { "partner_overnight@1": guests(2), "dishes@1": { ...guests(4), factor: "cleanliness" } } });
-    const b = person("b", { scenarios: { "partner_overnight@1": guests(2), "dishes@2": { ...guests(1), factor: "cleanliness" } } });
+    const a = person("a", {
+      scenarios: {
+        "partner_overnight@1": guests(2),
+        "dishes@1": { ...guests(4), factor: "cleanliness" },
+      },
+    });
+    const b = person("b", {
+      scenarios: {
+        "partner_overnight@1": guests(2),
+        "dishes@2": { ...guests(1), factor: "cleanliness" },
+      },
+    });
     expect(scenarioSimilarities(a, b)).toEqual({ guests: 1 });
   });
 
   it("refines the factor score instead of adding points", () => {
     const base = evaluateMatch(person("a"), person("b"))!.score;
-    const agree = evaluateMatch(person("a", { scenarios: { "q@1": guests(2) } }), person("b", { scenarios: { "q@1": guests(2) } }))!.score;
-    const disagree = evaluateMatch(person("a", { scenarios: { "q@1": guests(1) } }), person("b", { scenarios: { "q@1": guests(5) } }))!.score;
+    const agree = evaluateMatch(
+      person("a", { scenarios: { "q@1": guests(2) } }),
+      person("b", { scenarios: { "q@1": guests(2) } }),
+    )!.score;
+    const disagree = evaluateMatch(
+      person("a", { scenarios: { "q@1": guests(1) } }),
+      person("b", { scenarios: { "q@1": guests(5) } }),
+    )!.score;
     expect(agree).toBe(base);
     expect(disagree).toBeLessThan(base);
   });
 
   it("explains a shared answer and flags a far-apart one", () => {
     const a = person("a", { scenarios: { "q@1": guests(2) } }, { weights: { guests: 3 } });
-    const same = evaluateMatch(a, person("b", { scenarios: { "q@1": guests(2) } }, { weights: { guests: 3 } }))!;
-    expect(same.forA.reasons.map((r) => r.label)).toContain("Both want a heads-up before overnight guests");
-    const far = evaluateMatch(person("a", { scenarios: { "q@1": guests(1) } }, { guests: 1, weights: { guests: 3 } }), person("b", { scenarios: { "q@1": guests(5) } }, { guests: 5, weights: { guests: 3 } }))!;
-    expect(far.forA.watchouts.map((r) => r.label)).toContain("You'd handle overnight guests differently");
+    const same = evaluateMatch(
+      a,
+      person("b", { scenarios: { "q@1": guests(2) } }, { weights: { guests: 3 } }),
+    )!;
+    expect(same.forA.reasons.map((r) => r.label)).toContain(
+      "Both want a heads-up before overnight guests",
+    );
+    const far = evaluateMatch(
+      person("a", { scenarios: { "q@1": guests(1) } }, { guests: 1, weights: { guests: 3 } }),
+      person("b", { scenarios: { "q@1": guests(5) } }, { guests: 5, weights: { guests: 3 } }),
+    )!;
+    expect(far.forA.watchouts.map((r) => r.label)).toContain(
+      "You'd handle overnight guests differently",
+    );
   });
 
   it("removing every scenario answer brings the score back exactly", () => {
-    const withAnswers = evaluateMatch(person("a", { scenarios: { "q@1": guests(1) } }), person("b", { scenarios: { "q@1": guests(4) } }))!.score;
+    const withAnswers = evaluateMatch(
+      person("a", { scenarios: { "q@1": guests(1) } }),
+      person("b", { scenarios: { "q@1": guests(4) } }),
+    )!.score;
     const without = evaluateMatch(person("a"), person("b"))!.score;
     expect(withAnswers).not.toBe(without);
-    expect(evaluateMatch(person("a", { scenarios: {} }), person("b", { scenarios: {} }))!.score).toBe(without);
+    expect(
+      evaluateMatch(person("a", { scenarios: {} }), person("b", { scenarios: {} }))!.score,
+    ).toBe(without);
   });
 });
 
 describe("class schedule", () => {
   it("is skipped unless both added a schedule", () => {
-    expect(classSimilarity(person("a"), person("b", { classDay: { earliestStart: 480, latestEnd: 900 } }))).toBeNull();
+    expect(
+      classSimilarity(
+        person("a"),
+        person("b", { classDay: { earliestStart: 480, latestEnd: 900 } }),
+      ),
+    ).toBeNull();
   });
 
   it("scores similar days high and opposite days low", () => {
     const early = { earliestStart: 8 * 60, latestEnd: 14 * 60 };
     const late = { earliestStart: 13 * 60, latestEnd: 21 * 60 };
-    expect(classSimilarity(person("a", { classDay: early }), person("b", { classDay: early }))).toBe(1);
-    expect(classSimilarity(person("a", { classDay: early }), person("b", { classDay: late }))).toBe(0);
+    expect(
+      classSimilarity(person("a", { classDay: early }), person("b", { classDay: early })),
+    ).toBe(1);
+    expect(classSimilarity(person("a", { classDay: early }), person("b", { classDay: late }))).toBe(
+      0,
+    );
   });
 });

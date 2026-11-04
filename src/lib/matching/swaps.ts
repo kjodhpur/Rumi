@@ -41,7 +41,11 @@ export interface SwapCycle {
   averageDelta: number;
 }
 
-function evaluate(order: SwapCandidate[], compat: Compatibility, minDelta: number): SwapCycle | null {
+function evaluate(
+  order: SwapCandidate[],
+  compat: Compatibility,
+  minDelta: number,
+): SwapCycle | null {
   const moves: Record<string, SwapMove> = {};
   const stayers: Record<string, { currentScore: number; newScore: number }> = {};
   let total = 0;
@@ -52,11 +56,21 @@ function evaluate(order: SwapCandidate[], compat: Compatibility, minDelta: numbe
     if (score === null || score - mover.currentScore < minDelta) return null;
     // The staying roommate in the target room swaps target for mover.
     if (score < target.currentScore) return null;
-    moves[mover.userId] = { toRoomOf: target.userId, newRoommateId: target.roommateId, currentScore: mover.currentScore, newScore: score };
+    moves[mover.userId] = {
+      toRoomOf: target.userId,
+      newRoommateId: target.roommateId,
+      currentScore: mover.currentScore,
+      newScore: score,
+    };
     stayers[target.roommateId] = { currentScore: target.currentScore, newScore: score };
     total += score - mover.currentScore;
   }
-  return { cycle: order.map((c) => c.userId), moves, stayers, averageDelta: Math.round((total / order.length) * 10) / 10 };
+  return {
+    cycle: order.map((c) => c.userId),
+    moves,
+    stayers,
+    averageDelta: Math.round((total / order.length) * 10) / 10,
+  };
 }
 
 /** Distinct rooms only: two candidates who share a room can't swap with each other. */
@@ -70,15 +84,27 @@ function distinctRooms(list: SwapCandidate[]) {
   return true;
 }
 
-export function findSwapCycles(candidates: SwapCandidate[], compat: Compatibility, minDelta = MIN_SWAP_IMPROVEMENT_DELTA): SwapCycle[] {
+export function findSwapCycles(
+  candidates: SwapCandidate[],
+  compat: Compatibility,
+  minDelta = MIN_SWAP_IMPROVEMENT_DELTA,
+): SwapCycle[] {
   const n = candidates.length;
   // Valid single moves first, so the 3-way search only follows real edges.
   const edge = (a: number, b: number) => {
     const score = compat(candidates[a]!.userId, candidates[b]!.roommateId);
-    return score !== null && score - candidates[a]!.currentScore >= minDelta && score >= candidates[b]!.currentScore;
+    return (
+      score !== null &&
+      score - candidates[a]!.currentScore >= minDelta &&
+      score >= candidates[b]!.currentScore
+    );
   };
   const out = new Map<number, number[]>();
-  for (let a = 0; a < n; a++) out.set(a, [...Array(n).keys()].filter((b) => b !== a && edge(a, b)));
+  for (let a = 0; a < n; a++)
+    out.set(
+      a,
+      [...Array(n).keys()].filter((b) => b !== a && edge(a, b)),
+    );
 
   const results: SwapCycle[] = [];
   const seen = new Set<string>();
@@ -106,7 +132,9 @@ export function findSwapCycles(candidates: SwapCandidate[], compat: Compatibilit
       }
     }
   }
-  return results.sort((x, y) => y.averageDelta - x.averageDelta || x.cycle.join().localeCompare(y.cycle.join()));
+  return results.sort(
+    (x, y) => y.averageDelta - x.averageDelta || x.cycle.join().localeCompare(y.cycle.join()),
+  );
 }
 
 /**
@@ -126,7 +154,11 @@ export function pickDisjoint(cycles: SwapCycle[]): SwapCycle[] {
 }
 
 /** Brute force over every ordered 2- and 3-tuple, for tests. */
-export function bruteForceSwapCycles(candidates: SwapCandidate[], compat: Compatibility, minDelta = MIN_SWAP_IMPROVEMENT_DELTA): string[] {
+export function bruteForceSwapCycles(
+  candidates: SwapCandidate[],
+  compat: Compatibility,
+  minDelta = MIN_SWAP_IMPROVEMENT_DELTA,
+): string[] {
   const found = new Set<string>();
   const n = candidates.length;
   const canon = (ids: string[]) => {
@@ -137,11 +169,13 @@ export function bruteForceSwapCycles(candidates: SwapCandidate[], compat: Compat
     for (let b = 0; b < n; b++) {
       if (b === a) continue;
       const pair = [candidates[a]!, candidates[b]!];
-      if (distinctRooms(pair) && evaluate(pair, compat, minDelta)) found.add(canon(pair.map((c) => c.userId)));
+      if (distinctRooms(pair) && evaluate(pair, compat, minDelta))
+        found.add(canon(pair.map((c) => c.userId)));
       for (let c = 0; c < n; c++) {
         if (c === a || c === b) continue;
         const triple = [candidates[a]!, candidates[b]!, candidates[c]!];
-        if (distinctRooms(triple) && evaluate(triple, compat, minDelta)) found.add(canon(triple.map((x) => x.userId)));
+        if (distinctRooms(triple) && evaluate(triple, compat, minDelta))
+          found.add(canon(triple.map((x) => x.userId)));
       }
     }
   return [...found].sort();

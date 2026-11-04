@@ -34,9 +34,7 @@ function mockProfile(overrides: Partial<MatchProfile> = {}): MatchProfile {
 
 describe("Phase 1 Constraints: School Rules", () => {
   it("enforces same academic college rule", () => {
-    const rules: SchoolRule[] = [
-      { type: "same_academic_college", active: true },
-    ];
+    const rules: SchoolRule[] = [{ type: "same_academic_college", active: true }];
 
     const engineer1 = mockProfile({ id: "e1", academicCollege: "Engineering" });
     const engineer2 = mockProfile({ id: "e2", academicCollege: "Engineering" });
@@ -82,9 +80,7 @@ describe("Phase 1 Constraints: School Rules", () => {
   });
 
   it("enforces residential college quad restrictions", () => {
-    const rules: SchoolRule[] = [
-      { type: "same_residential_college", active: true },
-    ];
+    const rules: SchoolRule[] = [{ type: "same_residential_college", active: true }];
 
     const quadA1 = mockProfile({ id: "q1", residentialCollege: "Barrett" });
     const quadA2 = mockProfile({ id: "q2", residentialCollege: "Barrett" });
@@ -95,9 +91,7 @@ describe("Phase 1 Constraints: School Rules", () => {
   });
 
   it("ignores rules when active is false", () => {
-    const inactiveRules: SchoolRule[] = [
-      { type: "same_academic_college", active: false },
-    ];
+    const inactiveRules: SchoolRule[] = [{ type: "same_academic_college", active: false }];
 
     const engineer = mockProfile({ id: "e1", academicCollege: "Engineering" });
     const businessStudent = mockProfile({ id: "b1", academicCollege: "Business" });

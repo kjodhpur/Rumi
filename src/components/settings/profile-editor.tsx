@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAutosave } from "@/components/onboarding/use-autosave";
 import { savePreferences } from "@/app/actions/onboarding";
 import { BasicsStep } from "@/components/onboarding/steps/basics-step";
+import { ConsistencyPrompt, consistencyInput } from "@/components/matching/consistency-prompt";
+import { SchoolStep, hasSchoolOptions } from "@/components/onboarding/steps/school-step";
 import { AboutStep } from "@/components/onboarding/steps/about-step";
 import { HousingStep } from "@/components/onboarding/steps/housing-step";
 import { AreasStep } from "@/components/onboarding/steps/areas-step";
@@ -75,13 +77,17 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
   return (
     <div className="mx-auto max-w-[680px]">
       <div className="flex items-start justify-between gap-4">
-        <SettingsBack title="Profile & preferences" description="Changes save automatically and re-rank your matches." className="pb-6 lg:pb-8" />
+        <SettingsBack
+          title="Profile & preferences"
+          description="Changes save automatically and re-rank your matches."
+          className="pb-6 lg:pb-8"
+        />
         <div className="pt-12">
           <Status status={status} />
         </div>
       </div>
       <Tabs defaultValue="about">
-        <TabsList className="scrollbar-none mb-8 overflow-x-auto">
+        <TabsList className="mb-8 scrollbar-none overflow-x-auto">
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger value="photos">Photos</TabsTrigger>
           <TabsTrigger value="housing">Housing</TabsTrigger>
@@ -89,7 +95,16 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
           <TabsTrigger value="matching">Matching</TabsTrigger>
         </TabsList>
         <TabsContent value="about" className="flex flex-col gap-10 outline-none">
-          <BasicsStep {...stepProps} />
+          <BasicsStep {...stepProps} trackLocked={data.school.trackLocked} />
+          {hasSchoolOptions(data.school) ? (
+            <div>
+              <h2 className="mb-1 text-body font-medium text-ink">Campus</h2>
+              <p className="mb-4 text-body-sm text-ink-3">
+                Used for your housing office&apos;s matching rules. Never shown on your profile.
+              </p>
+              <SchoolStep {...stepProps} school={data.school} />
+            </div>
+          ) : null}
           <AboutStep {...stepProps} />
         </TabsContent>
         <TabsContent value="photos" className="outline-none">
@@ -105,11 +120,15 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
         <TabsContent value="lifestyle" className="flex flex-col gap-10 outline-none">
           <LifestyleStep {...stepProps} />
           <HabitsStep {...stepProps} />
+          <ConsistencyPrompt input={consistencyInput(prefs)} dismissed={data.dismissedFlags} />
         </TabsContent>
         <TabsContent value="matching" className="flex flex-col gap-10 outline-none">
           <div>
             <h2 className="mb-1 text-body font-medium text-ink">What matters most</h2>
             <PrioritiesStep {...stepProps} musicEnabled={data.spotify.connected} />
+            <div className="mt-6">
+              <ConsistencyPrompt input={consistencyInput(prefs)} dismissed={data.dismissedFlags} />
+            </div>
           </div>
           <div>
             <h2 className="mb-4 text-body font-medium text-ink">Dealbreakers</h2>
@@ -131,7 +150,11 @@ function Status({ status }: { status: ReturnType<typeof useAutosave>["status"] }
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0 }}
-          className={status === "error" ? "flex items-center gap-1.5 text-caption font-medium text-danger" : "flex items-center gap-1.5 text-caption font-medium text-ink-3"}
+          className={
+            status === "error"
+              ? "flex items-center gap-1.5 text-caption font-medium text-danger"
+              : "flex items-center gap-1.5 text-caption font-medium text-ink-3"
+          }
         >
           {status === "saving" ? (
             <>

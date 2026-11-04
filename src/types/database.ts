@@ -1645,14 +1645,14 @@ isOneToOne: false
                   ]
                 },"preference_flags": {
                   Row: {
-                    "created_at": string,"dismissed_at": string | null,"id": string,"rule_key": string,"user_id": string
+                    "answers_sig": string,"created_at": string,"dismissed_at": string | null,"id": string,"rule_key": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"dismissed_at"?: string | null,"id"?: string,"rule_key": string,"user_id": string
+                    "answers_sig"?: string,"created_at"?: string,"dismissed_at"?: string | null,"id"?: string,"rule_key": string,"user_id": string
                   }
                   Update: {
-                    "created_at"?: string,"dismissed_at"?: string | null,"id"?: string,"rule_key"?: string,"user_id"?: string
+                    "answers_sig"?: string,"created_at"?: string,"dismissed_at"?: string | null,"id"?: string,"rule_key"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -2779,6 +2779,11 @@ isOneToOne: false
 "staff_agreement_completion":
 { Args: { "p_school": string }; Returns: {
               "building": string,"groups": number,"signed": number,"suppressed": boolean
+            }[]
+                           },
+"staff_consistency_rate":
+{ Args: { "p_school": string }; Returns: {
+              "flagged": number,"suppressed": boolean,"total": number
             }[]
                            },
 "staff_exported_students":

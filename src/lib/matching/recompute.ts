@@ -7,7 +7,15 @@ import { parseTermConfig } from "@/lib/staff/term-config";
 import { isAccommodationKey } from "./accommodations";
 import { loadActiveQuestions } from "./questions";
 import { toScenarioAnswers } from "./scenarios";
-import type { AccommodationConstraintKey, MatchEvaluation, MatchProfile, ScenarioAnswer, SchoolRuleType, Track } from "./types";
+import { loadSchoolDefaultWeights } from "./default-weights";
+import type {
+  AccommodationConstraintKey,
+  MatchEvaluation,
+  MatchProfile,
+  ScenarioAnswer,
+  SchoolRuleType,
+  Track,
+} from "./types";
 
 type PrefsRow = Database["public"]["Tables"]["preferences"]["Row"];
 type MusicRow = Database["public"]["Tables"]["music_profiles"]["Row"];
@@ -43,7 +51,10 @@ export function toMatchProfile(
   extras: ProfileExtras = {},
 ): MatchProfile {
   const artists = Array.isArray(music?.top_artists)
-    ? (music!.top_artists as { id: string; name: string }[]).map((a) => ({ id: a.id, name: a.name }))
+    ? (music!.top_artists as { id: string; name: string }[]).map((a) => ({
+        id: a.id,
+        name: a.name,
+      }))
     : [];
   return {
     id: profile.id,
@@ -118,11 +129,20 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: school }, { data: pilot }, { data: term }] = await Promise.all([
-    admin.from("schools").select("hide_seed_profiles, merge_track_pools").eq("id", schoolId).maybeSingle(),
-    admin.from("pilot_configs").select("scope, starts_on, ends_on").eq("school_id", schoolId).maybeSingle(),
+    admin
+      .from("schools")
+      .select("hide_seed_profiles, merge_track_pools")
+      .eq("id", schoolId)
+      .maybeSingle(),
+    admin
+      .from("pilot_configs")
+      .select("scope, starts_on, ends_on")
+      .eq("school_id", schoolId)
+      .maybeSingle(),
     admin.from("terms").select("config").eq("school_id", schoolId).eq("active", true).maybeSingle(),
   ]);
   const limits = parseTermConfig(term?.config).maxImportance;
+  const defaultWeights = await loadSchoolDefaultWeights(schoolId);
   let poolQuery = admin
     .from("profiles")
     .select(
@@ -133,21 +153,32 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
     .is("banned_at", null)
     .eq("is_staff", false);
   if (school?.hide_seed_profiles) poolQuery = poolQuery.eq("is_seed", false);
-  const scope = pilot && pilot.starts_on <= today && today <= pilot.ends_on ? pilotColleges(pilot.scope) : [];
+  const scope =
+    pilot && pilot.starts_on <= today && today <= pilot.ends_on ? pilotColleges(pilot.scope) : [];
   if (scope.length) poolQuery = poolQuery.in("residential_college", scope);
 
   const [people, areas, constraints, rules, questions] = await Promise.all([
     poolQuery.returns<PoolRow[]>(),
     admin.from("areas").select("slug, name").eq("school_id", schoolId),
-    admin.from("accommodation_constraints").select("user_id, constraint_key, expires_on").eq("school_id", schoolId),
-    admin.from("school_rules").select("rule_type, params, active").eq("school_id", schoolId).eq("active", true),
+    admin
+      .from("accommodation_constraints")
+      .select("user_id, constraint_key, expires_on")
+      .eq("school_id", schoolId),
+    admin
+      .from("school_rules")
+      .select("rule_type, params, active")
+      .eq("school_id", schoolId)
+      .eq("active", true),
     loadActiveQuestions(schoolId),
   ]);
   if (people.error) throw people.error;
   const ids = (people.data ?? []).map((p) => p.id);
   const [answers, schedules] = ids.length
     ? await Promise.all([
-        admin.from("school_question_answers").select("user_id, question_key, question_version, choice_key").in("user_id", ids),
+        admin
+          .from("school_question_answers")
+          .select("user_id, question_key, question_version, choice_key")
+          .in("user_id", ids),
         admin.from("class_schedules").select("user_id, blocks").in("user_id", ids),
       ])
     : [{ data: [] }, { data: [] }];
@@ -157,8 +188,12 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
     if ((c.expires_on && c.expires_on < today) || !isAccommodationKey(c.constraint_key)) continue;
     accommodations.set(c.user_id, [...(accommodations.get(c.user_id) ?? []), c.constraint_key]);
   }
-  const answersByUser = new Map<string, { question_key: string; question_version: number; choice_key: string }[]>();
-  for (const a of answers.data ?? []) answersByUser.set(a.user_id, [...(answersByUser.get(a.user_id) ?? []), a]);
+  const answersByUser = new Map<
+    string,
+    { question_key: string; question_version: number; choice_key: string }[]
+  >();
+  for (const a of answers.data ?? [])
+    answersByUser.set(a.user_id, [...(answersByUser.get(a.user_id) ?? []), a]);
   const classDays = new Map((schedules.data ?? []).map((s) => [s.user_id, classDayOf(s.blocks)]));
 
   const pool: MatchProfile[] = [];
@@ -174,25 +209,39 @@ export async function loadSchoolPool(schoolId: string): Promise<SchoolPool> {
       }),
     );
   }
+  // An adopted outcome-trained model (1.G) fills only the factors a student never set.
+  if (Object.keys(defaultWeights).length) {
+    for (const p of pool) p.prefs.weights = { ...defaultWeights, ...p.prefs.weights };
+  }
   // The school's allowed importance range caps each student's own weights.
   if (Object.keys(limits).length) {
     for (const p of pool) {
       for (const [factor, max] of Object.entries(limits) as [FactorKey, Importance][]) {
-        if (importanceOf(p.prefs, factor) > max) p.prefs.weights = { ...p.prefs.weights, [factor]: max };
+        if (importanceOf(p.prefs, factor) > max)
+          p.prefs.weights = { ...p.prefs.weights, [factor]: max };
       }
     }
   }
   // "Tempe — near campus" reads better as "Tempe" inside a sentence.
-  const areaNames = Object.fromEntries((areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]));
+  const areaNames = Object.fromEntries(
+    (areas.data ?? []).map((a) => [a.slug, a.name.split(" — ")[0]]),
+  );
   const context: PoolContext = {
     mergeTrackPools: Boolean(school?.merge_track_pools),
-    schoolRules: (rules.data ?? []).map((r) => ({ type: r.rule_type as SchoolRuleType, active: r.active, params: (r.params ?? {}) as Record<string, unknown> })),
+    schoolRules: (rules.data ?? []).map((r) => ({
+      type: r.rule_type as SchoolRuleType,
+      active: r.active,
+      params: (r.params ?? {}) as Record<string, unknown>,
+    })),
   };
   return { pool, areaNames, context };
 }
 
 function pilotColleges(scope: unknown): string[] {
-  const value = scope && typeof scope === "object" ? (scope as { residential_colleges?: unknown }).residential_colleges : null;
+  const value =
+    scope && typeof scope === "object"
+      ? (scope as { residential_colleges?: unknown }).residential_colleges
+      : null;
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
@@ -281,7 +330,10 @@ export async function recomputeMatchesFor(userId: string): Promise<RecomputeResu
     if (upsertError) throw upsertError;
   }
 
-  const { error: pruneError } = await admin.rpc("prune_match_scores", { p_user: userId, p_keep: keep });
+  const { error: pruneError } = await admin.rpc("prune_match_scores", {
+    p_user: userId,
+    p_keep: keep,
+  });
   if (pruneError) throw pruneError;
 
   const strongNotified = await notifyStrongMatches(userId, viewer.firstName, strong);
@@ -306,7 +358,9 @@ async function notifyStrongMatches(
       .eq("entity_id", userId)
       .in("user_id", viewerIds),
   ]);
-  const allowed = new Set((settings ?? []).filter((s) => s.notify_inapp_matches).map((s) => s.user_id));
+  const allowed = new Set(
+    (settings ?? []).filter((s) => s.notify_inapp_matches).map((s) => s.user_id),
+  );
   const already = new Set((existing ?? []).map((n) => n.user_id));
 
   const notifications = strong
@@ -337,7 +391,9 @@ async function notifyStrongMatches(
  * Re-scores every pair at a school in one pass (after a school rule, option or weight-limit
  * change). Rows for pairs that now fail a hard filter are removed. No notifications.
  */
-export async function recomputeSchool(schoolId: string): Promise<{ students: number; pairs: number }> {
+export async function recomputeSchool(
+  schoolId: string,
+): Promise<{ students: number; pairs: number }> {
   const admin = createAdminClient();
   const { pool, areaNames, context } = await loadSchoolPool(schoolId);
   const now = new Date().toISOString();
@@ -346,7 +402,9 @@ export async function recomputeSchool(schoolId: string): Promise<{ students: num
   let pairs = 0;
   const flush = async () => {
     for (let i = 0; i < rows.length; i += CHUNK) {
-      const { error } = await admin.from("match_scores").upsert(rows.slice(i, i + CHUNK), { onConflict: "viewer_id,candidate_id" });
+      const { error } = await admin
+        .from("match_scores")
+        .upsert(rows.slice(i, i + CHUNK), { onConflict: "viewer_id,candidate_id" });
       if (error) throw error;
     }
     rows = [];

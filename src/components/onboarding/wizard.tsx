@@ -27,12 +27,17 @@ import { PrioritiesStep } from "./steps/priorities-step";
 import { DealbreakersStep } from "./steps/dealbreakers-step";
 import { MusicStep } from "./steps/music-step";
 import { SharingStep } from "./steps/sharing-step";
+import { SchoolStep, hasSchoolOptions } from "./steps/school-step";
+import { QuestionsStep } from "./steps/questions-step";
+import { ConsistencyPrompt, consistencyInput } from "@/components/matching/consistency-prompt";
 import { PhotoManager } from "./photo-manager";
 import { ProfilePreview } from "./profile-preview";
 import { FinishScreen } from "./finish-screen";
 
 type StepId =
   | "basics"
+  | "school"
+  | "questions"
   | "photos"
   | "about"
   | "housing"
@@ -52,17 +57,86 @@ interface StepDef {
 }
 
 const ALL_STEPS: StepDef[] = [
-  { id: "basics", eyebrow: "About you", title: "Let's start with the basics.", subtitle: "Your first name and last initial are all anyone sees." },
-  { id: "photos", eyebrow: "Photos", title: "Add a few photos.", subtitle: "Profiles with three or more get noticeably more intros. The first one is your cover." },
-  { id: "about", eyebrow: "Bio", title: "Introduce yourself.", subtitle: "A few honest lines about you and how you like to live." },
-  { id: "housing", eyebrow: "Housing", title: "What are you looking for?", subtitle: "Budget, timing and the kind of place you want." },
-  { id: "areas", eyebrow: "Neighborhoods", title: "Where do you want to live?", subtitle: "Choose every area you'd genuinely consider." },
-  { id: "lifestyle", eyebrow: "Lifestyle", title: "How do you live, day to day?", subtitle: "Be honest — it's what makes your matches good." },
-  { id: "habits", eyebrow: "Habits", title: "A few habits.", subtitle: "No judgment. It's all about fit." },
-  { id: "priorities", eyebrow: "Priorities", title: "What matters most?", subtitle: "Your matches are weighted by what you care about." },
-  { id: "dealbreakers", eyebrow: "Dealbreakers", title: "Any dealbreakers?", subtitle: "We'll never show you anyone who breaks these — and they won't see you." },
-  { id: "music", eyebrow: "Music", title: "Bring your music.", subtitle: "Connect Spotify to see shared artists. Optional." },
-  { id: "sharing", eyebrow: "Your school", title: "Share with your housing office?", subtitle: "Optional, off unless you turn it on, and you can change it anytime in Settings." },
+  {
+    id: "basics",
+    eyebrow: "About you",
+    title: "Let's start with the basics.",
+    subtitle: "Your first name and last initial are all anyone sees.",
+  },
+  {
+    id: "school",
+    eyebrow: "Campus",
+    title: "Where you'll be on campus.",
+    subtitle:
+      "From your housing office's lists. It's used for their matching rules and never shown on your profile.",
+  },
+  {
+    id: "photos",
+    eyebrow: "Photos",
+    title: "Add a few photos.",
+    subtitle:
+      "Profiles with three or more get noticeably more intros. The first one is your cover.",
+  },
+  {
+    id: "about",
+    eyebrow: "Bio",
+    title: "Introduce yourself.",
+    subtitle: "A few honest lines about you and how you like to live.",
+  },
+  {
+    id: "housing",
+    eyebrow: "Housing",
+    title: "What are you looking for?",
+    subtitle: "Budget, timing and the kind of place you want.",
+  },
+  {
+    id: "areas",
+    eyebrow: "Neighborhoods",
+    title: "Where do you want to live?",
+    subtitle: "Choose every area you'd genuinely consider.",
+  },
+  {
+    id: "lifestyle",
+    eyebrow: "Lifestyle",
+    title: "How do you live, day to day?",
+    subtitle: "Be honest — it's what makes your matches good.",
+  },
+  {
+    id: "habits",
+    eyebrow: "Habits",
+    title: "A few habits.",
+    subtitle: "No judgment. It's all about fit.",
+  },
+  {
+    id: "priorities",
+    eyebrow: "Priorities",
+    title: "What matters most?",
+    subtitle: "Your matches are weighted by what you care about.",
+  },
+  {
+    id: "questions",
+    eyebrow: "Your school's questions",
+    title: "A few questions from housing.",
+    subtitle: "Everyday situations your housing office asks everyone about this term.",
+  },
+  {
+    id: "dealbreakers",
+    eyebrow: "Dealbreakers",
+    title: "Any dealbreakers?",
+    subtitle: "We'll never show you anyone who breaks these — and they won't see you.",
+  },
+  {
+    id: "music",
+    eyebrow: "Music",
+    title: "Bring your music.",
+    subtitle: "Connect Spotify to see shared artists. Optional.",
+  },
+  {
+    id: "sharing",
+    eyebrow: "Your school",
+    title: "Share with your housing office?",
+    subtitle: "Optional, off unless you turn it on, and you can change it anytime in Settings.",
+  },
 ];
 
 export function OnboardingWizard({ data }: { data: OnboardingData }) {
@@ -70,9 +144,15 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
   const steps = React.useMemo(
     () =>
       ALL_STEPS.filter(
-        (s) => (s.id !== "music" || data.spotify.enabled) && (s.id !== "sharing" || Boolean(data.sharing.office)),
-      ).map((s) => (s.id === "sharing" ? { ...s, title: `Share with ${data.sharing.office}?` } : s)),
-    [data.spotify.enabled, data.sharing.office],
+        (s) =>
+          (s.id !== "music" || data.spotify.enabled) &&
+          (s.id !== "sharing" || Boolean(data.sharing.office)) &&
+          (s.id !== "school" || hasSchoolOptions(data.school)) &&
+          (s.id !== "questions" || data.school.required.length > 0),
+      ).map((s) =>
+        s.id === "sharing" ? { ...s, title: `Share with ${data.sharing.office}?` } : s,
+      ),
+    [data.spotify.enabled, data.sharing.office, data.school],
   );
   const [index, setIndex] = React.useState(() => Math.min(data.initialStep, steps.length - 1));
   const [direction, setDirection] = React.useState<1 | -1>(1);
@@ -80,6 +160,9 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
   const [prefs, setPrefs] = React.useState<PrefsDraft>(data.prefs);
   const [photos, setPhotos] = React.useState<PhotoRecord[]>(data.photos);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [schoolAnswers, setSchoolAnswers] = React.useState<Record<string, string>>(
+    data.school.answers,
+  );
   const [finishing, setFinishing] = React.useState(false);
   const [finished, setFinished] = React.useState<{ matches: number } | null>(null);
   const { status, queue, flush } = useAutosave();
@@ -134,8 +217,14 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
         const r = basicsSchema.safeParse({ ...profile, pronouns: profile.pronouns || undefined });
         return r.success ? {} : fieldErrors(r.error);
       }
+      case "questions":
+        return data.school.required.every((q) => schoolAnswers[q.key])
+          ? {}
+          : { questions: "Answer each question to continue." };
       case "photos":
-        return photos.length > 0 ? {} : { photos: "Add at least one photo so people know who they're meeting." };
+        return photos.length > 0
+          ? {}
+          : { photos: "Add at least one photo so people know who they're meeting." };
       case "about": {
         const r = bioSchema.safeParse({ bio: profile.bio });
         return r.success ? {} : fieldErrors(r.error);
@@ -194,7 +283,9 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
             ? "housing"
             : /name|year/i.test(result.error)
               ? "basics"
-              : null;
+              : /housing office's questions/i.test(result.error)
+                ? "questions"
+                : null;
       if (target) goTo(steps.findIndex((s) => s.id === target));
       return;
     }
@@ -223,11 +314,17 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
 
   return (
     <div className="min-h-dvh bg-bg">
-      <header className="glass pt-safe sticky top-0 z-30 border-b border-[var(--glass-border)]">
+      <header className="glass sticky top-0 z-30 border-b border-[var(--glass-border)] pt-safe">
         <div className="mx-auto flex h-14 max-w-[1120px] items-center gap-3 px-4 sm:h-16 sm:px-8">
           <div className="flex w-24 items-center">
             {index > 0 ? (
-              <Button variant="ghost" size="icon" onClick={back} aria-label="Previous step" className="-ml-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={back}
+                aria-label="Previous step"
+                className="-ml-2"
+              >
                 <ChevronLeft strokeWidth={1.75} />
               </Button>
             ) : (
@@ -240,7 +337,11 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
             <span className="text-caption font-medium text-ink-2 tabular">
               Step {index + 1} of {steps.length}
             </span>
-            <ProgressBar value={(index + 1) / steps.length} label="Onboarding progress" className="max-w-[220px]" />
+            <ProgressBar
+              value={(index + 1) / steps.length}
+              label="Onboarding progress"
+              className="max-w-[220px]"
+            />
           </div>
           <div className="flex w-24 justify-end">
             <SaveIndicator status={status} />
@@ -248,7 +349,10 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
         </div>
       </header>
 
-      <div ref={scrollRef} className="isolate mx-auto grid max-w-[1120px] gap-10 px-4 pt-8 pb-36 sm:px-8 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:gap-16 lg:pt-14 lg:pb-16">
+      <div
+        ref={scrollRef}
+        className="isolate mx-auto grid max-w-[1120px] gap-10 px-4 pt-8 pb-36 sm:px-8 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:gap-16 lg:pt-14 lg:pb-16"
+      >
         {/* Clip the horizontal slide so steps never cause sideways scroll; the
             extra 8px keeps focus rings at the edges visible. */}
         <div className="-mx-2 min-w-0 overflow-x-clip px-2">
@@ -266,20 +370,49 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
               exit="exit"
               transition={spring}
             >
-              <p className="text-caption font-semibold tracking-wide text-accent-ink uppercase">{step.eyebrow}</p>
-              <h1 className="mt-2 font-display text-display-md text-ink sm:text-display-lg">{step.title}</h1>
+              <p className="text-caption font-semibold tracking-wide text-accent-ink uppercase">
+                {step.eyebrow}
+              </p>
+              <h1 className="mt-2 font-display text-display-md text-ink sm:text-display-lg">
+                {step.title}
+              </h1>
               <p className="mt-2 mb-8 text-body text-ink-2">{step.subtitle}</p>
 
-              {step.id === "basics" && <BasicsStep {...stepProps} />}
+              {step.id === "basics" && (
+                <BasicsStep {...stepProps} trackLocked={data.school.trackLocked} />
+              )}
+              {step.id === "school" && <SchoolStep {...stepProps} school={data.school} />}
+              {step.id === "questions" && (
+                <QuestionsStep
+                  school={data.school}
+                  onAnswersChange={setSchoolAnswers}
+                  error={errors.questions}
+                />
+              )}
               {step.id === "photos" && (
-                <PhotoManager userId={data.userId} photos={photos} onChange={setPhotos} error={errors.photos} />
+                <PhotoManager
+                  userId={data.userId}
+                  photos={photos}
+                  onChange={setPhotos}
+                  error={errors.photos}
+                />
               )}
               {step.id === "about" && <AboutStep {...stepProps} />}
               {step.id === "housing" && <HousingStep {...stepProps} />}
               {step.id === "areas" && <AreasStep {...stepProps} areas={data.areas} />}
               {step.id === "lifestyle" && <LifestyleStep {...stepProps} />}
               {step.id === "habits" && <HabitsStep {...stepProps} />}
-              {step.id === "priorities" && <PrioritiesStep {...stepProps} musicEnabled={data.spotify.connected} />}
+              {step.id === "priorities" && (
+                <PrioritiesStep {...stepProps} musicEnabled={data.spotify.connected} />
+              )}
+              {(step.id === "lifestyle" || step.id === "habits" || step.id === "priorities") && (
+                <div className="mt-8">
+                  <ConsistencyPrompt
+                    input={consistencyInput(prefs)}
+                    dismissed={data.dismissedFlags}
+                  />
+                </div>
+              )}
               {step.id === "dealbreakers" && <DealbreakersStep {...stepProps} />}
               {step.id === "music" && (
                 <MusicStep
@@ -301,7 +434,12 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
                 <LogOut /> Sign out
               </Button>
             </form>
-            <Button size="lg" onClick={() => void next()} loading={finishing} className="min-w-[180px]">
+            <Button
+              size="lg"
+              onClick={() => void next()}
+              loading={finishing}
+              className="min-w-[180px]"
+            >
               {isLast ? "Finish & see matches" : "Continue"}
             </Button>
           </div>
@@ -316,7 +454,7 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
       </div>
 
       {/* Thumb-zone action bar on phones */}
-      <div className="glass pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-[var(--glass-border)] lg:hidden">
+      <div className="glass fixed inset-x-0 bottom-0 z-30 border-t border-[var(--glass-border)] pb-safe lg:hidden">
         <div className="mx-auto flex max-w-[560px] items-center gap-3 px-4 py-3">
           <Button size="lg" block onClick={() => void next()} loading={finishing}>
             {isLast ? "Finish & see matches" : "Continue"}

@@ -22,11 +22,17 @@ export interface ScenarioQuestionView {
 export function ScenarioQuestions({
   questions,
   initialAnswers,
+  required = false,
+  onAnswersChange,
 }: {
   questions: ScenarioQuestionView[];
   initialAnswers: Record<string, string>;
+  /** Questions the housing office requires this term: no clearing, different copy. */
+  required?: boolean;
+  onAnswersChange?: (answers: Record<string, string>) => void;
 }) {
   const [answers, setAnswers] = React.useState(initialAnswers);
+  React.useEffect(() => onAnswersChange?.(answers), [answers, onAnswersChange]);
   const [saving, setSaving] = React.useState<string | null>(null);
   const answered = questions.filter((q) => answers[q.key]).length;
 
@@ -56,8 +62,16 @@ export function ScenarioQuestions({
             {answered} of {questions.length}
           </span>
         </div>
-        <ProgressBar value={questions.length ? answered / questions.length : 0} className="mt-3" label="Scenarios answered" />
-        <p className="mt-2 text-caption text-ink-3">Optional. Skip any you like; you can change or clear an answer anytime.</p>
+        <ProgressBar
+          value={questions.length ? answered / questions.length : 0}
+          className="mt-3"
+          label="Scenarios answered"
+        />
+        <p className="mt-2 text-caption text-ink-3">
+          {required
+            ? "Your housing office asks everyone these. You can change an answer anytime in Settings."
+            : "Optional. Skip any you like; you can change or clear an answer anytime."}
+        </p>
       </div>
 
       <ol className="flex flex-col gap-4">
@@ -68,14 +82,21 @@ export function ScenarioQuestions({
                 <span className="mr-2 text-ink-3 tabular-nums">{i + 1}.</span>
                 {q.stem}
               </h2>
-              {answers[q.key] ? (
-                <Button variant="ghost" size="sm" disabled={saving === q.key} onClick={() => void choose(q.key, null)}>
+              {answers[q.key] && !required ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={saving === q.key}
+                  onClick={() => void choose(q.key, null)}
+                >
                   Clear
                 </Button>
               ) : null}
             </div>
             {q.outdated && !answers[q.key] ? (
-              <p className="mt-1 text-caption text-warning">This question changed. Answer it again so it counts.</p>
+              <p className="mt-1 text-caption text-warning">
+                This question changed. Answer it again so it counts.
+              </p>
             ) : null}
             <ChoiceChips
               className="mt-4"

@@ -13,6 +13,9 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TermSettings } from "@/components/staff/term-settings";
+import { WeightModels, type WeightModelView } from "@/components/staff/weight-models";
+import { LIFESTYLE_FACTORS } from "@/lib/matching/weights-optimizer";
+import type { Json } from "@/types/database";
 import {
   MatchingRules,
   NextTermButton,
@@ -52,6 +55,13 @@ export default async function TermPage() {
       .select("id, deadline_key, offsets, channels, paused")
       .eq("school_id", school),
   ]);
+  const { data: modelRows } = await db
+    .from("weight_models")
+    .select("id, status, created_at, trained_on_terms, coefficients, metrics, suggested_weights")
+    .eq("school_id", school)
+    .in("status", ["suggested", "adopted"])
+    .order("created_at", { ascending: false });
+  const models = (modelRows ?? []).map(toModelView);
   const config = parseTermConfig(termRow?.config);
   const deadlines = (term?.deadlines ?? {}) as Partial<Record<DeadlineKey, string>>;
   const nudgeRules = effectiveRules(
@@ -107,8 +117,51 @@ export default async function TermPage() {
             }))}
             config={config}
           />
+          {context.role === "housing_admin" || context.role === "platform_admin" ? (
+            <div className="mt-8">
+              <WeightModels schoolId={school} models={models} />
+            </div>
+          ) : null}
         </TabsContent>
       </Tabs>
     </div>
   );
+}
+
+function toModelView(m: {
+  id: string;
+  status: string;
+  created_at: string;
+  trained_on_terms: string[];
+  coefficients: Json;
+  metrics: Json;
+  suggested_weights: Json;
+}): WeightModelView {
+  const obj = (v: Json) =>
+    v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, Json>) : {};
+  const num = (v: Json | undefined) => (typeof v === "number" ? v : 0);
+  const coefs = obj(m.coefficients);
+  const metrics = obj(m.metrics);
+  const suggested = obj(m.suggested_weights);
+  return {
+    id: m.id,
+    status: m.status === "adopted" ? "adopted" : "suggested",
+    createdAt: m.created_at,
+    rows: num(metrics.rows),
+    positives: num(metrics.positives),
+    auc: num(metrics.auc),
+    terms: m.trained_on_terms.length,
+    factors: LIFESTYLE_FACTORS.map((factor) => {
+      const c = obj(coefs[factor] ?? null);
+      const evidence = c.evidence === "positive" || c.evidence === "negative" ? c.evidence : "none";
+      return {
+        factor,
+        coef: num(c.coef),
+        low: num(c.low),
+        high: num(c.high),
+        evidence,
+        suggested: num(suggested[factor]),
+      };
+    }),
+  };
 }

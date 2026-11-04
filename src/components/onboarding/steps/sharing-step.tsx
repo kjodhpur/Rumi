@@ -8,7 +8,13 @@ import { setConsent } from "@/app/actions/consent";
 import { CONSENT_COPY } from "@/lib/consent";
 
 /** Optional final step: share Rumi results with the school's housing office. Off by default. */
-export function SharingStep({ office, initialGranted }: { office: string; initialGranted: boolean }) {
+export function SharingStep({
+  office,
+  initialGranted,
+}: {
+  office: string;
+  initialGranted: boolean;
+}) {
   const [granted, setGranted] = React.useState(initialGranted);
   const [pending, setPending] = React.useState(false);
   const id = React.useId();

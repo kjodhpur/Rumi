@@ -10,5 +10,11 @@ export interface KnownPerson {
 
 export function mutualIds(mine: KnownPerson[], theirs: KnownPerson[]) {
   const theirsOpted = new Set(theirs.filter((person) => person.optedIn).map((person) => person.id));
-  return [...new Set(mine.filter((person) => person.optedIn && theirsOpted.has(person.id)).map((person) => person.id))].sort();
+  return [
+    ...new Set(
+      mine
+        .filter((person) => person.optedIn && theirsOpted.has(person.id))
+        .map((person) => person.id),
+    ),
+  ].sort();
 }

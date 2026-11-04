@@ -41,17 +41,10 @@ export interface MatchMusic {
 }
 
 export type AccommodationConstraintKey =
-  | "esa_approved"
-  | "single_bathroom"
-  | "ground_floor"
-  | "allergen_free"
-  | "mobility_accessible";
+  "esa_approved" | "single_bathroom" | "ground_floor" | "allergen_free" | "mobility_accessible";
 
 export type SchoolRuleType =
-  | "same_academic_college"
-  | "same_residential_college"
-  | "llc_exclusive"
-  | "freshman_same_college";
+  "same_academic_college" | "same_residential_college" | "llc_exclusive" | "freshman_same_college";
 
 export interface SchoolRule {
   type: SchoolRuleType;

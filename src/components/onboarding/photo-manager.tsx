@@ -104,7 +104,11 @@ export function PhotoManager({
       const supabase = getSupabaseBrowser();
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(path, rendered.blob, { contentType: "image/jpeg", cacheControl: "31536000", upsert: false });
+        .upload(path, rendered.blob, {
+          contentType: "image/jpeg",
+          cacheControl: "31536000",
+          upsert: false,
+        });
       if (uploadError) throw uploadError;
       const result = await registerPhoto({
         path,
@@ -208,7 +212,10 @@ export function PhotoManager({
             ))}
           </AnimatePresence>
           {uploading.map((u) => (
-            <li key={u.key} className="relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-sunken">
+            <li
+              key={u.key}
+              className="relative aspect-[4/5] overflow-hidden rounded-lg bg-surface-sunken"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={u.preview} alt="" className="size-full object-cover opacity-60" />
               <span className="absolute inset-0 flex items-center justify-center text-white">
@@ -256,7 +263,12 @@ export function PhotoManager({
             <Button variant="secondary" size="lg" className="flex-1" onClick={closeCropper}>
               Cancel
             </Button>
-            <Button size="lg" className="flex-1" onClick={() => void confirmCrop()} loading={processing}>
+            <Button
+              size="lg"
+              className="flex-1"
+              onClick={() => void confirmCrop()}
+              loading={processing}
+            >
               Use photo
             </Button>
           </div>

@@ -21,6 +21,35 @@ import {
   STUDY,
 } from "@/lib/options";
 import { recordAttribution } from "@/lib/integrations/record-attribution";
+import { loadSchoolContext } from "@/lib/onboarding-data";
+import { clearTrackAnswers } from "@/lib/matching/track-change";
+import { checkAnswerConsistency } from "@/lib/matching/consistency";
+import type { ServerSupabase } from "@/lib/supabase/server";
+
+/** Notes each consistency prompt the first time it's raised, for the staff aggregate rate (1.D). */
+async function recordConsistencyFlags(supabase: ServerSupabase, userId: string) {
+  const { data: p } = await supabase
+    .from("preferences")
+    .select("sleep_schedule, cleanliness, noise, guests, study, smoking, drinking, weights")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!p) return;
+  const flags = checkAnswerConsistency({
+    sleepSchedule: p.sleep_schedule,
+    cleanliness: p.cleanliness,
+    noise: p.noise,
+    guests: p.guests,
+    study: p.study,
+    smoking: p.smoking,
+    drinking: p.drinking,
+    weights: (p.weights ?? {}) as Record<string, number>,
+  });
+  if (flags.length)
+    await supabase.from("preference_flags").upsert(
+      flags.map((f) => ({ user_id: userId, rule_key: f.ruleKey, answers_sig: f.signature })),
+      { onConflict: "user_id,rule_key", ignoreDuplicates: true },
+    );
+}
 import type { Database } from "@/types/database";
 
 const oneOf = <T extends readonly { value: string }[]>(list: T) =>
@@ -41,6 +70,24 @@ const profileFields = {
   track: z.enum(["freshman", "returning", "transfer", "grad"]).nullable().optional(),
   major: z.string().transform((v) => cleanText(v, { multiline: false }).slice(0, 80)),
   bio: z.string().transform((v) => cleanText(v).slice(0, 500)),
+  // School option codes; the database checks them against the school's active lists.
+  campus: z
+    .string()
+    .regex(/^[a-z0-9_]{2,40}$/)
+    .nullable(),
+  academicCollege: z
+    .string()
+    .regex(/^[a-z0-9_]{2,40}$/)
+    .nullable(),
+  residentialCollege: z
+    .string()
+    .regex(/^[a-z0-9_]{2,40}$/)
+    .nullable(),
+  llc: z
+    .string()
+    .regex(/^[a-z0-9_]{2,40}$/)
+    .nullable(),
+  genderInclusive: z.boolean().nullable(),
 } as const;
 
 const prefFields = {
@@ -82,6 +129,11 @@ const PROFILE_COLUMNS = {
   track: "track",
   major: "major",
   bio: "bio",
+  campus: "campus",
+  academicCollege: "academic_college",
+  residentialCollege: "residential_college",
+  llc: "llc",
+  genderInclusive: "gender_inclusive",
 } as const;
 
 const PREF_COLUMNS = {
@@ -155,6 +207,12 @@ export async function saveProfileAndPrefs(input: {
     prefsUpdate.budget_max = prefsUpdate.budget_min;
   }
 
+  const trackChange =
+    "track" in profileUpdate
+      ? (await supabase.from("profiles").select("track, school_id").eq("id", user.id).maybeSingle())
+          .data
+      : null;
+
   const writes = [];
   if (Object.keys(profileUpdate).length > 0) {
     writes.push(supabase.from("profiles").update(profileUpdate).eq("id", user.id));
@@ -174,7 +232,21 @@ export async function saveProfileAndPrefs(input: {
   const failed = results.find((r) => r.error);
   if (failed?.error) {
     console.error("[onboarding] save failed", failed.error);
+    if (failed.error.message.includes("track_locked"))
+      return fail("Your housing office set your track.");
+    if (failed.error.message.includes("invalid_option"))
+      return fail("That option isn't available anymore. Pick another.");
     return fail("Couldn't save just now — we'll retry.");
+  }
+  if (Object.keys(prefsUpdate).length > 0) await recordConsistencyFlags(supabase, user.id);
+  if (trackChange?.school_id) {
+    await clearTrackAnswers(
+      supabase,
+      user.id,
+      trackChange.school_id,
+      trackChange.track,
+      profileUpdate.track ?? null,
+    );
   }
   return ok();
 }
@@ -198,6 +270,21 @@ export async function completeOnboarding(): Promise<ActionResult<{ matches: numb
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
   const supabase = createClient();
+  const { data: me0 } = await supabase
+    .from("profiles")
+    .select("school_id, track_locked, pre_arrival")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (me0?.school_id) {
+    const school = await loadSchoolContext(
+      user.id,
+      me0.school_id,
+      Boolean(me0.track_locked),
+      Boolean(me0.pre_arrival),
+    );
+    if (school.required.some((q) => !school.answers[q.key]))
+      return fail("Answer your housing office's questions first.");
+  }
   const { error } = await supabase.rpc("complete_onboarding");
   if (error) return fail(friendlyDbError(error.message));
   const { data: me } = await supabase

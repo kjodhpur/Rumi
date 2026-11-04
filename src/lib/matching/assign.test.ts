@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { assignPairs, type AssignCandidate, type AssignEdge } from "./assign";
 
 const people = (n: number): AssignCandidate[] =>
-  Array.from({ length: n }, (_, i) => ({ id: `s${i}`, signedUpAt: `2026-09-${String(10 + i).padStart(2, "0")}T00:00:00Z` }));
+  Array.from({ length: n }, (_, i) => ({
+    id: `s${i}`,
+    signedUpAt: `2026-09-${String(10 + i).padStart(2, "0")}T00:00:00Z`,
+  }));
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -45,13 +48,20 @@ describe("assignPairs", () => {
       const edges: AssignEdge[] = [];
       for (let i = 0; i < pool.length; i++) {
         for (let j = i + 1; j < pool.length; j++) {
-          if (random() < 0.6) edges.push({ a: pool[i].id, b: pool[j].id, score: 40 + Math.floor(random() * 61) });
+          if (random() < 0.6)
+            edges.push({ a: pool[i].id, b: pool[j].id, score: 40 + Math.floor(random() * 61) });
         }
       }
       const result = assignPairs(pool, edges, { minScore: 0 });
-      const truth = bruteForce(pool.map((p) => p.id), edges);
+      const truth = bruteForce(
+        pool.map((p) => p.id),
+        edges,
+      );
       expect(result.pairs.length, `trial ${trial}`).toBe(truth.pairs);
-      expect(result.pairs.reduce((s, p) => s + p.score, 0), `trial ${trial}`).toBe(truth.total);
+      expect(
+        result.pairs.reduce((s, p) => s + p.score, 0),
+        `trial ${trial}`,
+      ).toBe(truth.total);
     }
   });
 
@@ -103,7 +113,8 @@ describe("assignPairs", () => {
     for (let i = 0; i < pool.length; i++) {
       for (let k = 0; k < 25; k++) {
         const j = Math.floor(random() * pool.length);
-        if (j !== i) edges.push({ a: pool[i].id, b: pool[j].id, score: 50 + Math.floor(random() * 50) });
+        if (j !== i)
+          edges.push({ a: pool[i].id, b: pool[j].id, score: 50 + Math.floor(random() * 50) });
       }
     }
     const started = performance.now();

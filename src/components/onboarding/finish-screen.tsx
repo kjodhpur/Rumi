@@ -33,7 +33,11 @@ export function FinishScreen({
       setDone(true);
       return;
     }
-    const controls = animate(count, matches, { duration: 1.1, delay: 0.6, ease: [0.22, 1, 0.36, 1] });
+    const controls = animate(count, matches, {
+      duration: 1.1,
+      delay: 0.6,
+      ease: [0.22, 1, 0.36, 1],
+    });
     const timer = setTimeout(() => setDone(true), 1500);
     return () => {
       controls.stop();
@@ -68,7 +72,7 @@ export function FinishScreen({
           {avatarUrl ? (
             <Image src={avatarUrl} alt="" fill sizes="136px" className="object-cover" />
           ) : (
-            <Monogram name={firstName || "?"} className="size-full [container-type:size]" />
+            <Monogram name={firstName || "?"} className="[container-type:size] size-full" />
           )}
         </motion.div>
       </div>
@@ -81,7 +85,8 @@ export function FinishScreen({
       >
         {matches > 0 ? (
           <>
-            <motion.span className="tabular">{rounded}</motion.span> {matches === 1 ? "person fits" : "people fit"}
+            <motion.span className="tabular">{rounded}</motion.span>{" "}
+            {matches === 1 ? "person fits" : "people fit"}
             <br />
             how you live.
           </>

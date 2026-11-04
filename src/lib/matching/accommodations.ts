@@ -29,9 +29,13 @@ export function isAccommodationKey(value: string): value is AccommodationConstra
 function blocks(owner: MatchProfile, other: MatchProfile): AccommodationConstraintKey | null {
   const keys = owner.accommodations ?? [];
   // An approved animal can't live with someone who ruled out pets.
-  if (keys.includes("esa_approved") && other.prefs.dealbreakers.includes("pets")) return "esa_approved";
+  if (keys.includes("esa_approved") && other.prefs.dealbreakers.includes("pets"))
+    return "esa_approved";
   // Smoke- and allergen-free: no smoking roommate and no roommate bringing a pet.
-  if (keys.includes("allergen_free") && (other.prefs.smoking !== "never" || other.prefs.pets === "have")) {
+  if (
+    keys.includes("allergen_free") &&
+    (other.prefs.smoking !== "never" || other.prefs.pets === "have")
+  ) {
     return "allergen_free";
   }
   return null;

@@ -75,7 +75,11 @@ export function HousingStep({ prefs, updatePrefs, errors }: StepProps) {
 
       <Section
         label="I'm open to living with"
-        hint={prefs.genderPref.length === 0 ? "Anyone — leave all unselected." : "Only people who are open to living with you, too."}
+        hint={
+          prefs.genderPref.length === 0
+            ? "Anyone — leave all unselected."
+            : "Only people who are open to living with you, too."
+        }
       >
         <MultiChips
           aria-label="Open to living with"

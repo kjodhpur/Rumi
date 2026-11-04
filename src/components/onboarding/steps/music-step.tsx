@@ -41,7 +41,10 @@ export function MusicStep({
             <p className="mb-2 text-caption font-medium text-ink-3 uppercase">Your top artists</p>
             <div className="flex flex-wrap gap-1.5">
               {artists.slice(0, 10).map((name) => (
-                <span key={name} className="rounded-full bg-surface-sunken px-3 py-1.5 text-body-sm text-ink-2">
+                <span
+                  key={name}
+                  className="rounded-full bg-surface-sunken px-3 py-1.5 text-body-sm text-ink-2"
+                >
                   {name}
                 </span>
               ))}
@@ -66,7 +69,9 @@ export function MusicStep({
         </ul>
       </div>
       <Button asChild size="lg" className="w-full sm:w-auto">
-        <a href={`/api/spotify/connect?returnTo=${encodeURIComponent(returnTo)}`}>Connect Spotify</a>
+        <a href={`/api/spotify/connect?returnTo=${encodeURIComponent(returnTo)}`}>
+          Connect Spotify
+        </a>
       </Button>
       <p className="text-caption text-ink-3">Totally optional — Rumi works great without it.</p>
     </div>

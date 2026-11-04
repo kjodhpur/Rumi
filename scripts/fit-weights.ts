@@ -1,76 +1,77 @@
 /**
- * scripts/fit-weights.ts
+ * Outcome-trained factor weights (1.G), research mode.
  *
- * Phase 1.G: Outcome-Trained Factor Weight Optimization
- * Fits an L2-regularized logistic regression model predicting roommate friction
- * from factor mismatches across historical terms.
+ *   npm run fit-weights -- --school=asu            fit on real outcomes, save a suggestion
+ *   npm run fit-weights -- --school=asu --dry-run  fit and print, save nothing
+ *   npm run fit-weights -- --synthetic             planted-effect demo, no database
  *
- * Usage:
- *   npx tsx scripts/fit-weights.ts [--school=<school_id>] [--synthetic]
+ * Real fits use only approved pairings from ended terms where every member consented to
+ * research use. A housing admin reviews and adopts a suggestion in Staff → Term → Matching
+ * rules; it is never adopted automatically.
  */
+import {
+  LIFESTYLE_FACTORS,
+  fitOutcomeWeights,
+  plantedOutcomes,
+  type FitResult,
+} from "../src/lib/matching/weights-optimizer";
 
-import { fitOutcomeWeights, type OutcomeRecord } from "../src/lib/matching/weights-optimizer";
-import { LIFESTYLE_FACTORS } from "../src/lib/matching/weights-optimizer";
+const args = new Map(
+  process.argv.slice(2).map((a) => {
+    const [k, v] = a.replace(/^--/, "").split("=");
+    return [k, v ?? "true"] as const;
+  }),
+);
+const lambda = Number(args.get("lambda") ?? 1);
+const IMPORTANCE = ["Doesn't matter", "Nice to have", "Important", "Must match"];
 
-function generateSyntheticOutcomeData(count = 250): OutcomeRecord[] {
-  const records: OutcomeRecord[] = [];
-  for (let i = 0; i < count; i++) {
-    const mismatches: Record<string, number> = {};
-    for (const factor of LIFESTYLE_FACTORS) {
-      mismatches[factor] = Math.round(Math.random() * 100) / 100;
-    }
-
-    // Planted effect: sleep and cleanliness mismatches predict friction
-    const logit =
-      -2.0 +
-      2.5 * mismatches.sleep +
-      1.8 * mismatches.cleanliness +
-      0.2 * mismatches.study;
-    const prob = 1 / (1 + Math.exp(-logit));
-    const hadFriction = Math.random() < prob;
-
-    records.push({
-      pairId: `pair-${i}`,
-      mismatches: mismatches as any,
-      hadFriction,
-    });
+function report(fit: FitResult) {
+  if (fit.status !== "ok") {
+    console.error(`Refused. ${fit.message}`);
+    process.exit(1);
   }
-  return records;
+  console.log(
+    `Rows ${fit.rows} · with friction ${fit.positives} (${((fit.positives / fit.rows) * 100).toFixed(1)}%) · in-sample AUC ${fit.auc} · λ ${fit.lambda}\n`,
+  );
+  console.log("Factor        coef     95% CI              evidence   suggested default");
+  for (const f of LIFESTYLE_FACTORS) {
+    const e = fit.estimates.find((x) => x.factor === f)!;
+    console.log(
+      `${f.padEnd(12)} ${e.coef.toFixed(3).padStart(7)}  [${e.low.toFixed(2).padStart(6)}, ${e.high.toFixed(2).padStart(6)}]   ${e.evidence.padEnd(9)}  ${IMPORTANCE[e.suggested]}`,
+    );
+  }
+  console.log(
+    "\nPositive coef: more mismatch on that factor went with more friction. Wald intervals; no protected attributes are inputs.",
+  );
 }
 
 async function main() {
-  console.log("=== Rumi Outcome-Trained Factor Weight Model ===");
-  console.log("Fitting regularized logistic model...\n");
-
-  const records = generateSyntheticOutcomeData(300);
-  const result = fitOutcomeWeights(records);
-
-  if (result.status === "insufficient_data") {
-    console.error(`Refusal: ${result.message}`);
+  if (args.has("synthetic")) {
+    console.log("Synthetic data, planted effects: sleep 2.5, cleanliness 1.5.\n");
+    report(
+      fitOutcomeWeights(
+        plantedOutcomes(Number(args.get("rows") ?? 2000), { sleep: 2.5, cleanliness: 1.5 }),
+        lambda,
+      ),
+    );
+    return;
+  }
+  const school = args.get("school");
+  if (!school || school === "true") {
+    console.error("Pass --school=<id>, or --synthetic for a demo.");
     process.exit(1);
   }
-
-  console.log(`Sample size: ${result.sampleSize} outcome pairs`);
-  console.log(`Friction rate: ${(result.frictionRate * 100).toFixed(1)}% (${result.frictionCount} pairs)`);
-  console.log(`Intercept (baseline log-odds): ${result.intercept}\n`);
-
-  console.log("Factor Coefficients & Suggested Weights:");
-  console.log("---------------------------------------------------------------");
-  console.log("Factor       | Beta (SE)     | 95% CI          | Suggested");
-  console.log("---------------------------------------------------------------");
-
-  for (const factor of LIFESTYLE_FACTORS) {
-    const c = result.coefficients[factor];
-    const impLabel = ["0 (Off)", "1 (Nice)", "2 (Important)", "3 (Must)"][c.suggestedImportance];
-    console.log(
-      `${factor.padEnd(12)} | ${c.weight.toFixed(3).padStart(5)} (${c.standardError.toFixed(2)}) | [${c.ciLow.toFixed(2)}, ${c.ciHigh.toFixed(2)}] | ${impLabel}`,
-    );
-  }
-  console.log("---------------------------------------------------------------\n");
-  console.log("Note: Housing Admin sign-off is required before adoption into term settings.");
+  const { fitAndSuggest } = await import("../src/lib/matching/weight-models");
+  const { fit, modelId } = await fitAndSuggest(school, { lambda, save: !args.has("dry-run") });
+  report(fit);
+  console.log(
+    modelId
+      ? `\nSaved as suggestion ${modelId}. A housing admin can review and adopt it.`
+      : "\nDry run: nothing saved.",
+  );
 }
 
-main().catch((err) => {
-  console.error("Fit error:", err);
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 });

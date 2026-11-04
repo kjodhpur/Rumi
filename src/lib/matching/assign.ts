@@ -34,9 +34,15 @@ export interface AssignResult {
   stats: { candidates: number; feasible: number; paired: number; averageScore: number | null };
 }
 
-export function assignPairs(candidates: AssignCandidate[], edges: AssignEdge[], options: AssignOptions): AssignResult {
+export function assignPairs(
+  candidates: AssignCandidate[],
+  edges: AssignEdge[],
+  options: AssignOptions,
+): AssignResult {
   const maxOptions = options.maxOptions ?? 40;
-  const ordered = [...candidates].sort((x, y) => x.signedUpAt.localeCompare(y.signedUpAt) || x.id.localeCompare(y.id));
+  const ordered = [...candidates].sort(
+    (x, y) => x.signedUpAt.localeCompare(y.signedUpAt) || x.id.localeCompare(y.id),
+  );
   const index = new Map(ordered.map((c, i) => [c.id, i]));
   const n = ordered.length;
 
@@ -76,7 +82,9 @@ export function assignPairs(candidates: AssignCandidate[], edges: AssignEdge[], 
 
   // Score dominates; the tie-break bonus can never add up to a single score point.
   const M = n * n + 1;
-  const keptEdges = [...kept].sort((x, y) => index.get(x.a)! - index.get(y.a)! || index.get(x.b)! - index.get(y.b)!);
+  const keptEdges = [...kept].sort(
+    (x, y) => index.get(x.a)! - index.get(y.a)! || index.get(x.b)! - index.get(y.b)!,
+  );
   const weighted: Edge[] = keptEdges.map((e) => {
     const bonus = n - index.get(e.a)! + (n - index.get(e.b)!);
     return [index.get(e.a)!, index.get(e.b)!, e.score * M + bonus];
@@ -100,7 +108,11 @@ export function assignPairs(candidates: AssignCandidate[], edges: AssignEdge[], 
     .filter((c) => !paired.has(c.id))
     .map((c) => ({
       id: c.id,
-      reason: (!hasAnyEdge.has(c.id) ? "no_partner" : byVertex.has(c.id) ? "odd_one_out" : "below_min") as UnpairedReason,
+      reason: (!hasAnyEdge.has(c.id)
+        ? "no_partner"
+        : byVertex.has(c.id)
+          ? "odd_one_out"
+          : "below_min") as UnpairedReason,
     }));
 
   return {
@@ -110,7 +122,9 @@ export function assignPairs(candidates: AssignCandidate[], edges: AssignEdge[], 
       candidates: n,
       feasible: byVertex.size,
       paired: paired.size,
-      averageScore: pairs.length ? Math.round(pairs.reduce((s, p) => s + p.score, 0) / pairs.length) : null,
+      averageScore: pairs.length
+        ? Math.round(pairs.reduce((s, p) => s + p.score, 0) / pairs.length)
+        : null,
     },
   };
 }

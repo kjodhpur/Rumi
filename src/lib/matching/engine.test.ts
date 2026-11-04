@@ -35,8 +35,19 @@ function prefs(overrides: Partial<MatchPreferences> = {}): MatchPreferences {
   };
 }
 
-function person(id: string, overrides: Partial<MatchPreferences> = {}, extra: Partial<MatchProfile> = {}): MatchProfile {
-  return { id, firstName: id.toUpperCase(), gender: "woman", prefs: prefs(overrides), music: null, ...extra };
+function person(
+  id: string,
+  overrides: Partial<MatchPreferences> = {},
+  extra: Partial<MatchProfile> = {},
+): MatchProfile {
+  return {
+    id,
+    firstName: id.toUpperCase(),
+    gender: "woman",
+    prefs: prefs(overrides),
+    music: null,
+    ...extra,
+  };
 }
 
 const allWeights = (value: Importance) =>
@@ -55,11 +66,29 @@ describe("evaluateMatch — scoring", () => {
   });
 
   it("always returns an integer between 0 and 100", () => {
-    const a = person("a", { sleepSchedule: 1, cleanliness: 1, noise: 1, guests: 1, smoking: "never", drinking: "never" });
+    const a = person("a", {
+      sleepSchedule: 1,
+      cleanliness: 1,
+      noise: 1,
+      guests: 1,
+      smoking: "never",
+      drinking: "never",
+    });
     const b = person("b", {
-      sleepSchedule: 5, cleanliness: 5, noise: 5, guests: 5, smoking: "regularly", drinking: "often",
-      pets: "have", study: "home_social", housingType: "on_campus", leaseLength: "semester",
-      areas: ["mesa"], budgetMin: 2000, budgetMax: 2500, moveInDate: "2028-01-01",
+      sleepSchedule: 5,
+      cleanliness: 5,
+      noise: 5,
+      guests: 5,
+      smoking: "regularly",
+      drinking: "often",
+      pets: "have",
+      study: "home_social",
+      housingType: "on_campus",
+      leaseLength: "semester",
+      areas: ["mesa"],
+      budgetMin: 2000,
+      budgetMax: 2500,
+      moveInDate: "2028-01-01",
     });
     const score = evaluateMatch(a, b)!.score;
     expect(Number.isInteger(score)).toBe(true);
@@ -120,7 +149,9 @@ describe("hard filters", () => {
 
   it("excludes people who didn't share a gender from gender-specific searches only", () => {
     const undisclosed = person("b", {}, { gender: "undisclosed" });
-    expect(evaluateMatch(person("a", { genderPref: ["woman", "nonbinary"] }), undisclosed)).toBeNull();
+    expect(
+      evaluateMatch(person("a", { genderPref: ["woman", "nonbinary"] }), undisclosed),
+    ).toBeNull();
     expect(evaluateMatch(person("a"), undisclosed)).not.toBeNull();
   });
 
@@ -132,10 +163,22 @@ describe("hard filters", () => {
     ["sleep", { dealbreakers: ["sleep"], sleepSchedule: 1 }, { sleepSchedule: 3 }],
     ["cleanliness", { dealbreakers: ["cleanliness"], cleanliness: 5 }, { cleanliness: 3 }],
     ["noise", { dealbreakers: ["noise"] }, { noise: 4 }],
-    ["budget", { dealbreakers: ["budget"], budgetMin: 600, budgetMax: 800 }, { budgetMin: 900, budgetMax: 1200 }],
+    [
+      "budget",
+      { dealbreakers: ["budget"], budgetMin: 600, budgetMax: 800 },
+      { budgetMin: 900, budgetMax: 1200 },
+    ],
     ["area", { dealbreakers: ["area"], areas: ["tempe-campus"] }, { areas: ["mesa"] }],
-    ["move_in", { dealbreakers: ["move_in"], moveInDate: "2027-08-01" }, { moveInDate: "2027-09-15" }],
-    ["housing_type", { dealbreakers: ["housing_type"], housingType: "on_campus" }, { housingType: "off_campus" }],
+    [
+      "move_in",
+      { dealbreakers: ["move_in"], moveInDate: "2027-08-01" },
+      { moveInDate: "2027-09-15" },
+    ],
+    [
+      "housing_type",
+      { dealbreakers: ["housing_type"], housingType: "on_campus" },
+      { housingType: "off_campus" },
+    ],
   ];
 
   it.each(cases)("enforces the %s dealbreaker from either side", (rule, ownerPrefs, otherPrefs) => {
@@ -143,15 +186,43 @@ describe("hard filters", () => {
     const other = person("other", otherPrefs);
     expect(evaluateMatch(owner, other)).toBeNull();
     expect(evaluateMatch(other, owner)).toBeNull();
-    expect(hardFilterFailure(owner, other)).toMatchObject({ kind: "dealbreaker", dealbreaker: rule });
+    expect(hardFilterFailure(owner, other)).toMatchObject({
+      kind: "dealbreaker",
+      dealbreaker: rule,
+    });
   });
 
   it("lets borderline values through", () => {
-    expect(evaluateMatch(person("a", { dealbreakers: ["sleep"], sleepSchedule: 2 }), person("b", { sleepSchedule: 3 }))).not.toBeNull();
-    expect(evaluateMatch(person("a", { dealbreakers: ["cleanliness"], cleanliness: 4 }), person("b", { cleanliness: 3 }))).not.toBeNull();
-    expect(evaluateMatch(person("a", { dealbreakers: ["move_in"], moveInDate: "2027-08-01" }), person("b", { moveInDate: "2027-08-31" }))).not.toBeNull();
-    expect(evaluateMatch(person("a", { dealbreakers: ["housing_type"], housingType: "on_campus" }), person("b", { housingType: "either" }))).not.toBeNull();
-    expect(evaluateMatch(person("a", { dealbreakers: ["budget"], budgetMax: 900 }), person("b", { budgetMin: 900, budgetMax: 1000 }))).not.toBeNull();
+    expect(
+      evaluateMatch(
+        person("a", { dealbreakers: ["sleep"], sleepSchedule: 2 }),
+        person("b", { sleepSchedule: 3 }),
+      ),
+    ).not.toBeNull();
+    expect(
+      evaluateMatch(
+        person("a", { dealbreakers: ["cleanliness"], cleanliness: 4 }),
+        person("b", { cleanliness: 3 }),
+      ),
+    ).not.toBeNull();
+    expect(
+      evaluateMatch(
+        person("a", { dealbreakers: ["move_in"], moveInDate: "2027-08-01" }),
+        person("b", { moveInDate: "2027-08-31" }),
+      ),
+    ).not.toBeNull();
+    expect(
+      evaluateMatch(
+        person("a", { dealbreakers: ["housing_type"], housingType: "on_campus" }),
+        person("b", { housingType: "either" }),
+      ),
+    ).not.toBeNull();
+    expect(
+      evaluateMatch(
+        person("a", { dealbreakers: ["budget"], budgetMax: 900 }),
+        person("b", { budgetMin: 900, budgetMax: 1000 }),
+      ),
+    ).not.toBeNull();
   });
 
   it("never matches someone with themselves", () => {
@@ -163,20 +234,36 @@ describe("hard filters", () => {
 describe("factor similarity", () => {
   it("scores budget overlap and gaps", () => {
     expect(budgetSimilarity(prefs(), prefs())).toBe(1);
-    expect(budgetSimilarity(prefs({ budgetMin: 600, budgetMax: 800 }), prefs({ budgetMin: 800, budgetMax: 1000 }))).toBeCloseTo(0.6);
-    expect(budgetSimilarity(prefs({ budgetMin: 600, budgetMax: 700 }), prefs({ budgetMin: 900, budgetMax: 1000 }))).toBe(0);
+    expect(
+      budgetSimilarity(
+        prefs({ budgetMin: 600, budgetMax: 800 }),
+        prefs({ budgetMin: 800, budgetMax: 1000 }),
+      ),
+    ).toBeCloseTo(0.6);
+    expect(
+      budgetSimilarity(
+        prefs({ budgetMin: 600, budgetMax: 700 }),
+        prefs({ budgetMin: 900, budgetMax: 1000 }),
+      ),
+    ).toBe(0);
   });
 
   it("scores neighborhoods by overlap", () => {
     expect(areaSimilarity(prefs({ areas: ["a", "b"] }), prefs({ areas: ["b"] }))).toBe(1);
-    expect(areaSimilarity(prefs({ areas: ["a", "b"] }), prefs({ areas: ["b", "c"] }))).toBeCloseTo(0.85);
+    expect(areaSimilarity(prefs({ areas: ["a", "b"] }), prefs({ areas: ["b", "c"] }))).toBeCloseTo(
+      0.85,
+    );
     expect(areaSimilarity(prefs({ areas: ["a"] }), prefs({ areas: ["c"] }))).toBe(0);
     expect(areaSimilarity(prefs({ areas: [] }), prefs({ areas: ["c"] }))).toBe(0.5);
   });
 
   it("decays move-in compatibility after a week", () => {
-    expect(moveInSimilarity(prefs({ moveInDate: "2027-08-01" }), prefs({ moveInDate: "2027-08-06" }))).toBe(1);
-    expect(moveInSimilarity(prefs({ moveInDate: "2027-08-01" }), prefs({ moveInDate: "2027-12-01" }))).toBe(0);
+    expect(
+      moveInSimilarity(prefs({ moveInDate: "2027-08-01" }), prefs({ moveInDate: "2027-08-06" })),
+    ).toBe(1);
+    expect(
+      moveInSimilarity(prefs({ moveInDate: "2027-08-01" }), prefs({ moveInDate: "2027-12-01" })),
+    ).toBe(0);
     expect(moveInSimilarity(prefs({ moveInDate: null }), prefs())).toBe(0.5);
   });
 });
@@ -196,8 +283,16 @@ describe("music (optional)", () => {
   });
 
   it("lists shared artists and explains them", () => {
-    const a = person("a", { sleepSchedule: 1 }, { music: music(["1", "2", "3"], ["indie", "pop"]) });
-    const b = person("b", { sleepSchedule: 5 }, { music: music(["3", "2", "9"], ["indie", "rap"]) });
+    const a = person(
+      "a",
+      { sleepSchedule: 1 },
+      { music: music(["1", "2", "3"], ["indie", "pop"]) },
+    );
+    const b = person(
+      "b",
+      { sleepSchedule: 5 },
+      { music: music(["3", "2", "9"], ["indie", "rap"]) },
+    );
     const result = evaluateMatch(a, b)!;
     expect(result.sharedArtists.map((x) => x.id)).toEqual(["2", "3"]);
     expect(result.forA.breakdown.some((f) => f.key === "music")).toBe(true);
@@ -240,7 +335,10 @@ describe("explanations", () => {
     const a = person("a", { sleepSchedule: 1, weights: { sleep: 3 } });
     const b = person("b", { sleepSchedule: 5 }, { firstName: "Maya" });
     const result = evaluateMatch(a, b)!;
-    expect(result.forA.watchouts[0]).toEqual({ key: "sleep", label: "Maya stays up a lot later than you" });
+    expect(result.forA.watchouts[0]).toEqual({
+      key: "sleep",
+      label: "Maya stays up a lot later than you",
+    });
     expect(result.forB.watchouts.length).toBeLessThanOrEqual(2);
   });
 

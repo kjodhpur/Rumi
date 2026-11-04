@@ -44,7 +44,10 @@ export function maxWeightMatching(edges: readonly Edge[], maxCardinality = false
   const inblossom: number[] = Array.from({ length: nvertex }, (_, i) => i);
   const blossomparent: number[] = new Array(2 * nvertex).fill(-1);
   const blossomchilds: (number[] | null)[] = new Array(2 * nvertex).fill(null);
-  const blossombase: number[] = [...Array.from({ length: nvertex }, (_, i) => i), ...new Array(nvertex).fill(-1)];
+  const blossombase: number[] = [
+    ...Array.from({ length: nvertex }, (_, i) => i),
+    ...new Array(nvertex).fill(-1),
+  ];
   const blossomendps: (number[] | null)[] = new Array(2 * nvertex).fill(null);
   const bestedge: number[] = new Array(2 * nvertex).fill(-1);
   const blossombestedges: (number[] | null)[] = new Array(2 * nvertex).fill(null);
@@ -158,7 +161,11 @@ export function maxWeightMatching(edges: readonly Edge[], maxCardinality = false
           let [i, j] = edges[kk];
           if (inblossom[j] === b) [i, j] = [j, i];
           const bj = inblossom[j];
-          if (bj !== b && label[bj] === 1 && (bestedgeto[bj] === -1 || slack(kk) < slack(bestedgeto[bj]))) {
+          if (
+            bj !== b &&
+            label[bj] === 1 &&
+            (bestedgeto[bj] === -1 || slack(kk) < slack(bestedgeto[bj]))
+          ) {
             bestedgeto[bj] = kk;
           }
         }
@@ -195,7 +202,8 @@ export function maxWeightMatching(edges: readonly Edge[], maxCardinality = false
         jstep = -1;
         endptrick = 1;
       }
-      const at = (arr: number[], idx: number) => arr[((idx % arr.length) + arr.length) % arr.length];
+      const at = (arr: number[], idx: number) =>
+        arr[((idx % arr.length) + arr.length) % arr.length];
       let p = labelend[b];
       while (j !== 0) {
         label[endpoint[p ^ 1]] = 0;
@@ -380,7 +388,12 @@ export function maxWeightMatching(edges: readonly Edge[], maxCardinality = false
         }
       }
       for (let b = nvertex; b < 2 * nvertex; b++) {
-        if (blossombase[b] >= 0 && blossomparent[b] === -1 && label[b] === 2 && (deltatype === -1 || dualvar[b] < delta)) {
+        if (
+          blossombase[b] >= 0 &&
+          blossomparent[b] === -1 &&
+          label[b] === 2 &&
+          (deltatype === -1 || dualvar[b] < delta)
+        ) {
           delta = dualvar[b];
           deltatype = 4;
           deltablossom = b;

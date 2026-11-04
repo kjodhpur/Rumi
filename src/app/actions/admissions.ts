@@ -9,8 +9,6 @@ import { hashPersonalEmail, normalizeEmail, parseAllowlist } from "@/lib/admissi
 import { logAudit } from "@/lib/staff/audit";
 import { assertRole } from "@/lib/staff/context";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
-import { recomputeMatchesFor } from "@/lib/matching/recompute";
-import { runInBackground } from "@/lib/background";
 import { emailSchema } from "@/lib/validation";
 
 const schoolId = z.string().regex(/^[a-z0-9-]{2,40}$/);
@@ -275,48 +273,4 @@ export async function linkSchoolEmail(rawEmail: string): Promise<ActionResult<{ 
         : "Couldn't send the confirmation. Try again.",
     );
   return ok({ email: parsed.data });
-}
-
-const TRACKS = ["freshman", "returning", "transfer", "grad"] as const;
-
-/** Track change (3.2). Answers to the old track's own questions are cleared; everything else stays. */
-export async function setStudentTrack(track: (typeof TRACKS)[number]): Promise<ActionResult> {
-  const user = await getUser();
-  if (!user) return fail("Please sign in again.");
-  if (!(TRACKS as readonly string[]).includes(track)) return fail("Pick a track.");
-  if (!(await rateLimit(`track:${user.id}`, LIMITS.preferenceFlagsPerHour)))
-    return fail("Too many changes. Try again in a bit.");
-  const supabase = createClient();
-  const { data: before } = await supabase
-    .from("profiles")
-    .select("track, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (!before?.school_id) return fail("Finish signing up first.");
-  if (before.track === track) return ok();
-  const { error } = await supabase.from("profiles").update({ track }).eq("id", user.id);
-  if (error)
-    return fail(
-      error.message.includes("track_locked")
-        ? "Your housing office set your track. Ask them to change it."
-        : friendlyDbError(error.message),
-    );
-
-  const { data: tracks } = await supabase
-    .from("tracks")
-    .select("key, question_keys")
-    .eq("school_id", before.school_id);
-  const oldKeys = tracks?.find((t) => t.key === before.track)?.question_keys ?? [];
-  const keep = new Set(tracks?.find((t) => t.key === track)?.question_keys ?? []);
-  const drop = oldKeys.filter((k) => !keep.has(k));
-  if (drop.length)
-    await supabase
-      .from("school_question_answers")
-      .delete()
-      .eq("user_id", user.id)
-      .in("question_key", drop);
-  runInBackground("recompute", () => recomputeMatchesFor(user.id));
-  revalidatePath("/settings/profile");
-  revalidatePath("/matches");
-  return ok();
 }

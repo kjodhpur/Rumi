@@ -47,7 +47,10 @@ export function moveInGapDays(a: MatchPreferences, b: MatchPreferences): number 
 }
 
 /** Does `other` break one of `owner`'s dealbreakers? Returns the first one broken. */
-export function brokenDealbreaker(owner: MatchPreferences, other: MatchPreferences): Dealbreaker | null {
+export function brokenDealbreaker(
+  owner: MatchPreferences,
+  other: MatchPreferences,
+): Dealbreaker | null {
   for (const rule of owner.dealbreakers) {
     switch (rule) {
       case "smoking":
@@ -75,7 +78,11 @@ export function brokenDealbreaker(owner: MatchPreferences, other: MatchPreferenc
         if (budgetOverlap(owner, other) < 0) return rule;
         break;
       case "area":
-        if (owner.areas.length > 0 && other.areas.length > 0 && sharedAreas(owner, other).length === 0) {
+        if (
+          owner.areas.length > 0 &&
+          other.areas.length > 0 &&
+          sharedAreas(owner, other).length === 0
+        ) {
           return rule;
         }
         break;
@@ -114,9 +121,14 @@ export interface PoolContext {
 const INCOMING_TRACKS = new Set(["freshman", "transfer"]);
 
 /** Pre-arrival students match each other (same admit term) and enrolled incoming students. */
-function poolsCompatible(a: MatchProfile, b: MatchProfile, ctx: PoolContext): HardFilterFailure | null {
+function poolsCompatible(
+  a: MatchProfile,
+  b: MatchProfile,
+  ctx: PoolContext,
+): HardFilterFailure | null {
   if (a.preArrival && b.preArrival) {
-    if (a.admitTermId && b.admitTermId && a.admitTermId !== b.admitTermId) return { kind: "pre_arrival_pool", who: "a" };
+    if (a.admitTermId && b.admitTermId && a.admitTermId !== b.admitTermId)
+      return { kind: "pre_arrival_pool", who: "a" };
   } else if (a.preArrival || b.preArrival) {
     const enrolled = a.preArrival ? b : a;
     if (!enrolled.track || !INCOMING_TRACKS.has(enrolled.track)) {
@@ -125,14 +137,21 @@ function poolsCompatible(a: MatchProfile, b: MatchProfile, ctx: PoolContext): Ha
   }
   if (!ctx.mergeTrackPools && a.track && b.track && a.track !== b.track) {
     // A pre-arrival first-year and an enrolled transfer are both "incoming".
-    const bothIncoming = (a.preArrival || b.preArrival) && INCOMING_TRACKS.has(a.track) && INCOMING_TRACKS.has(b.track);
+    const bothIncoming =
+      (a.preArrival || b.preArrival) &&
+      INCOMING_TRACKS.has(a.track) &&
+      INCOMING_TRACKS.has(b.track);
     if (!bothIncoming) return { kind: "track_pool", who: "a" };
   }
   return null;
 }
 
 /** Null when the pair may be matched; otherwise the first rule that rules it out. */
-export function hardFilterFailure(a: MatchProfile, b: MatchProfile, ctx: PoolContext = {}): HardFilterFailure | null {
+export function hardFilterFailure(
+  a: MatchProfile,
+  b: MatchProfile,
+  ctx: PoolContext = {},
+): HardFilterFailure | null {
   if (!acceptsGender(a, b)) return { kind: "gender", who: "a" };
   if (!acceptsGender(b, a)) return { kind: "gender", who: "b" };
   const aRule = brokenDealbreaker(a.prefs, b.prefs);
@@ -145,7 +164,8 @@ export function hardFilterFailure(a: MatchProfile, b: MatchProfile, ctx: PoolCon
   if (accommodation) return accommodation;
   if (ctx.schoolRules?.length) {
     const rule = passesSchoolRules(a, b, ctx.schoolRules);
-    if (!rule.allowed && rule.blockingRule) return { kind: "school_rule", who: "a", ruleType: rule.blockingRule };
+    if (!rule.allowed && rule.blockingRule)
+      return { kind: "school_rule", who: "a", ruleType: rule.blockingRule };
   }
   return null;
 }
@@ -261,7 +281,10 @@ export function musicSimilarity(a: MatchProfile, b: MatchProfile) {
   return Math.min(1, 0.55 * artistSim + 0.45 * genreSim);
 }
 
-export function factorSimilarities(a: MatchProfile, b: MatchProfile): Partial<Record<FactorKey, number>> {
+export function factorSimilarities(
+  a: MatchProfile,
+  b: MatchProfile,
+): Partial<Record<FactorKey, number>> {
   const pa = a.prefs;
   const pb = b.prefs;
   const sims: Partial<Record<FactorKey, number>> = {
@@ -292,7 +315,10 @@ export function factorSimilarities(a: MatchProfile, b: MatchProfile): Partial<Re
 }
 
 /** Per-factor similarity from scenario questions both students answered (same version). */
-export function scenarioSimilarities(a: MatchProfile, b: MatchProfile): Partial<Record<FactorKey, number>> {
+export function scenarioSimilarities(
+  a: MatchProfile,
+  b: MatchProfile,
+): Partial<Record<FactorKey, number>> {
   if (!a.scenarios || !b.scenarios) return {};
   const totals = new Map<FactorKey, { sum: number; n: number }>();
   for (const [key, mine] of Object.entries(a.scenarios)) {
@@ -434,7 +460,12 @@ function describe(
 
   breakdown.sort((x, y) => y.importance - x.importance || y.similarity - x.similarity);
 
-  return { reasons, watchouts, breakdown, satisfaction: Math.round(viewerSatisfaction * 1000) / 1000 };
+  return {
+    reasons,
+    watchouts,
+    breakdown,
+    satisfaction: Math.round(viewerSatisfaction * 1000) / 1000,
+  };
 }
 
 /**
@@ -471,13 +502,18 @@ function salience(key: FactorKey, a: MatchPreferences, b: MatchPreferences, ctx:
 function scenarioReason(key: FactorKey, viewer: MatchProfile, other: MatchProfile): string | null {
   for (const [q, mine] of Object.entries(viewer.scenarios ?? {})) {
     const theirs = other.scenarios?.[q];
-    if (mine.factor === key && theirs && theirs.value === mine.value && mine.reason) return mine.reason;
+    if (mine.factor === key && theirs && theirs.value === mine.value && mine.reason)
+      return mine.reason;
   }
   return null;
 }
 
 /** A scenario on this factor where the two answered far apart. */
-function scenarioWatchout(key: FactorKey, viewer: MatchProfile, other: MatchProfile): string | null {
+function scenarioWatchout(
+  key: FactorKey,
+  viewer: MatchProfile,
+  other: MatchProfile,
+): string | null {
   for (const [q, mine] of Object.entries(viewer.scenarios ?? {})) {
     const theirs = other.scenarios?.[q];
     if (mine.factor === key && theirs && Math.abs(theirs.value - mine.value) >= 3) {
@@ -514,7 +550,9 @@ export function reasonText(
       const shared = sharedAreas(a, b);
       if (shared.length === 0) return null;
       const names = shared.map((slug) => ctx.areaNames[slug] ?? slug);
-      return shared.length === 1 ? `Both looking in ${names[0]}` : `Both looking in ${names[0]} & ${names[1]}`;
+      return shared.length === 1
+        ? `Both looking in ${names[0]}`
+        : `Both looking in ${names[0]} & ${names[1]}`;
     }
     case "move_in": {
       const gap = moveInGapDays(a, b);
@@ -531,7 +569,9 @@ export function reasonText(
       }[a.leaseLength];
     case "housing_type":
       if (a.housingType === b.housingType && a.housingType !== "either") {
-        return a.housingType === "on_campus" ? "Both want to live on campus" : "Both want off-campus";
+        return a.housingType === "on_campus"
+          ? "Both want to live on campus"
+          : "Both want off-campus";
       }
       return "Same plan for on vs. off campus";
     case "sleep":
@@ -561,7 +601,8 @@ export function reasonText(
       if (a.pets !== "none" && b.pets !== "none") return "You're both pet people";
       return null;
     case "study":
-      if (a.study === "home_quiet" && b.study === "home_quiet") return "You both study at home and need quiet";
+      if (a.study === "home_quiet" && b.study === "home_quiet")
+        return "You both study at home and need quiet";
       if (a.study === "campus" && b.study === "campus") return "You both study on campus";
       return "Study habits that fit together";
     case "music": {
@@ -578,7 +619,11 @@ export function reasonText(
   }
 }
 
-export function watchoutText(key: FactorKey, viewer: MatchProfile, other: MatchProfile): string | null {
+export function watchoutText(
+  key: FactorKey,
+  viewer: MatchProfile,
+  other: MatchProfile,
+): string | null {
   const a = viewer.prefs;
   const b = other.prefs;
   const name = other.firstName || "They";
@@ -608,7 +653,9 @@ export function watchoutText(key: FactorKey, viewer: MatchProfile, other: MatchP
     case "noise":
       return b.noise > a.noise ? `${name} likes it louder` : `${name} prefers it quieter`;
     case "guests":
-      return b.guests > a.guests ? `${name} has people over more often` : `${name} has guests over less`;
+      return b.guests > a.guests
+        ? `${name} has people over more often`
+        : `${name} has guests over less`;
     case "smoking":
       return b.smoking === "never" ? `${name} doesn't smoke` : `${name} smokes ${b.smoking}`;
     case "drinking":
@@ -618,7 +665,11 @@ export function watchoutText(key: FactorKey, viewer: MatchProfile, other: MatchP
           ? `${name} doesn't drink`
           : `${name} drinks socially`;
     case "pets":
-      return b.pets === "have" ? `${name} has a pet` : b.pets === "want" ? `${name} wants a pet` : `${name} prefers no pets`;
+      return b.pets === "have"
+        ? `${name} has a pet`
+        : b.pets === "want"
+          ? `${name} wants a pet`
+          : `${name} prefers no pets`;
     case "study":
       return "Different study habits at home";
     case "music":
@@ -627,7 +678,9 @@ export function watchoutText(key: FactorKey, viewer: MatchProfile, other: MatchP
       const mine = viewer.classDay;
       const theirs = other.classDay;
       if (!mine || !theirs) return null;
-      return theirs.earliestStart < mine.earliestStart ? `${name}'s classes start a lot earlier` : `${name}'s classes run a lot later`;
+      return theirs.earliestStart < mine.earliestStart
+        ? `${name}'s classes start a lot earlier`
+        : `${name}'s classes run a lot later`;
     }
   }
 }

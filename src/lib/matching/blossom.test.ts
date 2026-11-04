@@ -74,7 +74,14 @@ describe("maxWeightMatching", () => {
 
   it("solves classic blossom cases", () => {
     // Odd cycle with a pendant: needs a blossom to find the optimum.
-    expect(maxWeightMatching([[0, 1, 8], [0, 2, 9], [1, 2, 10], [2, 3, 7]])).toEqual([1, 0, 3, 2]);
+    expect(
+      maxWeightMatching([
+        [0, 1, 8],
+        [0, 2, 9],
+        [1, 2, 10],
+        [2, 3, 7],
+      ]),
+    ).toEqual([1, 0, 3, 2]);
     // From the reference test suite: nested S-blossom, relabeled as T.
     const mate = maxWeightMatching([
       [0, 1, 9],
@@ -85,7 +92,17 @@ describe("maxWeightMatching", () => {
       [3, 4, 10],
       [4, 5, 6],
     ]);
-    expect(score(mate, [[0, 1, 9], [0, 2, 9], [1, 2, 10], [1, 3, 8], [2, 4, 8], [3, 4, 10], [4, 5, 6]]).total).toBe(23);
+    expect(
+      score(mate, [
+        [0, 1, 9],
+        [0, 2, 9],
+        [1, 2, 10],
+        [1, 3, 8],
+        [2, 4, 8],
+        [3, 4, 10],
+        [4, 5, 6],
+      ]).total,
+    ).toBe(23);
   });
 
   it("matches brute force on 600 random graphs of up to 10 vertices", () => {

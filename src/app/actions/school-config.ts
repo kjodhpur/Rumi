@@ -417,12 +417,23 @@ export async function startNextTerm(raw: z.input<typeof nextTermInput>): Promise
     if (current) await db.from("terms").update({ active: true }).eq("id", current.id);
     return fail("Couldn't start the new term.");
   }
+  // 1.G: models are retired with the term they were trained for; refit on the new outcomes.
+  const { count: retired } = await db
+    .from("weight_models")
+    .update({ status: "retired" }, { count: "exact" })
+    .eq("school_id", parsed.data.schoolId)
+    .neq("status", "retired");
+  if (retired) runInBackground("school-recompute", () => recomputeSchool(parsed.data.schoolId));
   await logAudit({
     actorId,
     schoolId: parsed.data.schoolId,
     action: "term_started",
     entity: "term",
-    meta: { name: parsed.data.name, previous: current?.id ?? null },
+    meta: {
+      name: parsed.data.name,
+      previous: current?.id ?? null,
+      weightModelsRetired: retired ?? 0,
+    },
   });
   revalidatePath("/staff", "layout");
   return ok();

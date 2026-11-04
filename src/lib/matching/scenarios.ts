@@ -45,10 +45,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "overnight guests",
     stem: "Your roommate's partner stays over three nights a week.",
     choices: [
-      { key: "fine", label: "Totally fine with me", value: 5, reason: "You're both relaxed about overnight guests" },
-      { key: "talk_first", label: "Fine if we talk about it first", value: 3, reason: "You'd both want to talk about overnight guests first" },
-      { key: "too_often", label: "Okay sometimes, but three nights is a lot", value: 2, reason: "You both think a few nights a week is too many" },
-      { key: "not_okay", label: "Not okay for me", value: 1, reason: "Neither of you wants regular overnight guests" },
+      {
+        key: "fine",
+        label: "Totally fine with me",
+        value: 5,
+        reason: "You're both relaxed about overnight guests",
+      },
+      {
+        key: "talk_first",
+        label: "Fine if we talk about it first",
+        value: 3,
+        reason: "You'd both want to talk about overnight guests first",
+      },
+      {
+        key: "too_often",
+        label: "Okay sometimes, but three nights is a lot",
+        value: 2,
+        reason: "You both think a few nights a week is too many",
+      },
+      {
+        key: "not_okay",
+        label: "Not okay for me",
+        value: 1,
+        reason: "Neither of you wants regular overnight guests",
+      },
     ],
   },
   {
@@ -59,10 +79,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "dishes in the sink",
     stem: "Dishes are left in the sink overnight.",
     choices: [
-      { key: "no_big_deal", label: "No big deal, they'll get done", value: 1, reason: "Neither of you minds dishes waiting a day" },
-      { key: "next_day", label: "Fine if they're done the next day", value: 3, reason: "You both want dishes done within a day" },
-      { key: "mention", label: "I'd mention it in the morning", value: 4, reason: "You'd both bring up dishes left out" },
-      { key: "before_bed", label: "Dishes get done before bed", value: 5, reason: "You both want the sink empty by bedtime" },
+      {
+        key: "no_big_deal",
+        label: "No big deal, they'll get done",
+        value: 1,
+        reason: "Neither of you minds dishes waiting a day",
+      },
+      {
+        key: "next_day",
+        label: "Fine if they're done the next day",
+        value: 3,
+        reason: "You both want dishes done within a day",
+      },
+      {
+        key: "mention",
+        label: "I'd mention it in the morning",
+        value: 4,
+        reason: "You'd both bring up dishes left out",
+      },
+      {
+        key: "before_bed",
+        label: "Dishes get done before bed",
+        value: 5,
+        reason: "You both want the sink empty by bedtime",
+      },
     ],
   },
   {
@@ -73,10 +113,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "weeknight noise",
     stem: "It's 11pm on a Thursday and your roommate has friends over, laughing loudly.",
     choices: [
-      { key: "join", label: "I'd probably join in", value: 5, reason: "You both like a lively place, even on weeknights" },
-      { key: "wrap_up", label: "Fine if it wraps up by midnight", value: 3, reason: "You'd both want weeknight noise to wind down by midnight" },
-      { key: "headphones", label: "Headphones on, but I'd mention it", value: 2, reason: "You'd both rather keep weeknights calm" },
-      { key: "quiet", label: "Weeknights should be quiet", value: 1, reason: "You both want quiet weeknights" },
+      {
+        key: "join",
+        label: "I'd probably join in",
+        value: 5,
+        reason: "You both like a lively place, even on weeknights",
+      },
+      {
+        key: "wrap_up",
+        label: "Fine if it wraps up by midnight",
+        value: 3,
+        reason: "You'd both want weeknight noise to wind down by midnight",
+      },
+      {
+        key: "headphones",
+        label: "Headphones on, but I'd mention it",
+        value: 2,
+        reason: "You'd both rather keep weeknights calm",
+      },
+      {
+        key: "quiet",
+        label: "Weeknights should be quiet",
+        value: 1,
+        reason: "You both want quiet weeknights",
+      },
     ],
   },
   {
@@ -87,10 +147,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "studying in the room",
     stem: "During finals, your roommate wants a study group in your room.",
     choices: [
-      { key: "love_it", label: "Great, I'll join", value: 5, reason: "You both like studying with people around" },
-      { key: "heads_up", label: "Fine with a heads-up", value: 3, reason: "You'd both want a heads-up before a study group" },
-      { key: "library", label: "I'd head to the library", value: 2, reason: "You'd both move a study group somewhere else" },
-      { key: "keep_quiet", label: "The room should stay quiet during finals", value: 1, reason: "You both want a quiet room during finals" },
+      {
+        key: "love_it",
+        label: "Great, I'll join",
+        value: 5,
+        reason: "You both like studying with people around",
+      },
+      {
+        key: "heads_up",
+        label: "Fine with a heads-up",
+        value: 3,
+        reason: "You'd both want a heads-up before a study group",
+      },
+      {
+        key: "library",
+        label: "I'd head to the library",
+        value: 2,
+        reason: "You'd both move a study group somewhere else",
+      },
+      {
+        key: "keep_quiet",
+        label: "The room should stay quiet during finals",
+        value: 1,
+        reason: "You both want a quiet room during finals",
+      },
     ],
   },
   {
@@ -101,10 +181,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "cleaning the bathroom",
     stem: "The shared bathroom is getting messy by midweek.",
     choices: [
-      { key: "dont_notice", label: "I honestly wouldn't notice", value: 1, reason: "Neither of you sweats a messy bathroom" },
-      { key: "weekend", label: "We clean it on the weekend", value: 3, reason: "You'd both clean the bathroom weekly" },
-      { key: "every_few_days", label: "A quick wipe every few days", value: 4, reason: "You both like a quick clean every few days" },
-      { key: "right_away", label: "It gets cleaned right away", value: 5, reason: "You both keep the bathroom spotless" },
+      {
+        key: "dont_notice",
+        label: "I honestly wouldn't notice",
+        value: 1,
+        reason: "Neither of you sweats a messy bathroom",
+      },
+      {
+        key: "weekend",
+        label: "We clean it on the weekend",
+        value: 3,
+        reason: "You'd both clean the bathroom weekly",
+      },
+      {
+        key: "every_few_days",
+        label: "A quick wipe every few days",
+        value: 4,
+        reason: "You both like a quick clean every few days",
+      },
+      {
+        key: "right_away",
+        label: "It gets cleaned right away",
+        value: 5,
+        reason: "You both keep the bathroom spotless",
+      },
     ],
   },
   {
@@ -115,10 +215,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "early alarms",
     stem: "Your roommate's alarm goes off at 6:30am on weekdays.",
     choices: [
-      { key: "already_up", label: "I'm probably already up", value: 1, reason: "You're both early risers" },
-      { key: "fine_weekdays", label: "Fine on weekdays", value: 2, reason: "You're both fine with early weekday alarms" },
-      { key: "no_snooze", label: "Okay, as long as there's no snoozing", value: 4, reason: "You'd both want early alarms off fast" },
-      { key: "bothers_me", label: "That would really bother me", value: 5, reason: "Neither of you wants early alarms" },
+      {
+        key: "already_up",
+        label: "I'm probably already up",
+        value: 1,
+        reason: "You're both early risers",
+      },
+      {
+        key: "fine_weekdays",
+        label: "Fine on weekdays",
+        value: 2,
+        reason: "You're both fine with early weekday alarms",
+      },
+      {
+        key: "no_snooze",
+        label: "Okay, as long as there's no snoozing",
+        value: 4,
+        reason: "You'd both want early alarms off fast",
+      },
+      {
+        key: "bothers_me",
+        label: "That would really bother me",
+        value: 5,
+        reason: "Neither of you wants early alarms",
+      },
     ],
   },
   {
@@ -130,8 +250,18 @@ export const DEFAULT_SCENARIOS: Question[] = [
     stem: "It's 1am and your roommate is still up with the lamp on.",
     choices: [
       { key: "me_too", label: "I'm still up too", value: 5, reason: "You're both up late" },
-      { key: "dim", label: "Fine if it's dim", value: 3, reason: "You're both fine with a dim light late" },
-      { key: "dark_by_midnight", label: "I need it dark by midnight", value: 1, reason: "You both want lights out by midnight" },
+      {
+        key: "dim",
+        label: "Fine if it's dim",
+        value: 3,
+        reason: "You're both fine with a dim light late",
+      },
+      {
+        key: "dark_by_midnight",
+        label: "I need it dark by midnight",
+        value: 1,
+        reason: "You both want lights out by midnight",
+      },
     ],
   },
   {
@@ -142,10 +272,30 @@ export const DEFAULT_SCENARIOS: Question[] = [
     topic: "weekend visitors",
     stem: "A friend from home wants to sleep on the floor for the weekend.",
     choices: [
-      { key: "of_course", label: "Of course", value: 5, reason: "You're both happy to host friends" },
-      { key: "heads_up", label: "Sure, with a heads-up", value: 3, reason: "You'd both want a heads-up before visitors stay" },
-      { key: "rarely", label: "Only once in a while", value: 2, reason: "You both keep visitors occasional" },
-      { key: "rather_not", label: "I'd rather not", value: 1, reason: "Neither of you wants visitors staying over" },
+      {
+        key: "of_course",
+        label: "Of course",
+        value: 5,
+        reason: "You're both happy to host friends",
+      },
+      {
+        key: "heads_up",
+        label: "Sure, with a heads-up",
+        value: 3,
+        reason: "You'd both want a heads-up before visitors stay",
+      },
+      {
+        key: "rarely",
+        label: "Only once in a while",
+        value: 2,
+        reason: "You both keep visitors occasional",
+      },
+      {
+        key: "rather_not",
+        label: "I'd rather not",
+        value: 1,
+        reason: "Neither of you wants visitors staying over",
+      },
     ],
   },
 ];
@@ -171,7 +321,12 @@ export function toScenarioAnswers(
     if (!q || q.version !== a.question_version) continue;
     const choice = q.choices.find((c) => c.key === a.choice_key);
     if (!choice) continue;
-    out[`${q.key}@${q.version}`] = { factor: q.factor, value: choice.value, reason: choice.reason, topic: q.topic };
+    out[`${q.key}@${q.version}`] = {
+      factor: q.factor,
+      value: choice.value,
+      reason: choice.reason,
+      topic: q.topic,
+    };
   }
   return out;
 }
@@ -183,6 +338,13 @@ export function validChoices(choices: QuestionChoice[]): boolean {
     choices.length >= 2 &&
     choices.length <= 5 &&
     keys.size === choices.length &&
-    choices.every((c) => /^[a-z0-9_]{1,40}$/.test(c.key) && Number.isInteger(c.value) && c.value >= 1 && c.value <= 5 && c.label.trim().length > 0)
+    choices.every(
+      (c) =>
+        /^[a-z0-9_]{1,40}$/.test(c.key) &&
+        Number.isInteger(c.value) &&
+        c.value >= 1 &&
+        c.value <= 5 &&
+        c.label.trim().length > 0,
+    )
   );
 }

@@ -6,9 +6,16 @@ import { cn } from "@/lib/utils";
 import { springSnappy } from "@/lib/motion";
 import type { AreaOption, StepProps } from "../types";
 
-export function AreasStep({ prefs, updatePrefs, errors, areas }: StepProps & { areas: AreaOption[] }) {
+export function AreasStep({
+  prefs,
+  updatePrefs,
+  errors,
+  areas,
+}: StepProps & { areas: AreaOption[] }) {
   const toggle = (slug: string) => {
-    const next = prefs.areas.includes(slug) ? prefs.areas.filter((a) => a !== slug) : [...prefs.areas, slug];
+    const next = prefs.areas.includes(slug)
+      ? prefs.areas.filter((a) => a !== slug)
+      : [...prefs.areas, slug];
     updatePrefs({ areas: next });
   };
   return (
@@ -27,7 +34,9 @@ export function AreasStep({ prefs, updatePrefs, errors, areas }: StepProps & { a
               className={cn(
                 "flex items-start gap-3 rounded-lg bg-surface p-4 text-left outline-none",
                 "transition-[box-shadow,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-focus",
-                selected ? "shadow-sm ring-2 ring-ink" : "ring-1 ring-line-strong hover:bg-surface-hover",
+                selected
+                  ? "shadow-sm ring-2 ring-ink"
+                  : "ring-1 ring-line-strong hover:bg-surface-hover",
               )}
             >
               <span

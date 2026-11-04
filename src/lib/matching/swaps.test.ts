@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { bruteForceSwapCycles, findSwapCycles, pickDisjoint, type SwapCandidate } from "./swaps";
 
-const cand = (userId: string, roommateId: string, currentScore: number): SwapCandidate => ({ userId, assignmentId: `as-${userId}`, roommateId, currentScore });
-const table = (pairs: Record<string, number>) => (a: string, b: string) => pairs[`${a}|${b}`] ?? pairs[`${b}|${a}`] ?? null;
+const cand = (userId: string, roommateId: string, currentScore: number): SwapCandidate => ({
+  userId,
+  assignmentId: `as-${userId}`,
+  roommateId,
+  currentScore,
+});
+const table = (pairs: Record<string, number>) => (a: string, b: string) =>
+  pairs[`${a}|${b}`] ?? pairs[`${b}|${a}`] ?? null;
 const canon = (ids: string[]) => {
   const start = ids.indexOf([...ids].sort()[0]!);
   return [...ids.slice(start), ...ids.slice(0, start)].join(">");
@@ -39,25 +45,39 @@ describe("swap cycles", () => {
 
   it("matches brute force on random pools", () => {
     let seed = 42;
-    const rand = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
     for (let run = 0; run < 60; run++) {
       const n = 3 + Math.floor(rand() * 4);
-      const pool = Array.from({ length: n }, (_, i) => cand(`u${i}`, `r${i}`, 30 + Math.floor(rand() * 50)));
+      const pool = Array.from({ length: n }, (_, i) =>
+        cand(`u${i}`, `r${i}`, 30 + Math.floor(rand() * 50)),
+      );
       const pairs: Record<string, number> = {};
-      for (const p of pool) for (const q of pool) if (rand() < 0.75) pairs[`${p.userId}|${q.roommateId}`] = Math.floor(rand() * 100);
+      for (const p of pool)
+        for (const q of pool)
+          if (rand() < 0.75) pairs[`${p.userId}|${q.roommateId}`] = Math.floor(rand() * 100);
       const compat = (a: string, b: string) => pairs[`${a}|${b}`] ?? null;
-      const fast = findSwapCycles(pool, compat).map((c) => canon(c.cycle)).sort();
+      const fast = findSwapCycles(pool, compat)
+        .map((c) => canon(c.cycle))
+        .sort();
       expect(fast).toEqual(bruteForceSwapCycles(pool, compat));
       for (const c of findSwapCycles(pool, compat)) {
         for (const m of Object.values(c.moves)) expect(m.newScore).toBeGreaterThan(m.currentScore);
-        for (const s of Object.values(c.stayers)) expect(s.newScore).toBeGreaterThanOrEqual(s.currentScore);
+        for (const s of Object.values(c.stayers))
+          expect(s.newScore).toBeGreaterThanOrEqual(s.currentScore);
       }
     }
   });
 
   it("picks non-overlapping cycles, best first", () => {
     const pool = [cand("a", "ra", 40), cand("b", "rb", 40), cand("c", "rc", 40)];
-    const compat = table({ "a|rb": 90, "b|ra": 90, "b|rc": 60, "c|ra": 60, "a|rc": 60, "c|rb": 60 });
+    const compat = table({
+      "a|rb": 90,
+      "b|ra": 90,
+      "b|rc": 60,
+      "c|ra": 60,
+      "a|rc": 60,
+      "c|rb": 60,
+    });
     const chosen = pickDisjoint(findSwapCycles(pool, compat));
     expect(chosen).toHaveLength(1);
     expect(chosen[0]?.cycle).toEqual(["a", "b"]);

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SCENARIOS, MAX_SCENARIOS, activeQuestions, toScenarioAnswers, validChoices, type Question } from "./scenarios";
+import {
+  DEFAULT_SCENARIOS,
+  MAX_SCENARIOS,
+  activeQuestions,
+  toScenarioAnswers,
+  validChoices,
+  type Question,
+} from "./scenarios";
 
 const schoolQ = (key: string, kind: Question["kind"] = "scenario", version = 1): Question => ({
   key,
@@ -23,7 +30,9 @@ describe("default scenario set", () => {
   });
 
   it("includes the partner-stays-over question from the brief", () => {
-    expect(DEFAULT_SCENARIOS.find((q) => q.key === "partner_overnight")?.choices.map((c) => c.key)).toEqual(["fine", "talk_first", "too_often", "not_okay"]);
+    expect(
+      DEFAULT_SCENARIOS.find((q) => q.key === "partner_overnight")?.choices.map((c) => c.key),
+    ).toEqual(["fine", "talk_first", "too_often", "not_okay"]);
   });
 });
 
@@ -36,7 +45,9 @@ describe("activeQuestions", () => {
   });
 
   it("keeps non-scenario school questions on top of the cap", () => {
-    expect(activeQuestions([schoolQ("quiet_hours", "scale")]).filter((q) => q.kind !== "scenario")).toHaveLength(1);
+    expect(
+      activeQuestions([schoolQ("quiet_hours", "scale")]).filter((q) => q.kind !== "scenario"),
+    ).toHaveLength(1);
   });
 });
 

@@ -18,7 +18,10 @@ export async function loadSchoolQuestions(schoolId: string): Promise<Question[]>
     kind: row.kind as Question["kind"],
     factor: row.factor as ScenarioFactor,
     stem: row.stem,
-    topic: row.stem.replace(/[.?!]+$/, "").toLowerCase().slice(0, 60),
+    topic: row.stem
+      .replace(/[.?!]+$/, "")
+      .toLowerCase()
+      .slice(0, 60),
     choices: (Array.isArray(row.choices) ? row.choices : []) as unknown as QuestionChoice[],
     schoolId,
   }));

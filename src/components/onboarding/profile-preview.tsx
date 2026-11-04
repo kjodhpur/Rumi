@@ -46,7 +46,7 @@ export function ProfilePreview({
             name={profile.firstName || "?"}
             seed={profile.firstName || "you"}
             rounded="rounded-none"
-            className="absolute inset-0 [container-type:size]"
+            className="[container-type:size] absolute inset-0"
           />
         )}
         <span className="absolute top-3 left-3 rounded-full bg-surface px-3 py-1.5 text-caption font-semibold text-ink shadow-md">
@@ -60,11 +60,19 @@ export function ProfilePreview({
           {profile.bio || "Your bio shows here — a couple of lines about you."}
         </p>
         <div className="mt-3 flex items-center gap-2 text-body-sm text-ink">
-          <Sparkle className="size-3.5 shrink-0 fill-accent text-accent" strokeWidth={0} aria-hidden />
+          <Sparkle
+            className="size-3.5 shrink-0 fill-accent text-accent"
+            strokeWidth={0}
+            aria-hidden
+          />
           <span className="text-ink-2">Reasons you match appear here</span>
         </div>
         <p className="mt-3 truncate text-caption text-ink-3">
-          {[formatBudget(prefs.budgetMin, prefs.budgetMax), prefs.moveInDate ? `Moves ${moveInLabel(prefs.moveInDate)}` : null, areaName]
+          {[
+            formatBudget(prefs.budgetMin, prefs.budgetMax),
+            prefs.moveInDate ? `Moves ${moveInLabel(prefs.moveInDate)}` : null,
+            areaName,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </p>

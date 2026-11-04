@@ -7,16 +7,50 @@ import { CLASS_YEARS, GENDERS } from "@/lib/options";
 import type { StepProps } from "../types";
 import { Section } from "./section";
 
+const TRACKS = [
+  { value: "freshman", label: "First-year" },
+  { value: "returning", label: "Returning" },
+  { value: "transfer", label: "Transfer" },
+  { value: "grad", label: "Graduate" },
+] as const;
+
 const MAJORS = [
-  "Accountancy", "Aerospace Engineering", "Architecture", "Biology", "Biomedical Engineering",
-  "Business Administration", "Chemical Engineering", "Communication", "Computer Science",
-  "Construction Management", "Criminology", "Data Science", "Digital Culture", "Economics",
-  "Electrical Engineering", "Film", "Finance", "Graphic Design", "Journalism", "Kinesiology",
-  "Marketing", "Mechanical Engineering", "Nursing", "Psychology", "Public Health",
-  "Software Engineering", "Supply Chain Management", "Sustainability",
+  "Accountancy",
+  "Aerospace Engineering",
+  "Architecture",
+  "Biology",
+  "Biomedical Engineering",
+  "Business Administration",
+  "Chemical Engineering",
+  "Communication",
+  "Computer Science",
+  "Construction Management",
+  "Criminology",
+  "Data Science",
+  "Digital Culture",
+  "Economics",
+  "Electrical Engineering",
+  "Film",
+  "Finance",
+  "Graphic Design",
+  "Journalism",
+  "Kinesiology",
+  "Marketing",
+  "Mechanical Engineering",
+  "Nursing",
+  "Psychology",
+  "Public Health",
+  "Software Engineering",
+  "Supply Chain Management",
+  "Sustainability",
 ];
 
-export function BasicsStep({ profile, updateProfile, errors }: StepProps) {
+export function BasicsStep({
+  profile,
+  updateProfile,
+  errors,
+  trackLocked = false,
+}: StepProps & { trackLocked?: boolean }) {
   return (
     <div className="flex flex-col gap-8">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -85,18 +119,19 @@ export function BasicsStep({ profile, updateProfile, errors }: StepProps) {
 
       <Section
         label="Student track"
-        hint="First-year, returning, transfer, and graduate students match within their own cohorts by default."
+        hint={
+          trackLocked
+            ? "Set by your housing office. Ask them if it's wrong."
+            : "First-year, returning, transfer and graduate students match within their own track unless your school mixes them."
+        }
       >
         <ChoiceChips
           aria-label="Student track"
           value={profile.track ?? ""}
-          onValueChange={(track) => updateProfile({ track: track ? (track as "freshman" | "returning" | "transfer" | "grad") : null })}
-          options={[
-            { value: "freshman", label: "Freshman" },
-            { value: "returning", label: "Returning" },
-            { value: "transfer", label: "Transfer" },
-            { value: "grad", label: "Graduate" },
-          ]}
+          onValueChange={(track) => {
+            if (!trackLocked) updateProfile({ track });
+          }}
+          options={TRACKS.filter((t) => !trackLocked || t.value === profile.track)}
         />
       </Section>
 

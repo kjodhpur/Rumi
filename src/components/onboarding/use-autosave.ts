@@ -28,7 +28,9 @@ export function useAutosave(delay = 700, saver: typeof saveProfileAndPrefs = sav
     if (inflight.current) await inflight.current;
     const batch = pending.current;
     const hasWork =
-      Object.keys(batch.profile).length > 0 || Object.keys(batch.prefs).length > 0 || batch.step !== undefined;
+      Object.keys(batch.profile).length > 0 ||
+      Object.keys(batch.prefs).length > 0 ||
+      batch.step !== undefined;
     if (!hasWork) return true;
     pending.current = empty();
     setStatus("saving");

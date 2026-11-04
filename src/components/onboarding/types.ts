@@ -23,6 +23,23 @@ export interface ProfileDraft {
   track?: "freshman" | "returning" | "transfer" | "grad" | null;
   major: string;
   bio: string;
+  campus: string | null;
+  academicCollege: string | null;
+  residentialCollege: string | null;
+  llc: string | null;
+  genderInclusive: boolean | null;
+}
+
+export type SchoolOptionKind = "campus" | "academic_college" | "residential_college" | "llc";
+
+export interface SchoolContext {
+  options: Record<SchoolOptionKind, { value: string; label: string }[]>;
+  /** The housing office set the track (e.g. from an import); students can't change it. */
+  trackLocked: boolean;
+  preArrival: boolean;
+  /** School questions this term requires, with the student's current answers. */
+  required: { key: string; stem: string; choices: { key: string; label: string }[] }[];
+  answers: Record<string, string>;
 }
 
 export interface PrefsDraft {
@@ -60,6 +77,9 @@ export interface OnboardingData {
   spotify: { enabled: boolean; connected: boolean; displayName: string | null; artists: string[] };
   /** The optional last step appears only when the school has a partnered housing office. */
   sharing: { office: string | null; granted: boolean };
+  school: SchoolContext;
+  /** Consistency prompts the student dismissed, with the answers they were dismissed on. */
+  dismissedFlags: { ruleKey: string; signature: string }[];
   initialStep: number;
 }
 
