@@ -18,6 +18,7 @@ export const errors = {
   somethingDoesntLookRight: "Something doesn't look right.",
   youCantDoThat: "You can't do that.",
   thatsNoLongerAvailable: "That's no longer available.",
+  thatRequestIsntAvailable: "That request isn't available.",
   signInAsAStudentTo: "Sign in as a student to do that.",
   tooManyUpdatesTryAgainTomorrow: "Too many updates. Try again tomorrow.",
   thatEmailIsTooLong: "That email is too long.",
