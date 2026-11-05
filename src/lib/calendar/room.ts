@@ -1,3 +1,5 @@
+import { createTranslator, type Translator } from "@/lib/i18n/core";
+import { en } from "@/lib/i18n/messages/en";
 /**
  * Shared room calendar (Phase 4.2). Pure: weekly repeats, the agreement's overnight-guest
  * limit and quiet-hours overlap. Times are UTC instants; "this week" is the Monday–Sunday
@@ -114,15 +116,38 @@ export function campusWeekKey(iso: string, timeZone: string): string {
 /** "Overnight guests at most 2 nights a week" → 2; "No overnight guests …" → 0. */
 export function agreementOvernightLimit(guestSection: string | null | undefined): number | null {
   if (!guestSection) return null;
-  if (/\bno overnight guests\b/i.test(guestSection)) return 0;
-  const m = /overnight guests?[^.]*?\bat most (\d+|one|two|three|four|five)\b/i.exec(guestSection);
+  if (/\bno overnight guests\b|nadie se queda a dormir|no hay visitas a dormir/i.test(guestSection))
+    return 0;
+  const m =
+    /overnight guests?[^.]*?\bat most (\d+|one|two|three|four|five)\b/i.exec(guestSection) ??
+    /visitas a dormir[^.]*?como máximo (\d+|una|dos|tres|cuatro|cinco)(?![\p{L}\d])/iu.exec(
+      guestSection,
+    );
   if (!m) return null;
-  const words: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+  const words: Record<string, number> = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    una: 1,
+    dos: 2,
+    tres: 3,
+    cuatro: 4,
+    cinco: 5,
+  };
   return words[m[1]!.toLowerCase()] ?? Number(m[1]);
 }
 
-const ordinal = (n: number) =>
-  `${n}${n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"}`;
+const EN = createTranslator("en", en, en, "roomCalendar");
+const ORDINAL_FORM = { one: "one", two: "two", few: "few" } as const;
+
+/** "4th", "4.ª": the reader's ordinal for a count. */
+function ordinal(n: number, t: Translator<"roomCalendar">, intl: string) {
+  const form = new Intl.PluralRules(intl, { type: "ordinal" }).select(n);
+  const key = form in ORDINAL_FORM ? ORDINAL_FORM[form as keyof typeof ORDINAL_FORM] : "rest";
+  return t(`warn.ordinal.${key}`, { count: n });
+}
 
 /** Soft warning when an overnight guest goes past the agreement's weekly limit. */
 export function guestLimitWarning(
@@ -130,6 +155,8 @@ export function guestLimitWarning(
   existing: RoomEvent[],
   limit: number | null,
   timeZone: string,
+  t: Translator<"roomCalendar"> = EN,
+  intl = "en-US",
 ): string | null {
   if (target.kind !== "guest" || !target.overnight || limit === null) return null;
   const week = campusWeekKey(target.startsAt, timeZone);
@@ -142,9 +169,7 @@ export function guestLimitWarning(
       if (campusWeekKey(o.startsAt, timeZone) === week) count += 1;
   }
   if (count <= limit) return null;
-  return limit === 0
-    ? "Your agreement says no overnight guests. Talk with your roommates first."
-    : `This would be the ${ordinal(count)} overnight this week; your agreement says ${limit}.`;
+  return limit === 0 ? t("warn.noGuests") : t("warn.over", { nth: ordinal(count, t, intl), limit });
 }
 
 /** Quiet or exam times a new guest or shared event runs into (titles, deduped). */

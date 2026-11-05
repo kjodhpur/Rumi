@@ -5,8 +5,12 @@ import { createClient, getUser } from "@/lib/supabase/server";
 import { loadRoomContext, loadRoomEvents } from "@/lib/groups/room";
 import { RoomCalendarView } from "@/components/groups/calendar/room-calendar-view";
 import { ErrorState } from "@/components/ui/error-state";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Room calendar" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("roomCalendar");
+  return { title: t("title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function RoomCalendarPage({ params }: { params: { id: string } }) {
@@ -18,10 +22,10 @@ export default async function RoomCalendarPage({ params }: { params: { id: strin
   const room = await loadRoomContext(supabase, user.id, params.id);
   if (!room) notFound();
   const events = await loadRoomEvents(supabase, params.id);
-  if (!events)
-    return (
-      <ErrorState title="Couldn't load the calendar" description="Refresh the page to try again." />
-    );
+  if (!events) {
+    const [t, tc] = await Promise.all([getT("roomCalendar"), getT("common")]);
+    return <ErrorState title={t("loadError")} description={tc("refresh")} />;
+  }
 
   return (
     <RoomCalendarView

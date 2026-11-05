@@ -11,6 +11,8 @@ import { CAMPUS_TZ } from "@/lib/time";
 import { WEEKDAYS, buildWeeklyRule, guestLimitWarning, quietOverlaps } from "@/lib/calendar/room";
 import { loadRoomContext, loadRoomEvents } from "@/lib/groups/room";
 import { newShareRow, shareTokenFor } from "@/lib/share/server";
+import { getLocale, getT } from "@/lib/i18n/server";
+import { LOCALE_INFO } from "@/lib/i18n/config";
 
 const uuid = z.string().uuid();
 const iso = z.string().datetime({ offset: true });
@@ -68,10 +70,11 @@ export async function previewRoomEvent(
     loadRoomEvents(supabase, parsed.data.groupId),
   ]);
   if (!room || !events) return fail("That room isn't available.");
-  return ok({ warnings: warningsFor(parsed.data, events, room.overnightLimit) });
+  return ok({ warnings: await warningsFor(parsed.data, events, room.overnightLimit) });
 }
 
-function warningsFor(
+/** Written in the language of whoever is adding the event. */
+async function warningsFor(
   e: z.output<typeof eventInput>,
   events: NonNullable<Awaited<ReturnType<typeof loadRoomEvents>>>,
   limit: number | null,
@@ -83,11 +86,11 @@ function warningsFor(
     overnight: e.overnight,
     rrule: null,
   };
+  const [t, locale] = await Promise.all([getT("roomCalendar"), getLocale()]);
   const warnings: string[] = [];
-  const guest = guestLimitWarning(target, events, limit, CAMPUS_TZ);
+  const guest = guestLimitWarning(target, events, limit, CAMPUS_TZ, t, LOCALE_INFO[locale].intl);
   if (guest) warnings.push(guest);
-  for (const title of quietOverlaps(target, events))
-    warnings.push(`It overlaps quiet hours: ${title}.`);
+  for (const title of quietOverlaps(target, events)) warnings.push(t("warn.quiet", { title }));
   return warnings;
 }
 
@@ -125,7 +128,7 @@ export async function createRoomEvent(
   });
   if (error) return fail("Couldn't add that event.");
   revalidatePath(`/groups/${e.groupId}/calendar`);
-  return ok({ warnings: warningsFor(e, events, room.overnightLimit) });
+  return ok({ warnings: await warningsFor(e, events, room.overnightLimit) });
 }
 
 export async function deleteRoomEvent(groupId: string, eventId: string): Promise<ActionResult> {

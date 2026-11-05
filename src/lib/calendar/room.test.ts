@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { createTranslator } from "@/lib/i18n/core";
+import { messagesFor } from "@/lib/i18n/messages";
+import { en } from "@/lib/i18n/messages/en";
 import {
   agreementOvernightLimit,
   buildWeeklyRule,
@@ -85,6 +88,17 @@ describe("guest limit", () => {
     expect(agreementOvernightLimit("No overnight guests without asking first each time.")).toBe(0);
     expect(agreementOvernightLimit("Overnight guests at most one night a week.")).toBe(1);
     expect(agreementOvernightLimit("Guests are fine.")).toBeNull();
+    // The same sections drafted in Spanish.
+    expect(
+      agreementOvernightLimit(
+        "Avisamos por mensaje antes de recibir visitas. Visitas a dormir como máximo 2 noches por semana, y nunca durante los exámenes de la otra persona.",
+      ),
+    ).toBe(2);
+    expect(
+      agreementOvernightLimit(
+        "Avisamos por mensaje antes de recibir visitas. Nadie se queda a dormir sin preguntar antes cada vez.",
+      ),
+    ).toBe(0);
     expect(agreementOvernightLimit(null)).toBeNull();
   });
 
@@ -106,6 +120,14 @@ describe("guest limit", () => {
     expect(guestLimitWarning(next, week.slice(0, 1), 2, TZ)).toBeNull();
     expect(guestLimitWarning({ ...next, overnight: false }, week, 2, TZ)).toBeNull();
     expect(guestLimitWarning(next, week, null, TZ)).toBeNull();
+    const es = createTranslator("es", messagesFor("es"), en, "roomCalendar");
+    expect(guestLimitWarning(next, week, 2, TZ, es, "es-US")).toBe(
+      "Esta sería la 4.ª noche con visitas esta semana; su acuerdo dice 2.",
+    );
+    const enT = createTranslator("en", en, en, "roomCalendar");
+    expect(guestLimitWarning(next, week.slice(0, 2), 2, TZ, enT, "en-US")).toBe(
+      "This would be the 3rd overnight this week; your agreement says 2.",
+    );
   });
 });
 
