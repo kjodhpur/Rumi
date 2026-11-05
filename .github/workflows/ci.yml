@@ -67,6 +67,10 @@ jobs:
             echo "GOOGLE_CALENDAR_CLIENT_ID=e2e-google-client"
             echo "GOOGLE_CALENDAR_CLIENT_SECRET=e2e-google-secret"
           } > .env.local
+      # Row Level Security: one test per table, every role signed in for real (skipped in the
+      # checks job, which has no database).
+      - name: RLS tests against the local stack
+        run: npx vitest run src/test
       - name: Seed students to match against
         run: npm run seed
       - run: npx playwright install --with-deps chromium
