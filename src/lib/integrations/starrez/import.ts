@@ -65,11 +65,20 @@ export function resolveColumns(headers: string[], mapping: AssignmentMapping): R
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 const usDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
 
-function toIsoDate(value: string): string | null {
-  if (isoDate.test(value)) return value;
+/** A real calendar day as YYYY-MM-DD, or null ("2027-02-30" and "31/31/2027" aren't days). */
+export function toIsoDate(value: string): string | null {
   const m = usDate.exec(value);
-  if (m) return `${m[3]}-${m[1]!.padStart(2, "0")}-${m[2]!.padStart(2, "0")}`;
-  return null;
+  const iso = isoDate.test(value)
+    ? value
+    : m
+      ? `${m[3]}-${m[1]!.padStart(2, "0")}-${m[2]!.padStart(2, "0")}`
+      : null;
+  if (!iso) return null;
+  const [y, mo, d] = iso.split("-").map(Number) as [number, number, number];
+  const day = new Date(Date.UTC(y, mo - 1, d));
+  return day.getUTCFullYear() === y && day.getUTCMonth() === mo - 1 && day.getUTCDate() === d
+    ? iso
+    : null;
 }
 
 const rowSchema = z

@@ -10,9 +10,11 @@ test.afterAll(async () => deleteUsers([student.email]));
 test.use({ reducedMotion: "reduce" });
 
 const scoresOnPage = async (page: import("@playwright/test").Page) =>
-  (await page.locator("article[aria-label]").evaluateAll((cards) => cards.map((c) => c.getAttribute("aria-label") ?? ""))).map(
-    (label) => Number(label.match(/(\d+)% match/)?.[1] ?? NaN),
-  );
+  (
+    await page
+      .locator("article[aria-label]")
+      .evaluateAll((cards) => cards.map((c) => c.getAttribute("aria-label") ?? ""))
+  ).map((label) => Number(label.match(/(\d+)% match/)?.[1] ?? NaN));
 
 test("matches are ranked, explained, filterable and savable", async ({ page }) => {
   await signIn(page, student.email);
@@ -48,7 +50,10 @@ test("matches are ranked, explained, filterable and savable", async ({ page }) =
   await page.getByRole("button", { name: /^Filters/ }).click();
   const sheet = page.getByRole("dialog", { name: "Filters" });
   await sheet.getByRole("button", { name: "Senior" }).click();
-  await expect(sheet.getByRole("button", { name: "Senior" })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByRole("button", { name: "Senior" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await sheet.getByRole("button", { name: "Show matches" }).click();
   await expect(page).toHaveURL(/year=senior/);
   await expect(page.getByRole("button", { name: "Remove filter: Senior" })).toBeVisible();

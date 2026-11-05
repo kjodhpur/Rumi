@@ -383,6 +383,9 @@ function ClassSchedule({ schedule }: { schedule: CalendarView["schedule"] }) {
               type="file"
               accept=".ics,text/calendar"
               className="sr-only"
+              // The visible button below opens it; this keeps it named and out of the tab order.
+              aria-label={t("calendar.upload")}
+              tabIndex={-1}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) void importFile(file);

@@ -171,6 +171,8 @@ export function AdmissionsManager({
             accept=".csv,text/csv,text/plain"
             className="sr-only"
             id="allowlist-file"
+            aria-label="Admitted-student list (CSV)"
+            tabIndex={-1}
             onChange={(e) => e.target.files?.[0] && void upload(e.target.files[0])}
           />
           <Button loading={pending === "upload"} onClick={() => file.current?.click()}>

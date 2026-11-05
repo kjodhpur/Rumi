@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createStudent, deleteUsers, ready, recomputeScores, signIn, type Student } from "./support";
+import {
+  createStudent,
+  deleteUsers,
+  ready,
+  recomputeScores,
+  signIn,
+  type Student,
+} from "./support";
 
 let ana: Student;
 let bea: Student;
@@ -22,7 +29,9 @@ test("intro → accept → realtime chat with typing and read receipts", async (
   await a.goto(`/profile/${bea.id}`);
   await ready(a);
   await a.getByRole("button", { name: "Send intro" }).first().click();
-  await a.getByLabel(`Intro message to ${bea.firstName}`).fill("Hi Bea! We both want Tempe and a quiet place — want to talk apartments?");
+  await a
+    .getByLabel(`Intro message to ${bea.firstName}`)
+    .fill("Hi Bea! We both want Tempe and a quiet place — want to talk apartments?");
   await a.getByRole("dialog").getByRole("button", { name: "Send intro" }).click();
   await expect(a.getByText(`Intro sent to ${bea.firstName}`)).toBeVisible();
 
@@ -43,7 +52,9 @@ test("intro → accept → realtime chat with typing and read receipts", async (
   await expect(b.getByText("Active now")).toBeVisible({ timeout: 20_000 });
 
   // Typing shows up live on the other side.
-  await b.getByRole("textbox", { name: /Message/ }).pressSequentially("Yes! Saturday works", { delay: 40 });
+  await b
+    .getByRole("textbox", { name: /Message/ })
+    .pressSequentially("Yes! Saturday works", { delay: 40 });
   await expect(a.getByText(/^typing/)).toBeVisible();
 
   // Messages arrive in real time; reading them sends a receipt back.

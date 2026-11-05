@@ -62,17 +62,21 @@ jobs:
             echo "CRON_SECRET=$(openssl rand -hex 16)"
             echo "ADMIN_EMAILS=admin@asu.edu"
             echo "NEXT_PUBLIC_SPOTIFY_ENABLED=true"
-            # Calendar e2e runs against mocked providers; these are not real credentials.
+            # Calendar and Spotify e2e run against mocked providers; these are not real credentials.
             echo "NEXT_PUBLIC_CALENDAR_ENABLED=true"
             echo "GOOGLE_CALENDAR_CLIENT_ID=e2e-google-client"
             echo "GOOGLE_CALENDAR_CLIENT_SECRET=e2e-google-secret"
+            echo "SPOTIFY_CLIENT_ID=e2e-spotify-client"
+            echo "SPOTIFY_CLIENT_SECRET=e2e-spotify-secret"
           } > .env.local
       # Row Level Security: one test per table, every role signed in for real (skipped in the
       # checks job, which has no database).
       - name: RLS tests against the local stack
         run: npx vitest run src/test
-      - name: Seed students to match against
-        run: npm run seed
+      - name: Seed students to match against, and Demo University for the outcomes report
+        run: |
+          npm run seed
+          npm run seed -- --demo-school
       - run: npx playwright install --with-deps chromium
       - name: Build and start the app
         run: |

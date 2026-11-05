@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import AxeBuilder from "@axe-core/playwright";
 
 for (const file of [".env.local", ".env"]) {
   if (fs.existsSync(file)) process.loadEnvFile(file);
@@ -148,4 +149,36 @@ export async function deleteUsers(emails: string[]) {
   if (!emails.length) return;
   const { data } = await admin.from("user_settings").select("user_id").in("email", emails);
   for (const row of data ?? []) await admin.auth.admin.deleteUser(row.user_id);
+}
+
+/** No serious or critical WCAG 2.1 A/AA violations on the page as it stands. */
+export async function expectAccessible(page: Page) {
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  const serious = results.violations.filter(
+    (v) => v.impact === "serious" || v.impact === "critical",
+  );
+  expect(
+    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+  ).toEqual([]);
+}
+
+/** A staff member at a school, created directly (the invite flow has its own spec). */
+export async function createStaff(
+  role: "housing_admin" | "housing_staff" | "ra" | "analyst" | "moderator",
+  scopes: Record<string, unknown> = {},
+  school = "asu",
+) {
+  const email = uniqueEmail(role.replace("_", ""));
+  const { data, error } = await admin.auth.admin.createUser({ email, email_confirm: true });
+  if (error || !data.user) throw error ?? new Error("createUser failed");
+  await admin
+    .from("profiles")
+    .update({ is_staff: true, first_name: "Staff", last_initial: "T" })
+    .eq("id", data.user.id);
+  await admin
+    .from("staff_members")
+    .insert({ user_id: data.user.id, school_id: school, role, scopes });
+  return { id: data.user.id, email };
 }

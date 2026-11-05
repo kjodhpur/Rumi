@@ -6,7 +6,11 @@ const created: string[] = [];
 test.afterAll(async () => deleteUsers(created));
 test.use({ reducedMotion: "reduce" });
 
-const next = (page: Page) => page.getByRole("button", { name: /^(Continue|Finish & see matches)$/ }).last().click();
+const next = (page: Page) =>
+  page
+    .getByRole("button", { name: /^(Continue|Finish & see matches)$/ })
+    .last()
+    .click();
 
 test("new student completes onboarding and lands on ranked matches", async ({ page }) => {
   const email = uniqueEmail("onboard");
@@ -42,8 +46,11 @@ test("new student completes onboarding and lands on ranked matches", async ({ pa
 
   // About — autosaves; a reload keeps the answer.
   await expect(page.getByText("Introduce yourself.")).toBeVisible();
-  const bio = "Nursing junior with early clinicals. I cook a lot, keep shared spaces tidy, and love a quiet evening.";
-  const autosaved = page.waitForResponse((res) => res.request().method() === "POST" && Boolean(res.request().headers()["next-action"]));
+  const bio =
+    "Nursing junior with early clinicals. I cook a lot, keep shared spaces tidy, and love a quiet evening.";
+  const autosaved = page.waitForResponse(
+    (res) => res.request().method() === "POST" && Boolean(res.request().headers()["next-action"]),
+  );
   await page.getByLabel("Your bio").fill(bio);
   expect((await autosaved).ok()).toBe(true);
   await page.reload();

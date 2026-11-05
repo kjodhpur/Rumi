@@ -42,12 +42,14 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: true,
         timeout: 180_000,
-        // Calendar e2e runs against mocked providers; these are not real credentials.
+        // Calendar and Spotify e2e run against mocked providers; these are not real credentials.
         env: {
           NEXT_PUBLIC_CALENDAR_ENABLED: "true",
           GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID || "e2e-google-client",
           GOOGLE_CALENDAR_CLIENT_SECRET:
             process.env.GOOGLE_CALENDAR_CLIENT_SECRET || "e2e-google-secret",
+          SPOTIFY_CLIENT_ID: process.env.SPOTIFY_CLIENT_ID || "e2e-spotify-client",
+          SPOTIFY_CLIENT_SECRET: process.env.SPOTIFY_CLIENT_SECRET || "e2e-spotify-secret",
         },
       },
 });

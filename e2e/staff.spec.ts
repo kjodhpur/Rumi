@@ -3,14 +3,19 @@ import { expect, test, type Page } from "@playwright/test";
 import { admin, deleteUsers, otpFor, ready, signIn, uniqueEmail } from "./support";
 
 const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
-const PLATFORM_ADMIN = (process.env.ADMIN_EMAILS ?? "admin@asu.edu").split(",")[0].trim().toLowerCase();
+const PLATFORM_ADMIN = (process.env.ADMIN_EMAILS ?? "admin@asu.edu")
+  .split(",")[0]
+  .trim()
+  .toLowerCase();
 const created: string[] = [];
 
 test.afterAll(async () => deleteUsers(created));
 
 async function inviteLinkFor(email: string, since: number) {
   for (let attempt = 0; attempt < 60; attempt++) {
-    const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=5`);
+    const res = await fetch(
+      `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=5`,
+    );
     for (const message of (await res.json()).messages ?? []) {
       if (Date.parse(message.Created) < since) continue;
       const detail = await (await fetch(`${MAILPIT}/api/v1/message/${message.ID}`)).json();
@@ -23,12 +28,20 @@ async function inviteLinkFor(email: string, since: number) {
 }
 
 async function expectAccessible(page: Page) {
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
-  const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-  expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  const serious = results.violations.filter(
+    (v) => v.impact === "serious" || v.impact === "critical",
+  );
+  expect(
+    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+  ).toEqual([]);
 }
 
-test("a platform admin invites a housing admin, who accepts and can later be turned off", async ({ browser }) => {
+test("a platform admin invites a housing admin, who accepts and can later be turned off", async ({
+  browser,
+}) => {
   const invitee = uniqueEmail("housing-admin");
   created.push(invitee, PLATFORM_ADMIN);
 
@@ -63,7 +76,9 @@ test("a platform admin invites a housing admin, who accepts and can later be tur
   await page.getByLabel("6-digit code").fill(await otpFor(invitee, codeSince));
   await page.waitForURL(/\/invite\//);
   await ready(page);
-  await expect(page.getByRole("heading", { name: /Join Arizona State University on Rumi/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Join Arizona State University on Rumi/ }),
+  ).toBeVisible();
   await expectAccessible(page);
   await page.getByRole("button", { name: "Accept invite" }).click();
   await expect(page.getByText("Add your first name.")).toBeVisible();
@@ -88,7 +103,11 @@ test("a platform admin invites a housing admin, who accepts and can later be tur
   await expect(page).toHaveURL(/\/staff$/);
 
   // A school can't lose its last housing admin. Other admins in the local database are paused for this check.
-  const { data: invitedUser } = await admin.from("user_settings").select("user_id").eq("email", invitee).single();
+  const { data: invitedUser } = await admin
+    .from("user_settings")
+    .select("user_id")
+    .eq("email", invitee)
+    .single();
   const { data: otherAdmins } = await admin
     .from("staff_members")
     .select("id")
@@ -97,7 +116,11 @@ test("a platform admin invites a housing admin, who accepts and can later be tur
     .is("disabled_at", null)
     .neq("user_id", invitedUser!.user_id);
   const paused = (otherAdmins ?? []).map((row) => row.id);
-  if (paused.length) await admin.from("staff_members").update({ disabled_at: new Date().toISOString() }).in("id", paused);
+  if (paused.length)
+    await admin
+      .from("staff_members")
+      .update({ disabled_at: new Date().toISOString() })
+      .in("id", paused);
   await adminPage.reload();
   await ready(adminPage);
   await adminPage.getByRole("button", { name: "Actions for Jordan R." }).click();
@@ -107,9 +130,17 @@ test("a platform admin invites a housing admin, who accepts and can later be tur
   // With a second admin in place, turning off access takes effect on the invitee's very next request.
   const second = uniqueEmail("second-admin");
   created.push(second);
-  const { data: secondUser } = await admin.auth.admin.createUser({ email: second, email_confirm: true });
-  await admin.from("profiles").update({ is_staff: true, first_name: "Sam" }).eq("id", secondUser.user!.id);
-  await admin.from("staff_members").insert({ user_id: secondUser.user!.id, school_id: "asu", role: "housing_admin", scopes: {} });
+  const { data: secondUser } = await admin.auth.admin.createUser({
+    email: second,
+    email_confirm: true,
+  });
+  await admin
+    .from("profiles")
+    .update({ is_staff: true, first_name: "Sam" })
+    .eq("id", secondUser.user!.id);
+  await admin
+    .from("staff_members")
+    .insert({ user_id: secondUser.user!.id, school_id: "asu", role: "housing_admin", scopes: {} });
   await adminPage.reload();
   await ready(adminPage);
   await adminPage.getByRole("button", { name: "Actions for Jordan R." }).click();
@@ -118,7 +149,8 @@ test("a platform admin invites a housing admin, who accepts and can later be tur
 
   await page.goto("/staff");
   await expect(page.getByRole("heading", { name: "No staff access" })).toBeVisible();
-  if (paused.length) await admin.from("staff_members").update({ disabled_at: null }).in("id", paused);
+  if (paused.length)
+    await admin.from("staff_members").update({ disabled_at: null }).in("id", paused);
 
   await adminContext.close();
   await staffContext.close();
@@ -134,7 +166,13 @@ test("students can turn housing sharing on and off from Settings", async ({ page
     const now = new Date().toISOString();
     await admin
       .from("profiles")
-      .update({ first_name: "Sharer", last_initial: "T", class_year: "junior", student_verified_at: now, onboarding_completed_at: now })
+      .update({
+        first_name: "Sharer",
+        last_initial: "T",
+        class_year: "junior",
+        student_verified_at: now,
+        onboarding_completed_at: now,
+      })
       .eq("id", id);
     await signIn(page, email);
     await page.goto("/settings/privacy");

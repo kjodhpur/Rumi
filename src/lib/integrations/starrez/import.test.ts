@@ -68,3 +68,16 @@ describe("import plan", () => {
     expect(planImport(rows, { byStudentId: new Map(), byEmail: new Map() }, []).unknown).toHaveLength(4);
   });
 });
+
+describe("move-in dates", () => {
+  it("accepts real days in either format and refuses impossible ones", async () => {
+    const { toIsoDate } = await import("./import");
+    expect(toIsoDate("2027-08-16")).toBe("2027-08-16");
+    expect(toIsoDate("8/16/2027")).toBe("2027-08-16");
+    expect(toIsoDate("2/29/2028")).toBe("2028-02-29"); // leap year
+    expect(toIsoDate("31/31/2027")).toBeNull();
+    expect(toIsoDate("2027-02-30")).toBeNull();
+    expect(toIsoDate("2/29/2027")).toBeNull();
+    expect(toIsoDate("2027-13-01")).toBeNull();
+  });
+});

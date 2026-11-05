@@ -1,14 +1,29 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { admin, createStudent, deleteUsers, ready, recomputeScores, signIn, uniqueEmail, type Student } from "./support";
+import {
+  admin,
+  createStudent,
+  deleteUsers,
+  ready,
+  recomputeScores,
+  signIn,
+  uniqueEmail,
+  type Student,
+} from "./support";
 
 const created: string[] = [];
 let schoolBefore: { is_demo: boolean; housing_office_name: string | null } | null = null;
 
 async function expectAccessible(page: Page) {
-  const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
-  const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-  expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  const serious = results.violations.filter(
+    (v) => v.impact === "serious" || v.impact === "critical",
+  );
+  expect(
+    serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`),
+  ).toEqual([]);
 }
 
 async function asStudent(browser: Browser, student: Student) {
@@ -19,10 +34,17 @@ async function asStudent(browser: Browser, student: Student) {
 }
 
 test.beforeAll(async () => {
-  const { data } = await admin.from("schools").select("is_demo, housing_office_name").eq("id", "asu").single();
+  const { data } = await admin
+    .from("schools")
+    .select("is_demo, housing_office_name")
+    .eq("id", "asu")
+    .single();
   schoolBefore = data;
   // Real (non-demo) numbers, with a partnered office so students can share.
-  await admin.from("schools").update({ is_demo: false, housing_office_name: "ASU Housing" }).eq("id", "asu");
+  await admin
+    .from("schools")
+    .update({ is_demo: false, housing_office_name: "ASU Housing" })
+    .eq("id", "asu");
 });
 
 test.afterAll(async () => {
@@ -31,7 +53,10 @@ test.afterAll(async () => {
   if (schoolBefore) await admin.from("schools").update(schoolBefore).eq("id", "asu");
 });
 
-test("housing staff set a term, read the overview, auto-pair two students and approve the pair", async ({ browser, page }) => {
+test("housing staff set a term, read the overview, auto-pair two students and approve the pair", async ({
+  browser,
+  page,
+}) => {
   // Two compatible students who chose to share, plus a housing admin.
   const ana = await createStudent("Anaya");
   const ben = await createStudent("Bennett");
@@ -44,9 +69,17 @@ test("housing staff set a term, read the overview, auto-pair two students and ap
 
   const staffEmail = uniqueEmail("housing");
   created.push(staffEmail);
-  const { data: staffUser } = await admin.auth.admin.createUser({ email: staffEmail, email_confirm: true });
-  await admin.from("profiles").update({ is_staff: true, first_name: "Riley", last_initial: "H" }).eq("id", staffUser.user!.id);
-  await admin.from("staff_members").insert({ user_id: staffUser.user!.id, school_id: "asu", role: "housing_admin", scopes: {} });
+  const { data: staffUser } = await admin.auth.admin.createUser({
+    email: staffEmail,
+    email_confirm: true,
+  });
+  await admin
+    .from("profiles")
+    .update({ is_staff: true, first_name: "Riley", last_initial: "H" })
+    .eq("id", staffUser.user!.id);
+  await admin
+    .from("staff_members")
+    .insert({ user_id: staffUser.user!.id, school_id: "asu", role: "housing_admin", scopes: {} });
 
   await signIn(page, staffEmail);
   await expect(page).toHaveURL(/\/staff$/);
@@ -68,7 +101,10 @@ test("housing staff set a term, read the overview, auto-pair two students and ap
   await expect(page.getByText("E2E Fall 2027")).toBeVisible();
   await expect(page.getByRole("list", { name: "Key numbers" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Funnel" })).toBeVisible();
-  await page.getByRole("group", { name: "Funnel: view" }).getByRole("button", { name: "table" }).click();
+  await page
+    .getByRole("group", { name: "Funnel: view" })
+    .getByRole("button", { name: "table" })
+    .click();
   await expect(page.getByRole("rowheader", { name: "Finished profile" })).toBeVisible();
   await expectAccessible(page);
 
@@ -85,7 +121,10 @@ test("housing staff set a term, read the overview, auto-pair two students and ap
   await page.getByLabel("Minimum score").selectOption("50");
   await page.getByRole("button", { name: "Run auto-pair" }).click();
   await expect(page.getByText(/pairs? proposed/)).toBeVisible();
-  const pair = page.getByRole("listitem").filter({ hasText: "Anaya T." }).filter({ hasText: "Bennett T." });
+  const pair = page
+    .getByRole("listitem")
+    .filter({ hasText: "Anaya T." })
+    .filter({ hasText: "Bennett T." });
   await expect(pair).toBeVisible();
   await pair.getByRole("button", { name: /^Approve / }).click();
   await expect(pair.getByText("Approved")).toBeVisible();
@@ -122,7 +161,10 @@ test("housing staff set a term, read the overview, auto-pair two students and ap
   // The new pair shows up for review; staff approve it.
   await page.goto("/staff/pairings?status=unreviewed");
   await ready(page);
-  await page.getByRole("button", { name: /Anaya T\.|Bennett T\./ }).first().click();
+  await page
+    .getByRole("button", { name: /Anaya T\.|Bennett T\./ })
+    .first()
+    .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Approve for assignment" }).click();
   await expect(page.getByText("1 approved for assignment")).toBeVisible();
