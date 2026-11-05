@@ -5,11 +5,24 @@ import { hashShareToken, isTokenShaped } from "@/lib/share/token";
 import { buildParentSummary, parseScope } from "@/lib/family/scope";
 import { photoUrl } from "@/lib/photos";
 import { ParentView } from "@/components/family/parent-view";
+import { tFor } from "@/lib/i18n/server";
+import { LOCALE_INFO } from "@/lib/i18n/config";
 
-export const metadata: Metadata = {
-  title: "Your student on Rumi",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: { token: string };
+}): Promise<Metadata> {
+  const robots = { index: false, follow: false };
+  if (!isTokenShaped(params.token)) return { robots };
+  const { data: share } = await createAdminClient()
+    .from("family_shares")
+    .select("user_id")
+    .eq("token_hash", hashShareToken(params.token))
+    .maybeSingle();
+  const t = share ? (await tFor(share.user_id, "family")).t : null;
+  return { title: t ? t("meta") : "Rumi", robots };
+}
 export const dynamic = "force-dynamic";
 
 /**
@@ -82,6 +95,8 @@ export default async function ParentSharePage({ params }: { params: { token: str
     agreementStatus = agreement?.status ?? null;
   }
 
+  // Shown in the student's language: the match reasons on it are stored in that language.
+  const { locale, t } = await tFor(student.id, "family");
   const summary = buildParentSummary({
     studentFirstName: student.first_name,
     studentAvatarUrl: photoUrl(student.avatar_path),
@@ -90,6 +105,11 @@ export default async function ParentSharePage({ params }: { params: { token: str
     agreementStatus,
     scope: parseScope(share.scope),
     expiresAt: share.expires_at,
+    names: {
+      student: t("yourStudent"),
+      roommate: t("roommate"),
+      hiddenRoommate: t("hiddenRoommate"),
+    },
   });
-  return <ParentView summary={summary} />;
+  return <ParentView summary={summary} t={t} intl={LOCALE_INFO[locale].intl} />;
 }

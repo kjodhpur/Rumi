@@ -4,8 +4,12 @@ import { z } from "zod";
 import { createClient, getUser } from "@/lib/supabase/server";
 import { loadProfileDetail } from "@/lib/profile";
 import { HousingSuggestion } from "@/components/profile/housing-suggestion";
+import { getT } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Roommate suggestion" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT("profile");
+  return { title: t("suggestion.title") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function SuggestionPage({ params }: { params: { id: string } }) {
@@ -29,11 +33,12 @@ export default async function SuggestionPage({ params }: { params: { id: string 
       .maybeSingle(),
   ]);
   const responses = (proposal.responses ?? {}) as Record<string, boolean>;
+  const t = await getT("profile");
 
   return (
     <HousingSuggestion
       id={proposal.id}
-      office={school?.housing_office_name ?? "Your housing office"}
+      office={school?.housing_office_name ?? t("suggestion.yourOffice")}
       status={proposal.status}
       myAnswer={responses[user.id] ?? null}
       groupId={proposal.group_id}

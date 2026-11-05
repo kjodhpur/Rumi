@@ -27,6 +27,8 @@ import { room } from "./room";
 import { roomCalendar } from "./roomCalendar";
 import { checkins } from "./checkins";
 import { retention } from "./retention";
+import { pages } from "./pages";
+import { family } from "./family";
 
 /** Spanish: complete for student flows. The type makes a missing key a compile error. */
 export const es: Messages = {
@@ -58,4 +60,6 @@ export const es: Messages = {
   roomCalendar,
   checkins,
   retention,
+  pages,
+  family,
 };

@@ -95,7 +95,7 @@ export const PhotoCarousel = React.forwardRef<
               className="relative size-full shrink-0 snap-center snap-always"
               role="group"
               aria-roledescription="slide"
-              aria-label={`Photo ${i + 1} of ${photos.length}`}
+              aria-label={t("carousel.slide", { n: i + 1, total: photos.length })}
             >
               {i === 0 && coverSizes ? (
                 <Image

@@ -127,7 +127,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
             transition={springSnappy}
           >
             <Spinner className="size-[18px]" />
-            <span className="sr-only">Loading</span>
+            <span className="sr-only">{t("loading")}</span>
           </motion.span>
         ) : null}
         {state === "success" ? (

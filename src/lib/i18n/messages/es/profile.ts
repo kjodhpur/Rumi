@@ -48,7 +48,7 @@ export const profile: Messages["profile"] = {
   },
   sharedArtists: { one: "Comparten {count} artista", other: "Comparten {count} artistas" },
   into: "Le gusta: {genres}",
-  carousel: { previous: "Foto anterior", next: "Foto siguiente" },
+  carousel: { previous: "Foto anterior", next: "Foto siguiente", slide: "Foto {n} de {total}" },
   intro: {
     title: "Saluda a {name}",
     description: "Tu presentación llega como solicitud. Si la acepta, se abre el chat.",
@@ -138,6 +138,8 @@ export const profile: Messages["profile"] = {
     label: "Confianza y conexiones",
   },
   suggestion: {
+    title: "Sugerencia de compañero",
+    yourOffice: "Tu oficina de vivienda",
     everyoneYes: "Todos dijeron que sí",
     bothYes: "Los dos dijeron que sí",
     chatOpen: "Tu chat de grupo está abierto.",

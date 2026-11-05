@@ -75,7 +75,7 @@ export function ProfileEditor({ data }: { data: OnboardingData }) {
       });
       queue({ prefs: patch as Record<string, never> });
     },
-    [queue],
+    [queue, t],
   );
 
   const stepProps = { profile, prefs, updateProfile, updatePrefs, errors };

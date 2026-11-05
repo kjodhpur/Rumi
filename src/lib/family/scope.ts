@@ -48,17 +48,31 @@ export function buildParentSummary(input: {
   agreementStatus: string | null;
   scope: FamilyShareScope;
   expiresAt: string;
+  /** Fallback names, in the page's language. */
+  names?: { student: string; roommate: string; hiddenRoommate: string };
 }): ParentSummary {
-  const agreement = input.agreementStatus === "draft" || input.agreementStatus === "signed" || input.agreementStatus === "reopened" ? input.agreementStatus : null;
+  const names = input.names ?? {
+    student: "Your student",
+    roommate: "Roommate",
+    hiddenRoommate: "Your student's roommate",
+  };
+  const agreement =
+    input.agreementStatus === "draft" ||
+    input.agreementStatus === "signed" ||
+    input.agreementStatus === "reopened"
+      ? input.agreementStatus
+      : null;
   return {
-    studentFirstName: extractFirstName(input.studentFirstName, "Your student"),
+    studentFirstName: extractFirstName(input.studentFirstName, names.student),
     studentAvatarUrl: input.studentAvatarUrl,
     groupName: input.groupName && !containsPii(input.groupName) ? input.groupName : null,
     roommates: input.roommates.map((r) => ({
-      name: r.consented ? extractFirstName(r.firstName, "Roommate") : "Your student's roommate",
+      name: r.consented ? extractFirstName(r.firstName, names.roommate) : names.hiddenRoommate,
       avatarUrl: r.consented ? r.avatarUrl : null,
       score: r.score === null ? null : Math.max(0, Math.min(100, Math.round(r.score))),
-      reasons: reasonLabels(r.reasons).filter((t) => !containsPii(t)).slice(0, 3),
+      reasons: reasonLabels(r.reasons)
+        .filter((t) => !containsPii(t))
+        .slice(0, 3),
     })),
     agreementStatus: input.scope.include_agreement ? agreement : null,
     expiresAt: input.expiresAt,

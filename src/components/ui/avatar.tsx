@@ -9,6 +9,8 @@ interface AvatarProps {
   size?: number;
   className?: string;
   placeholder?: string | null;
+  /** Screen-reader text for the presence dot, in the reader's language. */
+  onlineLabel?: string;
   /** Small presence dot (online now). */
   online?: boolean;
 }
@@ -21,6 +23,7 @@ export function Avatar({
   className,
   placeholder,
   online,
+  onlineLabel = "Online",
 }: AvatarProps) {
   return (
     <span
@@ -52,7 +55,7 @@ export function Avatar({
           className="absolute right-0 bottom-0 block rounded-full bg-success ring-2 ring-surface"
           style={{ width: Math.max(8, size * 0.24), height: Math.max(8, size * 0.24) }}
         >
-          <span className="sr-only">Online</span>
+          <span className="sr-only">{onlineLabel}</span>
         </span>
       ) : null}
     </span>

@@ -46,7 +46,7 @@ export const profile = {
   },
   sharedArtists: { one: "You share {count} artist", other: "You share {count} artists" },
   into: "Into {genres}",
-  carousel: { previous: "Previous photo", next: "Next photo" },
+  carousel: { previous: "Previous photo", next: "Next photo", slide: "Photo {n} of {total}" },
   intro: {
     title: "Say hi to {name}",
     description: "Your intro arrives as a request. If they accept, your chat opens.",
@@ -133,6 +133,8 @@ export const profile = {
     label: "Trust and connections",
   },
   suggestion: {
+    title: "Roommate suggestion",
+    yourOffice: "Your housing office",
     everyoneYes: "Everyone said yes",
     bothYes: "You both said yes",
     chatOpen: "Your group chat is open.",

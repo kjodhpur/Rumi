@@ -374,6 +374,7 @@ export function ChatThread({
                   lastInitial={other?.lastInitial}
                   size={40}
                   online={other ? online.has(other.id) : false}
+                  onlineLabel={t("thread.activeNow")}
                 />
               )}
               <span className="min-w-0">
