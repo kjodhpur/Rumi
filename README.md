@@ -66,8 +66,10 @@ The school is configurable: allowed email domains and neighborhoods live in the 
   - Automatic scam/abuse flags and a moderation webhook.
   - Hide profile, verified-students-only, and an admin dashboard: report queue, suspend/restore, revoke verification, people search, activity log.
 - **Settings.** Profile and preferences, notifications, privacy, connected accounts, theme (synced to the account), JSON data export and account deletion.
-- **PWA.** Installable, launch splash, offline fallback page, cached build assets.
+- **Languages.** Every student screen, email, notification and error in English and Spanish, picked on the login page or in Settings (no URL changes). Staff screens stay English. Mandarin and Hindi are structure-ready but not offered until a professional translation exists. See [`docs/phase-8-multilingual.md`](docs/phase-8-multilingual.md).
+- **PWA.** Installable, launch splash, offline fallback page (in the student's language), cached build assets.
 - **Housing staff (`/staff`).** A separate workspace for a school's housing office. Free for students, always. See [Housing staff](#housing-staff).
+- **White-label.** "Rumi for <School>": a school's logo, name and a decorative accent on staff screens and its landing page `/s/<school>`, beside Rumi's wordmark (fonts and Ember never change; the student app keeps Rumi's look). See [`docs/phase-9-branding.md`](docs/phase-9-branding.md).
 
 Design: warm paper and near-black ink with one accent (Ember), Instrument Serif display type, Inter UI, layered shadows and a hand-tuned dark mode.
 
@@ -187,41 +189,64 @@ Scores are stored per direction in `match_scores`. Saving preferences or finishi
 ```bash
 npm run seed                          # 50 ASU students, two groups, sample chats
 npm run seed -- --demo you@asu.edu    # also gives your account intros and a chat
+npm run seed -- --demo-school         # Demo University: staff accounts, outcomes, check-ins
 SEED_PHOTOS=unsplash npm run seed     # try real portraits (falls back to monograms)
 ```
 
 - Seed accounts use the `seed.asu.edu` domain and are marked `is_seed`. Re-running replaces them.
+- `--demo-school` builds the fictional Demo University (`demo.rumimatch.app`): 200 students, 60
+  pairs, 15 groups, two pilot cohorts, three buildings, 8 weeks of check-ins with risk cases,
+  signed and unsigned agreements, an import with errors and one staff account per role. Every row
+  is marked demo, and the app labels it on every screen. The walkthrough is
+  [`docs/demo-script.md`](docs/demo-script.md).
 - The script refuses to seed anything except a local Supabase URL unless `SEED_ALLOW_REMOTE=true` is set. Use that for staging only, never production.
 - After seeding it recomputes everyone's matches.
 
 ## Testing
 
-**Unit tests** cover the matching engine (hard filters, weights, mutual scoring, reasons and edge cases), staff roles, consent visibility and data-retention rules against a fixed clock.
-
-**Database security tests** (`src/test/`) sign in as each staff role and as students against the local stack and check what Row Level Security lets each one read and write. They run with `npm test` and skip themselves when the local stack isn't running.
-
 ```bash
-npm test
-```
-
-**End-to-end tests** run against the local stack and the dev server, which Playwright starts if it isn't already running. They read sign-in codes from Mailpit and create, then delete, their own users through the service role. The suite covers:
-
-- Sign-up and sign-out, rejection of non-school emails, and a wrong code.
-- Full onboarding, including photo crop and autosave across a reload.
-- Ranked matches: profile overlay, save, Saved view and filters.
-- Intro → accept → realtime chat with typing indicator and read receipts, across two browsers.
-- Staff: a platform admin invites a housing admin, who accepts; the last-admin rule; turning access off; students switching housing sharing on and off.
-- Staff dashboard: term setup, overview, unmatched list, an auto-pair run approved and sent, both students saying yes, the new pair approved, and a StarRez CSV download.
-- Roommate agreement: draft, edit, accept, sign (with a wrong-name check), print and reopen, across two browsers; conversation starters fill the composer.
-- Staff specs also run axe and fail on any serious or critical WCAG 2.1 AA violation.
-
-Onboarding and matching also run at a 375px mobile viewport.
-
-```bash
-npm run db:start && npm run seed      # once
+npm run lint && npm run typecheck && npm test   # what CI's first job runs, plus a build
+npm run db:start && npm run seed && npm run seed -- --demo-school   # once, for the rest
 npx playwright install chromium       # once, or set PLAYWRIGHT_CHROMIUM_PATH
 npm run test:e2e
 ```
+
+**Unit tests** (Vitest) cover the matching engine (hard filters, weights, mutual scoring, reasons,
+edge cases), auto-pair, swaps, staff aggregations with small-count suppression, risk rules,
+retention, CSV import and export, agreements, the room hub, moderation, calendar, branding and
+the security pack, against a fixed clock where it matters.
+
+**Languages.** `src/lib/i18n/i18n.test.ts` is the missing-key check: every English string has
+Spanish (and no extras), placeholders match, Mandarin and Hindi hold nothing unreviewed.
+`errors-coverage.test.ts` fails if a server error a student can see has no Spanish translation.
+
+**Row Level Security** (`src/test/rls/`): one file per table in the data model (61). A global
+setup builds a throwaway school with students (an owner, a groupmate, a stranger), every staff
+role and a second school, signs each in for real, and checks who can read, update, delete and
+insert through the API; anything a file doesn't allow must be refused. The tests skip themselves
+when the local stack isn't running.
+
+**End-to-end tests** (Playwright) run against the local stack and read sign-in codes from Mailpit;
+they create, then delete, their own users. Every spec runs axe and fails on a serious or critical
+WCAG 2.1 AA violation, and every spec runs at 375px and 1440px (staff specs at 1024px too):
+
+- Sign-up and sign-out, non-school emails, wrong codes, mail-scanner-safe email links; Spanish
+  onboarding with Spanish validation and a Spanish code email.
+- Onboarding with photo crop and autosave; ranked matches, profile, save and filters.
+- Intro → accept → realtime chat with typing and read receipts.
+- Roommate agreement: draft, edit, accept, sign, PDF, reopen; conversation starters.
+- Staff invites and access; term setup, overview, auto-pair, approval and StarRez CSV export;
+  CSV import with errors and undo; the outcomes report; branding.
+- Check-in → risk → RA alert with consent and none without; consent revocation removing a student
+  from staff screens; notification preferences; calendar and Spotify connect (mocked); school
+  sign-on; demo labels.
+- A regression guard for Rumi's eight advantages: student-set weights, two-way scores, hard
+  dealbreakers, reasons and watch-outs, off-campus factors, intro-gated chat, group fit and
+  automatic scam flags.
+
+**CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests and a production build, then
+starts a local Supabase stack, runs the RLS tests, seeds it and runs the whole Playwright suite
+against the built app.
 
 ## Performance
 

@@ -55,9 +55,6 @@ export const publicEnv = {
     return process.env.NEXT_PUBLIC_SSO_ENABLED === "true";
   },
   /** Phase 8: language picker (English, Spanish). */
-  get i18nEnabled() {
-    return process.env.NEXT_PUBLIC_I18N_ENABLED !== "false";
-  },
 };
 
 export const serverEnv = {
