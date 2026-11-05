@@ -57,4 +57,24 @@ describe.skipIf(!client)("security-definer functions", () => {
       where n.nspname = 'public' and p.proname in ('purge_audit_log', 'school_students', 'staff_segment_base', 'refresh_segment_metrics', 'admit_school_for', 'mutual_people')`);
     expect(rows.filter((r) => r.ok).map((r) => r.name)).toEqual([]);
   });
+
+  // Postgres checks EXECUTE on every function a policy names, even when another branch of the
+  // expression already decided the row: one revoked function makes the whole read fail. (On
+  // 2026-11-05 anon reads of school_options failed this way after has_role was revoked.)
+  it("are executable by every role a policy that calls them applies to", async () => {
+    const { rows } = await client!.query<{ policy: string }>(`
+      with pol as (
+        select tablename, policyname,
+               unnest(case when roles = '{public}' then array['anon', 'authenticated'] else roles::text[] end) as role,
+               coalesce(qual, '') || ' ' || coalesce(with_check, '') as expr
+        from pg_policies where schemaname in ('public', 'storage')
+      )
+      select distinct pol.tablename || ': ' || pol.policyname || ' (' || pol.role || ' → ' || f.proname || ')' as policy
+      from pol, regexp_matches(pol.expr, '([a-z_][a-z0-9_]*)\\(', 'g') as m
+      join pg_proc f on f.proname = m[1]
+      join pg_namespace n on n.oid = f.pronamespace and n.nspname in ('public', 'auth', 'storage')
+      where pol.role in ('anon', 'authenticated')
+        and not has_function_privilege(pol.role, f.oid, 'EXECUTE')`);
+    expect(rows.map((r) => r.policy)).toEqual([]);
+  });
 });
