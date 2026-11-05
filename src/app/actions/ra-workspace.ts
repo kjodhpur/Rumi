@@ -42,6 +42,8 @@ export async function openCase(
     return fail("That alert isn't available.");
   const actorId = await assertRole(school, "raWorkspace");
   if (!actorId) return fail("RA workspace access is required.");
+  if (!(await rateLimit(`ra-write:${actorId}`, LIMITS.raWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   // The alert must be visible to this RA through the consent- and scope-aware list.
   const { data: list } = await createClient().rpc("ra_risk_list", { p_school: school });
   const alert = (list ?? []).find((r) => r.assignment_id === assignmentId);

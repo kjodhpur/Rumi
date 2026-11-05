@@ -173,6 +173,8 @@ export async function revokeInvite(inviteId: string): Promise<ActionResult> {
   if (!invite) return fail("That invite no longer exists.");
   const actorId = await assertRole(invite.school_id, "manageTeam");
   if (!actorId) return fail("Only housing admins can manage invites.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (invite.accepted_at) return fail("That invite was already accepted.");
   await createAdminClient()
     .from("staff_invites")
@@ -242,6 +244,8 @@ export async function acceptInvite(
 ): Promise<ActionResult<{ redirectTo: string }>> {
   const user = await getUser();
   if (!user) return fail("Sign in first.");
+  if (!(await rateLimit(`staff-invite:${user.id}`, LIMITS.staffInvitesPerDay)))
+    return fail("Too many changes. Try again in a bit.");
   const parsed = acceptInput.safeParse(raw);
   if (!parsed.success) return fail(firstError(parsed.error));
   const { token, firstName, lastName } = parsed.data;
@@ -364,6 +368,8 @@ export async function updateStaffMember(raw: z.input<typeof memberInput>): Promi
   if (!member) return fail("They're no longer on the team.");
   const actorId = await assertRole(member.school_id, "manageTeam");
   if (!actorId) return fail("Only housing admins can change roles.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (parsed.data.role === "ra" && parsed.data.buildings.length === 0)
     return fail("Pick at least one building for an RA.");
   if (
@@ -406,6 +412,8 @@ export async function setStaffDisabled(input: {
   if (!member) return fail("They're no longer on the team.");
   const actorId = await assertRole(member.school_id, "manageTeam");
   if (!actorId) return fail("Only housing admins can change access.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (
     input.disabled &&
     member.role === "housing_admin" &&
@@ -445,6 +453,8 @@ export async function updateRetention(raw: z.input<typeof retentionInput>): Prom
   const { schoolId: school, entity, days } = parsed.data;
   const actorId = await assertRole(school, "managePrivacy");
   if (!actorId) return fail("Only housing admins can change retention.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { min, max, label } = RETENTION_COPY[entity];
   if (days < min || days > max) return fail(`${label}: pick between ${min} and ${max} days.`);
   const { error } = await createAdminClient().from("retention_policies").upsert({

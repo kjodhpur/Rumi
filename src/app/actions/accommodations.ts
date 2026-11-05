@@ -109,6 +109,8 @@ export async function removeAccommodation(
     return fail("That accommodation isn't available.");
   const actorId = await canManageAccommodations(school);
   if (!actorId) return fail("Only housing admins and accommodation staff can do that.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { error } = await createAdminClient()
     .from("accommodation_constraints")
     .delete()

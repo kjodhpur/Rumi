@@ -35,6 +35,8 @@ export async function joinSwapPool(): Promise<ActionResult> {
 export async function leaveSwapPool(): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
+  if (!(await rateLimit(`swap:${user.id}`, LIMITS.swapActionsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { error } = await createClient().from("swap_pool").delete().eq("user_id", user.id);
   if (error) return fail("Couldn't leave the pool.");
   revalidatePath("/check-in");
@@ -191,6 +193,8 @@ export async function decideSwapProposal(raw: z.input<typeof decideInput>): Prom
   const { schoolId: school, proposalId, approve, notes } = parsed.data;
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can review swaps.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data, error } = await db
     .from("swap_proposals")
@@ -236,6 +240,8 @@ export async function completeSwap(school: string, proposalId: string): Promise<
     return fail("Check the proposal.");
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can complete swaps.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data, error } = await db
     .from("swap_proposals")

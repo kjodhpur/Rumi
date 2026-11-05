@@ -225,6 +225,8 @@ export async function acceptSection(input: {
 }): Promise<ActionResult> {
   const userId = await memberOf(input.groupId);
   if (!userId) return fail("You're not in this group.");
+  if (!(await rateLimit(`agreement:${userId}`, LIMITS.agreementEditsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (!/^[a-z_]{2,32}$/.test(input.key)) return fail("Unknown section.");
   const live = await liveAgreement(input.groupId);
   if ("error" in live) return fail(live.error!);
@@ -264,6 +266,8 @@ export async function signAgreement(
   const typedName = cleanName(parsed.data.typedName);
   const userId = await memberOf(groupId);
   if (!userId) return fail("You're not in this group.");
+  if (!(await rateLimit(`agreement:${userId}`, LIMITS.agreementEditsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const live = await liveAgreement(groupId);
   if ("error" in live) return fail(live.error!);
   const db = createAdminClient();
@@ -318,6 +322,8 @@ export async function signAgreement(
 export async function reopenAgreement(groupId: string): Promise<ActionResult> {
   const userId = await memberOf(groupId);
   if (!userId) return fail("You're not in this group.");
+  if (!(await rateLimit(`agreement:${userId}`, LIMITS.agreementEditsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const live = await liveAgreement(groupId);
   if ("error" in live) return fail(live.error!);
   if (live.agreement.status !== "signed") return fail("Only a signed agreement can be reopened.");
@@ -344,6 +350,8 @@ export async function acceptAllSections(
 ): Promise<ActionResult<{ accepted: number }>> {
   const userId = await memberOf(groupId);
   if (!userId) return fail("You're not in this group.");
+  if (!(await rateLimit(`agreement:${userId}`, LIMITS.agreementEditsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const live = await liveAgreement(groupId);
   if ("error" in live) return fail(live.error!);
   if (live.agreement.status === "signed") return fail("This agreement is already signed.");
@@ -432,6 +440,8 @@ export async function deleteAgreementComment(
 ): Promise<ActionResult> {
   const userId = await memberOf(groupId);
   if (!userId || !uuid.safeParse(commentId).success) return fail("That comment isn't available.");
+  if (!(await rateLimit(`agreement-comment:${userId}`, LIMITS.agreementCommentsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { error } = await createClient()
     .from("agreement_comments")
     .delete()

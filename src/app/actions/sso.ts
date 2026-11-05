@@ -60,6 +60,8 @@ export async function saveSsoProvider(raw: z.input<typeof providerInput>): Promi
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the details.");
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
+  if (!(await rateLimit(`staff-write:${user.id}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data: admin } = await db
     .from("admins")

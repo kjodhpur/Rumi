@@ -65,6 +65,8 @@ export async function saveTerm(raw: z.input<typeof termInput>): Promise<ActionRe
   const t = parsed.data;
   const actorId = await assertRole(t.schoolId, "configureTerm");
   if (!actorId) return fail("Only housing admins can set up terms.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const deadlines = {
     roommateRequest: t.roommateRequest,
@@ -117,6 +119,8 @@ export async function setPairingStatus(
   const { schoolId: school, groupIds, status } = parsed.data;
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can review pairings.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data: groups } = await db
     .from("groups")
@@ -163,6 +167,8 @@ export async function savePairingNote(raw: z.input<typeof noteInput>): Promise<A
   const { schoolId: school, groupId, notes } = parsed.data;
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can add notes.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data: group } = await db
     .from("groups")
@@ -576,6 +582,8 @@ export async function decideProposals(
   const { schoolId: school, proposalIds, decision } = parsed.data;
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can review proposals.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { data, error } = await createAdminClient()
     .from("auto_pair_proposals")
     .update({ status: decision, decided_by: actorId, decided_at: new Date().toISOString() })
@@ -603,6 +611,8 @@ export async function sendApprovedProposals(input: {
   const school = input.schoolId;
   const actorId = await assertRole(school, "managePairings");
   if (!actorId) return fail("Only housing staff can send suggestions.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data: approved } = await db
     .from("auto_pair_proposals")
@@ -710,6 +720,8 @@ export async function saveExportMapping(raw: z.input<typeof mappingInput>): Prom
   const { schoolId: school, columns } = parsed.data;
   const actorId = await assertRole(school, "export");
   if (!actorId) return fail("Only housing admins can change the export.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const mapping = parseMapping(columns);
   const { error } = await createAdminClient()
     .from("integration_mappings")

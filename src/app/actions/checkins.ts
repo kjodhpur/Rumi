@@ -90,16 +90,14 @@ export async function reportMoveIn(raw: z.input<typeof moveInInput>): Promise<Ac
     until: term?.ends_on ?? null,
   });
   if (dates.length) {
-    const { error: checkinError } = await db
-      .from("checkins")
-      .insert(
-        dates.map((due) => ({
-          assignment_id: assignment.id,
-          user_id: who.id,
-          term_id: term?.id ?? null,
-          due_on: due,
-        })),
-      );
+    const { error: checkinError } = await db.from("checkins").insert(
+      dates.map((due) => ({
+        assignment_id: assignment.id,
+        user_id: who.id,
+        term_id: term?.id ?? null,
+        due_on: due,
+      })),
+    );
     if (checkinError) return fail("Couldn't schedule the check-ins.");
   }
   revalidatePath("/check-in");
@@ -167,15 +165,13 @@ export async function submitCheckin(
     .maybeSingle();
   const saved = open
     ? await db.from("checkins").update(row).eq("id", open.id)
-    : await db
-        .from("checkins")
-        .insert({
-          assignment_id: assignment.id,
-          user_id: who.id,
-          term_id: assignment.term_id,
-          due_on: today(),
-          ...row,
-        });
+    : await db.from("checkins").insert({
+        assignment_id: assignment.id,
+        user_id: who.id,
+        term_id: assignment.term_id,
+        due_on: today(),
+        ...row,
+      });
   if (saved.error) return fail("Couldn't save the check-in.");
 
   // Risk: this student's history, their roommates' latest scores, and known watch-outs.
@@ -238,14 +234,12 @@ export async function submitCheckin(
     roommateScores,
     watchouts,
   });
-  await db
-    .from("risk_events")
-    .insert({
-      user_id: who.id,
-      assignment_id: assignment.id,
-      level: assessment.level,
-      reasons: assessment.reasons,
-    });
+  await db.from("risk_events").insert({
+    user_id: who.id,
+    assignment_id: assignment.id,
+    level: assessment.level,
+    reasons: assessment.reasons,
+  });
 
   // RA alert: only with consent + "share with my RA" on a medium/high read, or "ask my RA".
   const { data: consented } = await db.rpc("has_consent", { p_uid: who.id, p_kind: "checkins" });
@@ -316,14 +310,12 @@ export async function submitCheckin(
         href: "/admin",
       })),
     );
-    await db
-      .from("moderation_log")
-      .insert({
-        actor_id: null,
-        target_id: who.id,
-        action: crisis ? "checkin_crisis_flag" : "checkin_threat_flag",
-        meta: { assignment_id: assignment.id },
-      });
+    await db.from("moderation_log").insert({
+      actor_id: null,
+      target_id: who.id,
+      action: crisis ? "checkin_crisis_flag" : "checkin_threat_flag",
+      meta: { assignment_id: assignment.id },
+    });
   }
 
   revalidatePath("/check-in");
@@ -418,6 +410,8 @@ export async function requestRoomChange(raw: z.input<typeof changeInput>): Promi
 export async function withdrawRoomChange(): Promise<ActionResult> {
   const who = await student();
   if (!who) return fail("Sign in as a student to do that.");
+  if (!(await rateLimit(`room-change:${who.id}`, LIMITS.swapActionsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   await db.from("swap_pool").delete().eq("user_id", who.id);
   const { error } = await db

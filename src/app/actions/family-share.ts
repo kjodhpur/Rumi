@@ -97,6 +97,8 @@ export async function revokeFamilyShare(shareId: string): Promise<ActionResult> 
   if (!z.string().uuid().safeParse(shareId).success) return fail("That link isn't available.");
   const user = await getUser();
   if (!user) return fail("Please sign in.");
+  if (!(await rateLimit(`family-link:${user.id}`, LIMITS.familyLinksPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const { error } = await createClient()
     .from("family_shares")
     .update({ revoked_at: new Date().toISOString() })

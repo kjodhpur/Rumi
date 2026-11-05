@@ -110,6 +110,8 @@ export async function saveProfileMedia(raw: z.input<typeof saveInput>): Promise<
 export async function deleteProfileMedia(): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in.");
+  if (!(await rateLimit(`media:${user.id}`, LIMITS.mediaUploadsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   const supabase = createClient();
   const { data: existing } = await supabase
     .from("profile_media")

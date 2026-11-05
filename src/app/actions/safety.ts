@@ -78,6 +78,8 @@ export async function saveEscalationRoute(
 
   const actorId = await assertRole(parsed.data.schoolId, "configureEscalation");
   if (!actorId) return fail("Housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
 
   const db = createAdminClient();
   const payload = {
@@ -126,6 +128,8 @@ export async function toggleEscalationRoute(input: {
   if (!uuidSchema.safeParse(input.routeId).success) return fail("Invalid route ID.");
   const actorId = await assertRole(input.schoolId, "configureEscalation");
   if (!actorId) return fail("Housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
 
   const { error } = await createAdminClient()
     .from("escalation_routes")
@@ -156,6 +160,8 @@ export async function deleteEscalationRoute(input: {
   if (!uuidSchema.safeParse(input.routeId).success) return fail("Invalid route ID.");
   const actorId = await assertRole(input.schoolId, "configureEscalation");
   if (!actorId) return fail("Housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
 
   const { error } = await createAdminClient()
     .from("escalation_routes")
@@ -238,6 +244,8 @@ export async function warnSchoolStudent(input: {
   if (!uuidSchema.safeParse(input.userId).success) return fail("Invalid user ID.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (!(await schoolStudent(input.schoolId, input.userId)))
     return fail("That student isn't at your school.");
   if (input.reportId && !(await schoolReport(input.schoolId, input.reportId)))
@@ -286,6 +294,8 @@ export async function suspendSchoolStudent(input: {
   if (!uuidSchema.safeParse(input.userId).success) return fail("Invalid user ID.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (actorId === input.userId) return fail("You cannot suspend yourself.");
   if (!(await schoolStudent(input.schoolId, input.userId)))
     return fail("You can only suspend students at your school.");
@@ -348,6 +358,8 @@ export async function restoreSchoolStudent(input: {
   if (!uuidSchema.safeParse(input.userId).success) return fail("Invalid user ID.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (!(await schoolStudent(input.schoolId, input.userId)))
     return fail("You can only restore students at your school.");
 
@@ -396,6 +408,8 @@ export async function escalateReport(input: {
   if (!categorySchema.safeParse(input.category).success) return fail("Pick a category.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (!(await schoolReport(input.schoolId, input.reportId)))
     return fail("That report isn't in your school's queue.");
 
@@ -657,6 +671,8 @@ export async function reviewProfileMedia(input: {
     return fail("Check the clip.");
   const actorId = await assertRole(input.schoolId, "moderate");
   if (!actorId) return fail("Moderators or housing admins only.");
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (!(await schoolStudent(input.schoolId, input.userId)))
     return fail("That student isn't at your school.");
   const admin = createAdminClient();

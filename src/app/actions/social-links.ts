@@ -42,19 +42,17 @@ export async function saveSocialLink(
     return fail("Too many changes. Try again in a bit.");
 
   const verificationCode = generateVerificationCode();
-  const { error } = await createClient()
-    .from("social_links")
-    .upsert(
-      {
-        user_id: user.id,
-        platform,
-        handle,
-        verification_code: verificationCode,
-        verified_at: null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,platform" },
-    );
+  const { error } = await createClient().from("social_links").upsert(
+    {
+      user_id: user.id,
+      platform,
+      handle,
+      verification_code: verificationCode,
+      verified_at: null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,platform" },
+  );
   if (error) return fail("Couldn't save that handle.");
   revalidatePath("/settings/accounts");
   return ok({ verificationCode });
@@ -80,6 +78,8 @@ export async function verifySocialLink(platform: string): Promise<ActionResult> 
 export async function removeSocialLink(platform: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
+  if (!(await rateLimit(`social-link:${user.id}`, LIMITS.socialLinkChangesPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (!isSocialPlatform(platform)) return fail("Pick Instagram or LinkedIn.");
   const { error } = await createClient()
     .from("social_links")
@@ -180,6 +180,8 @@ export async function respondPeerConnection(
 export async function removePeerConnection(connectionId: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
+  if (!(await rateLimit(`connection:${user.id}`, LIMITS.connectionRequestsPerDay)))
+    return fail("Too many changes. Try again in a bit.");
   if (!uuid.safeParse(connectionId).success) return fail("That connection isn't available.");
   const { error } = await createClient()
     .from("connections")

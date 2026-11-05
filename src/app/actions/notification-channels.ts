@@ -100,19 +100,17 @@ export async function startPhoneVerification(
 
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   const db = createAdminClient();
-  const { error } = await db
-    .from("phone_verifications")
-    .upsert(
-      {
-        user_id: user.id,
-        phone_enc: encrypt(e164),
-        code_hash: codeHash(user.id, code),
-        attempts: 0,
-        expires_at: new Date(Date.now() + CODE_TTL_MS).toISOString(),
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id" },
-    );
+  const { error } = await db.from("phone_verifications").upsert(
+    {
+      user_id: user.id,
+      phone_enc: encrypt(e164),
+      code_hash: codeHash(user.id, code),
+      attempts: 0,
+      expires_at: new Date(Date.now() + CODE_TTL_MS).toISOString(),
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
   if (error) return fail("Couldn't send a code. Try again.");
   const sent = await sendSms({
     userId: user.id,
@@ -131,6 +129,8 @@ export async function startPhoneVerification(
 export async function confirmPhoneVerification(code: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
+  if (!(await rateLimit(`phone-verify:${user.id}`, LIMITS.phoneVerificationsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (typeof code !== "string" || !/^\d{6}$/.test(code.trim()))
     return fail("Enter the six-digit code.");
   const db = createAdminClient();
@@ -223,19 +223,17 @@ export async function savePushSubscription(raw: z.input<typeof pushInput>): Prom
     return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   // A browser has one endpoint; whoever is signed in on it now owns it.
-  const { error } = await db
-    .from("push_subscriptions")
-    .upsert(
-      {
-        user_id: user.id,
-        endpoint: parsed.data.endpoint,
-        p256dh: parsed.data.keys.p256dh,
-        auth: parsed.data.keys.auth,
-        user_agent: parsed.data.userAgent ?? null,
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: "endpoint" },
-    );
+  const { error } = await db.from("push_subscriptions").upsert(
+    {
+      user_id: user.id,
+      endpoint: parsed.data.endpoint,
+      p256dh: parsed.data.keys.p256dh,
+      auth: parsed.data.keys.auth,
+      user_agent: parsed.data.userAgent ?? null,
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "endpoint" },
+  );
   if (error) return fail("Couldn't turn on push. Try again.");
   const kinds: NotificationKind[] = parsed.data.kinds ?? ["messages", "deadlines"];
   const matrix = await loadMatrix(user.id);
@@ -261,6 +259,8 @@ export async function savePushSubscription(raw: z.input<typeof pushInput>): Prom
 export async function removePushSubscription(endpoint: string): Promise<ActionResult> {
   const user = await getUser();
   if (!user) return fail("Please sign in again.");
+  if (!(await rateLimit(`push:${user.id}`, LIMITS.pushSubscriptionsPerHour)))
+    return fail("Too many changes. Try again in a bit.");
   if (typeof endpoint !== "string" || endpoint.length > 1000)
     return fail("Couldn't turn off push.");
   const supabase = createClient();
