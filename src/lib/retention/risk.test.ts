@@ -40,6 +40,13 @@ describe("crisisSignal", () => {
     expect(crisisSignal("I want to die")).toBe(true);
     expect(crisisSignal("The noise is killing me")).toBe(false);
   });
+
+  it("matches the same in Spanish", () => {
+    expect(crisisSignal("A veces pienso en quitarme la vida")).toBe(true);
+    expect(crisisSignal("Me quiero morir")).toBe(true);
+    expect(crisisSignal("Pensamientos de autolesión")).toBe(true);
+    expect(crisisSignal("El ruido me está matando")).toBe(false);
+  });
 });
 
 describe("threatSignal", () => {
@@ -48,5 +55,9 @@ describe("threatSignal", () => {
     expect(threatSignal("He said he'd bring a knife if I complained again")).toBe(true);
     expect(threatSignal("I'm not safe in my room anymore")).toBe(true);
     expect(threatSignal("They keep leaving dishes and it's annoying")).toBe(false);
+    expect(threatSignal("Dijo que va a traer un cuchillo")).toBe(true);
+    expect(threatSignal("No estoy segura en mi cuarto")).toBe(true);
+    expect(threatSignal("Me pegó anoche")).toBe(true);
+    expect(threatSignal("Deja los platos sucios y me molesta")).toBe(false);
   });
 });

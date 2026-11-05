@@ -26,3 +26,28 @@ describe("guided self-mediation", () => {
     }
   });
 });
+
+describe("in Spanish", () => {
+  it("writes the tips in the reader's language and still quotes the room's own words", async () => {
+    const { createTranslator } = await import("@/lib/i18n/core");
+    const { messagesFor } = await import("@/lib/i18n/messages");
+    const { en } = await import("@/lib/i18n/messages/en");
+    const t = createTranslator("es", messagesFor("es"), en, "retention");
+    const [tip] = getGuidedMediationTips(["noise"], { noise: "Música baja después de las 11." }, t);
+    expect(tip?.title).toBe("Ruido");
+    expect(tip?.agreementText).toBe("Música baja después de las 11.");
+    expect(tip?.suggestedMessage).toMatch(/^Oye/);
+  });
+
+  it("reads stored risk reasons and default room-change reasons in Spanish", async () => {
+    const { createTranslator } = await import("@/lib/i18n/core");
+    const { messagesFor } = await import("@/lib/i18n/messages");
+    const { en } = await import("@/lib/i18n/messages/en");
+    const { riskReason, reasonLabel } = await import("@/lib/i18n/checkins");
+    const t = createTranslator("es", messagesFor("es"), en, "checkins");
+    expect(riskReason("A check-in was missed.", t)).toBe("Faltó un check-in.");
+    expect(riskReason("Something new", t)).toBe("Something new");
+    expect(reasonLabel("noise", "Noise", t)).toBe("Ruido");
+    expect(reasonLabel("noise", "Loud parties", t)).toBe("Loud parties");
+  });
+});

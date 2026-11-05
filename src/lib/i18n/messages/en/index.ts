@@ -24,6 +24,8 @@ import { groups } from "./groups";
 import { agreement } from "./agreement";
 import { room } from "./room";
 import { roomCalendar } from "./roomCalendar";
+import { checkins } from "./checkins";
+import { retention } from "./retention";
 
 /** English: the source of truth. Every other complete locale must match these keys. */
 export const en = {
@@ -53,6 +55,8 @@ export const en = {
   agreement,
   room,
   roomCalendar,
+  checkins,
+  retention,
 };
 
 export type Messages = typeof en;

@@ -25,6 +25,8 @@ import { groups } from "./groups";
 import { agreement } from "./agreement";
 import { room } from "./room";
 import { roomCalendar } from "./roomCalendar";
+import { checkins } from "./checkins";
+import { retention } from "./retention";
 
 /** Spanish: complete for student flows. The type makes a missing key a compile error. */
 export const es: Messages = {
@@ -54,4 +56,6 @@ export const es: Messages = {
   agreement,
   room,
   roomCalendar,
+  checkins,
+  retention,
 };
