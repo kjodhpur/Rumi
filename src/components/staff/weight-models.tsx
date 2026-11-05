@@ -98,7 +98,12 @@ export function WeightModels({
                 (in-sample)
               </span>
             </div>
-            <div className="overflow-x-auto">
+            <div
+              role="region"
+              tabIndex={0}
+              aria-label="Factor estimates"
+              className="overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
               <table className="w-full min-w-[560px] text-left text-body-sm">
                 <caption className="sr-only">Factor estimates</caption>
                 <thead className="text-caption text-ink-3">

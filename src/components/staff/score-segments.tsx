@@ -20,15 +20,24 @@ export function ScoreSegments({ segments }: { segments: Overview["segments"] }) 
   };
 
   return (
-    <section aria-labelledby="segments-title" className="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+    <section
+      aria-labelledby="segments-title"
+      className="rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line"
+    >
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="segments-title" className="text-body font-semibold text-ink">
             Best-match scores by segment
           </h2>
-          <p className="mt-0.5 text-caption text-ink-3">Any group smaller than 5 students shows as &ldquo;&lt;5&rdquo;.</p>
+          <p className="mt-0.5 text-caption text-ink-3">
+            Any group smaller than 5 students shows as &ldquo;&lt;5&rdquo;.
+          </p>
         </div>
-        <div role="group" aria-label="Segment by" className="flex rounded-md bg-surface-sunken p-0.5">
+        <div
+          role="group"
+          aria-label="Segment by"
+          className="flex rounded-md bg-surface-sunken p-0.5"
+        >
           {DIMENSIONS.map((d) => (
             <button
               key={d.value}
@@ -37,7 +46,9 @@ export function ScoreSegments({ segments }: { segments: Overview["segments"] }) 
               onClick={() => setDimension(d.value)}
               className={cn(
                 "h-7 rounded-sm px-2.5 text-caption font-medium outline-none focus-visible:ring-2 focus-visible:ring-focus",
-                dimension === d.value ? "bg-surface text-ink shadow-xs" : "text-ink-3 hover:text-ink",
+                dimension === d.value
+                  ? "bg-surface text-ink shadow-xs"
+                  : "text-ink-3 hover:text-ink",
               )}
             >
               {d.label}
@@ -48,7 +59,12 @@ export function ScoreSegments({ segments }: { segments: Overview["segments"] }) 
       {rows.length === 0 ? (
         <p className="mt-4 text-body-sm text-ink-3">No finished profiles yet.</p>
       ) : (
-        <div className="-mx-5 mt-4 overflow-x-auto px-5">
+        <div
+          role="region"
+          tabIndex={0}
+          aria-label="Score distribution by segment"
+          className="-mx-5 mt-4 overflow-x-auto px-5 outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
           <table className="w-full min-w-[560px] text-left text-body-sm">
             <thead className="text-caption text-ink-3">
               <tr className="border-b border-line">
@@ -76,7 +92,9 @@ export function ScoreSegments({ segments }: { segments: Overview["segments"] }) 
                       {count(row.cells[bin])}
                     </td>
                   ))}
-                  <td className="py-2 pl-3 text-right font-medium text-ink tabular-nums">{count(row.total)}</td>
+                  <td className="py-2 pl-3 text-right font-medium text-ink tabular-nums">
+                    {count(row.total)}
+                  </td>
                 </tr>
               ))}
             </tbody>

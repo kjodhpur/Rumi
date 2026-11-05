@@ -356,8 +356,10 @@ function TabBar({ user }: { user: ShellUser }) {
   const youActive = pathname.startsWith("/settings") || pathname === `/profile/${user.id}`;
   const t = useT("shell");
 
-  // Full-screen detail views (an open chat) hide the tab bar for more room.
+  // Full-screen detail views hide the tab bar for more room: an open chat, and someone else's
+  // profile, whose intro/accept bar sits where the tab bar would.
   if (/^\/messages\/.+/.test(pathname)) return null;
+  if (/^\/profile\/.+/.test(pathname) && !youActive) return null;
 
   return (
     <nav

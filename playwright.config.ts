@@ -29,10 +29,15 @@ export default defineConfig({
       name: "desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
+    // Master prompt §5: every flow at 375px and 1440px, staff screens at 1024px too.
     {
       name: "mobile",
       use: { ...devices["Pixel 7"], viewport: { width: 375, height: 812 } },
-      testMatch: /(onboarding|matching)\.spec\.ts/,
+    },
+    {
+      name: "tablet",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1024, height: 768 } },
+      testMatch: /(staff|staff-dashboard|branding|import-outcomes|consent|checkins)\.spec\.ts/,
     },
   ],
   webServer: process.env.PLAYWRIGHT_BASE_URL

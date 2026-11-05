@@ -73,7 +73,10 @@ test("a housing admin sets the school's name, logo and accent; Ember and the wor
   // Staff chrome: Rumi's wordmark plus "Rumi for <name>".
   await page.goto("/staff");
   await ready(page);
-  await expect(page.getByText("Rumi for Sun Devils").first()).toBeVisible();
+  // The sidebar copy is hidden on phones; whichever header is showing carries it.
+  await expect(
+    page.getByText("Rumi for Sun Devils").filter({ visible: true }).first(),
+  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Rumi staff — overview" }).first()).toBeVisible();
 
   // The school landing page carries the logo and name; Rumi's own colors, Ember included, stay.

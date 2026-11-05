@@ -57,8 +57,11 @@ test("intro → accept → realtime chat with typing and read receipts", async (
     .pressSequentially("Yes! Saturday works", { delay: 40 });
   await expect(a.getByText(/^typing/)).toBeVisible();
 
-  // Messages arrive in real time; reading them sends a receipt back.
-  await b.keyboard.press("Enter");
+  // Messages arrive in real time; reading them sends a receipt back. Enter sends on a keyboard;
+  // on a phone Enter makes a new line, so the send button does it.
+  if (test.info().project.name === "mobile")
+    await b.getByRole("button", { name: "Send message" }).click();
+  else await b.keyboard.press("Enter");
   await expect(a.getByText("Yes! Saturday works")).toBeVisible();
   await expect(b.getByText("Seen", { exact: true })).toBeVisible({ timeout: 20_000 });
 

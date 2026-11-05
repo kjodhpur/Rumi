@@ -41,7 +41,9 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
   const [rows, setRows] = React.useState(() => toRows(preview.columns));
   const [saving, setSaving] = React.useState(false);
   const saved = JSON.stringify(preview.columns);
-  const current = rows.filter((r) => r.included).map((r) => ({ field: r.field, header: r.header.trim() || EXPORT_FIELDS[r.field] }));
+  const current = rows
+    .filter((r) => r.included)
+    .map((r) => ({ field: r.field, header: r.header.trim() || EXPORT_FIELDS[r.field] }));
   const dirty = JSON.stringify(current) !== saved;
 
   function update(index: number, patch: Partial<Row>) {
@@ -75,7 +77,10 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
         description="Approved pairings as a roommate-group CSV for your StarRez import. Every export is recorded in the audit log."
         className="pb-0 lg:pb-0"
         actions={
-          <Button asChild={!dirty && preview.rows.length > 0} disabled={dirty || preview.rows.length === 0}>
+          <Button
+            asChild={!dirty && preview.rows.length > 0}
+            disabled={dirty || preview.rows.length === 0}
+          >
             {!dirty && preview.rows.length > 0 ? (
               <a href="/api/staff/starrez" download>
                 <Download aria-hidden /> Download CSV
@@ -88,22 +93,35 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
           </Button>
         }
       />
-      {dirty ? <p className="-mt-3 text-caption text-ink-3">Save your column changes to download.</p> : null}
+      {dirty ? (
+        <p className="-mt-3 text-caption text-ink-3">Save your column changes to download.</p>
+      ) : null}
 
       {preview.missingStudentIds > 0 || preview.skipped.length > 0 ? (
-        <div role="note" className="flex gap-3 rounded-lg bg-surface p-4 text-body-sm text-ink-2 ring-1 ring-line">
+        <div
+          role="note"
+          className="flex gap-3 rounded-lg bg-surface p-4 text-body-sm text-ink-2 ring-1 ring-line"
+        >
           <Info className="mt-0.5 size-4 shrink-0 text-ink-3" strokeWidth={2} aria-hidden />
           <ul className="flex flex-col gap-1">
             {preview.missingStudentIds > 0 ? (
               <li>
-                {preview.missingStudentIds} {preview.missingStudentIds === 1 ? "student hasn't" : "students haven't"} added a student ID. Their rows use email
-                only.
+                {preview.missingStudentIds}{" "}
+                {preview.missingStudentIds === 1 ? "student hasn't" : "students haven't"} added a
+                student ID. Their rows use email only.
               </li>
             ) : null}
             {preview.skipped.length > 0 ? (
               <li>
-                {preview.skipped.length} approved {preview.skipped.length === 1 ? "group is" : "groups are"} left out:{" "}
-                {preview.skipped.map((s) => `${s.name} (${s.reason === "not_shared" ? "not every member shared" : "members changed since approval"})`).join(", ")}.
+                {preview.skipped.length} approved{" "}
+                {preview.skipped.length === 1 ? "group is" : "groups are"} left out:{" "}
+                {preview.skipped
+                  .map(
+                    (s) =>
+                      `${s.name} (${s.reason === "not_shared" ? "not every member shared" : "members changed since approval"})`,
+                  )
+                  .join(", ")}
+                .
               </li>
             ) : null}
           </ul>
@@ -116,17 +134,31 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
             <h2 id="columns-title" className="text-title font-semibold text-ink">
               Columns
             </h2>
-            <p className="mt-0.5 text-body-sm text-ink-2">Match the headers your StarRez import expects. Confirm the field names with your StarRez administrator.</p>
+            <p className="mt-0.5 text-body-sm text-ink-2">
+              Match the headers your StarRez import expects. Confirm the field names with your
+              StarRez administrator.
+            </p>
           </div>
-          <Button variant="secondary" disabled={!dirty || current.length === 0} loading={saving} onClick={() => void save()}>
+          <Button
+            variant="secondary"
+            disabled={!dirty || current.length === 0}
+            loading={saving}
+            onClick={() => void save()}
+          >
             Save columns
           </Button>
         </div>
         <ul className="divide-y divide-line overflow-hidden rounded-xl bg-surface shadow-xs ring-1 ring-line">
           {rows.map((row, i) => (
-            <li key={row.field} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap sm:px-5">
+            <li
+              key={row.field}
+              className="flex flex-wrap items-center gap-3 px-4 py-3 sm:flex-nowrap sm:px-5"
+            >
               <label className="flex min-w-0 flex-1 items-center gap-3 text-body-sm text-ink">
-                <Checkbox checked={row.included} onCheckedChange={(v) => update(i, { included: v === true })} />
+                <Checkbox
+                  checked={row.included}
+                  onCheckedChange={(v) => update(i, { included: v === true })}
+                />
                 <span className="truncate">{EXPORT_FIELDS[row.field]}</span>
               </label>
               <Input
@@ -138,10 +170,22 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
                 className="w-full sm:w-56"
               />
               <span className="flex gap-1">
-                <Button variant="ghost" size="icon-sm" aria-label={`Move ${EXPORT_FIELDS[row.field]} up`} disabled={i === 0} onClick={() => move(i, -1)}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Move ${EXPORT_FIELDS[row.field]} up`}
+                  disabled={i === 0}
+                  onClick={() => move(i, -1)}
+                >
                   <ArrowUp aria-hidden />
                 </Button>
-                <Button variant="ghost" size="icon-sm" aria-label={`Move ${EXPORT_FIELDS[row.field]} down`} disabled={i === rows.length - 1} onClick={() => move(i, 1)}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Move ${EXPORT_FIELDS[row.field]} down`}
+                  disabled={i === rows.length - 1}
+                  onClick={() => move(i, 1)}
+                >
                   <ArrowDown aria-hidden />
                 </Button>
               </span>
@@ -154,7 +198,8 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
         <h2 id="preview-title" className="text-title font-semibold text-ink">
           Preview{" "}
           <span className="text-body-sm font-normal text-ink-3">
-            {preview.groups} {preview.groups === 1 ? "group" : "groups"} · {preview.rows.length} {preview.rows.length === 1 ? "student" : "students"}
+            {preview.groups} {preview.groups === 1 ? "group" : "groups"} · {preview.rows.length}{" "}
+            {preview.rows.length === 1 ? "student" : "students"}
           </span>
         </h2>
         {preview.rows.length === 0 ? (
@@ -164,7 +209,12 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
             description="Approve pairings on the Pairings page. Groups appear here once every member has chosen to share."
           />
         ) : (
-          <div className="overflow-x-auto rounded-xl bg-surface shadow-xs ring-1 ring-line">
+          <div
+            role="region"
+            tabIndex={0}
+            aria-label="Export preview"
+            className="overflow-x-auto rounded-xl bg-surface shadow-xs ring-1 ring-line outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
             <table className="w-full min-w-[640px] text-left text-body-sm">
               <caption className="sr-only">First rows of the export with the saved columns</caption>
               <thead className="border-b border-line bg-surface-sunken/60 text-caption text-ink-3">
@@ -180,7 +230,10 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
                 {preview.rows.slice(0, 20).map((r, i) => (
                   <tr key={`${r.groupId}-${i}`}>
                     {previewColumns.map((c) => (
-                      <td key={c.field} className="px-4 py-2.5 whitespace-nowrap text-ink-2 tabular-nums">
+                      <td
+                        key={c.field}
+                        className="px-4 py-2.5 whitespace-nowrap text-ink-2 tabular-nums"
+                      >
                         {r[c.field] || <span className="text-ink-3">—</span>}
                       </td>
                     ))}
@@ -189,7 +242,9 @@ export function StarRezExport({ schoolId, preview }: { schoolId: string; preview
               </tbody>
             </table>
             {preview.rows.length > 20 ? (
-              <p className="border-t border-line px-4 py-2.5 text-caption text-ink-3">And {preview.rows.length - 20} more rows in the download.</p>
+              <p className="border-t border-line px-4 py-2.5 text-caption text-ink-3">
+                And {preview.rows.length - 20} more rows in the download.
+              </p>
             ) : null}
           </div>
         )}

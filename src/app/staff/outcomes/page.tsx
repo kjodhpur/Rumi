@@ -133,7 +133,12 @@ export default async function OutcomesPage() {
         />
       ) : (
         <>
-          <section className="overflow-x-auto rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line">
+          <section
+            // Scrolls sideways on phones: focusable so keyboard users can scroll it too.
+            tabIndex={0}
+            aria-label="Cohort comparison"
+            className="overflow-x-auto rounded-xl bg-surface p-5 shadow-xs ring-1 ring-line outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
             <table className="w-full min-w-[640px] text-body-sm">
               <caption className="pb-4 text-left text-caption text-ink-3">
                 Rumi:{" "}

@@ -355,6 +355,12 @@ export function OnboardingWizard({ data }: { data: OnboardingData }) {
             </motion.div>
           </AnimatePresence>
 
+          {/* Phones: the step buttons live in the bottom bar, so signing out sits under the step. */}
+          <form action={signOut} className="mt-10 lg:hidden">
+            <Button type="submit" variant="ghost" size="sm" className="-ml-3 text-ink-3">
+              <LogOut /> {t("signOut")}
+            </Button>
+          </form>
           <div className="mt-10 hidden items-center justify-between lg:flex">
             <form action={signOut}>
               <Button type="submit" variant="ghost" size="sm" className="text-ink-3">
