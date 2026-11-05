@@ -55,7 +55,7 @@ export function ConsistencyPrompt({
             <div className="min-w-0 flex-1">
               <p className="text-body-sm font-medium text-ink">{flag.title}</p>
               <p className="mt-0.5 text-body-sm text-ink-2">{flag.message}</p>
-              <p className="mt-1.5 text-caption text-ink-3">{t("onlyYou")}</p>
+              <p className="mt-1.5 text-caption text-ink-2">{t("onlyYou")}</p>
             </div>
             <button
               type="button"

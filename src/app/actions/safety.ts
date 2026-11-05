@@ -721,7 +721,7 @@ export async function setAiScreening(schoolId: string, enabled: boolean): Promis
     return fail("Couldn't save.");
   const actorId = await assertRole(schoolId, "configureSchool");
   if (!actorId) return fail("Only housing admins can change message screening.");
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return fail("Too many changes. Try again in a bit.");
   const { error } = await createAdminClient()
     .from("schools")

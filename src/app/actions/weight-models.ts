@@ -18,7 +18,7 @@ const modelId = z.string().uuid();
 async function housingAdmin(school: string) {
   const actorId = await assertRole(school, "configureSchool");
   if (!actorId) return null;
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return "limited" as const;
   return actorId;
 }

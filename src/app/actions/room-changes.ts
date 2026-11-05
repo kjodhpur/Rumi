@@ -30,7 +30,7 @@ export async function tagRoomChange(raw: z.input<typeof tagInput>): Promise<Acti
   const t = parsed.data;
   const actorId = await assertRole(t.schoolId, "tagRoomChanges");
   if (!actorId) return fail("Your role can't tag room changes.");
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const [{ data: request }, { data: reasons }] = await Promise.all([
@@ -99,7 +99,7 @@ export async function saveRoomChangeReason(
   const r = parsed.data;
   const actorId = await assertRole(r.schoolId, "configureSchool");
   if (!actorId) return fail("Only housing admins can edit the reasons.");
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data: existing } = await db

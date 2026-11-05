@@ -265,7 +265,7 @@ export function ReportSheet({
                             </span>
                             <a
                               href={`tel:${r.phone}`}
-                              className="font-semibold text-accent underline"
+                              className="font-semibold text-accent-ink underline"
                             >
                               {r.phone}
                             </a>

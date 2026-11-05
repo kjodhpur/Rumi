@@ -429,7 +429,7 @@ export function SafetyCenter({
                         {labelOf(REPORT_REASONS, report.reason) || report.reason}
                       </Badge>
                       {report.escalation ? (
-                        <span className="inline-flex items-center gap-1 text-caption font-medium text-accent">
+                        <span className="inline-flex items-center gap-1 text-caption font-medium text-accent-ink">
                           <Siren className="h-3.5 w-3.5" />
                           Forwarded to {report.escalation.destination}
                         </span>

@@ -236,7 +236,7 @@ export function AccountsSettings({
                 <div className="flex flex-col gap-2">
                   <p className="text-ink-2">{t("instagramCode")}</p>
                   <div className="flex items-center gap-2">
-                    <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
+                    <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent-ink">
                       {social.instagram.verificationCode}
                     </code>
                     <Button
@@ -333,7 +333,7 @@ export function AccountsSettings({
                 <div className="flex flex-col gap-2">
                   <p className="text-ink-2">{t("linkedinCode")}</p>
                   <div className="flex items-center gap-2">
-                    <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent">
+                    <code className="rounded bg-surface-sunken px-2.5 py-1 font-mono text-body-sm font-semibold text-accent-ink">
                       {social.linkedin.verificationCode}
                     </code>
                     <Button

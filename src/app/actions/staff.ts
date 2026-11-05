@@ -490,7 +490,7 @@ export async function lookupDataRequestStudent(
   if (!parsed.success) return fail("Enter the student's email.");
   const actorId = await assertRole(parsed.data.schoolId, "managePrivacy");
   if (!actorId) return fail("Only housing admins handle records requests.");
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return fail("Too many lookups. Try again later.");
   const student = await findSchoolStudent(parsed.data.schoolId, parsed.data.email);
   if (!student) return fail("No student at your school uses that email.");
@@ -524,7 +524,7 @@ export async function deleteStudentOnRequest(
     return fail("Type DELETE to confirm.");
   const actorId = await assertRole(parsed.data.schoolId, "managePrivacy");
   if (!actorId) return fail("Only housing admins handle records requests.");
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return fail("Too many changes. Try again later.");
   const student = await findSchoolStudent(parsed.data.schoolId, parsed.data.email);
   if (!student) return fail("No student at your school uses that email.");

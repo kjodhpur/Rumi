@@ -17,7 +17,7 @@ export async function setOtpFallback(school: string, enabled: boolean): Promise<
     return fail("Couldn't save.");
   const actorId = await assertRole(school, "configureSchool");
   if (!actorId) return fail("Only housing admins can change sign-in.");
-  if (!(await rateLimit(`staff-writes:${actorId}`, LIMITS.staffWritesPerHour)))
+  if (!(await rateLimit(`staff-write:${actorId}`, LIMITS.staffWritesPerHour)))
     return fail("Too many changes. Try again in a bit.");
   const db = createAdminClient();
   const { data: row } = await db
