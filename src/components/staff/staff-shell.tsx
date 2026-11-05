@@ -21,6 +21,7 @@ import { signOut } from "@/app/actions/auth";
 import { selectStaffSchool } from "@/app/actions/staff";
 import { springSnappy } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 import { isStaffNavActive, STAFF_NAV, type StaffNavSection } from "./staff-nav";
 
 export interface StaffShellProps {
@@ -28,6 +29,8 @@ export interface StaffShellProps {
   roleLabel: string;
   isPlatformAdmin: boolean;
   school: { id: string; name: string; isDemo: boolean };
+  /** White-label (Phase 9): shown beside Rumi's wordmark, never instead of it. */
+  brand: { name: string; logoUrl: string | null; accent: string | null };
   schools: { id: string; name: string }[];
   /** Nav items this person's role allows, by href. */
   allowed: string[];
@@ -50,6 +53,7 @@ export function StaffShell(props: StaffShellProps) {
         Skip to content
       </a>
       <div className="min-h-dvh bg-bg">
+        {props.brand.accent ? <AccentBand color={props.brand.accent} /> : null}
         <aside className="glass fixed inset-y-0 left-0 z-40 hidden w-[256px] flex-col border-r border-line lg:flex">
           <div className="flex h-[72px] items-center gap-2.5 px-6">
             <Link href="/staff" className="rounded-sm text-ink" aria-label="Rumi staff — overview">
@@ -57,6 +61,7 @@ export function StaffShell(props: StaffShellProps) {
             </Link>
             <Badge size="sm">Staff</Badge>
           </div>
+          <SchoolMark brand={props.brand} className="px-6 pb-3" />
           <div className="px-3 pb-3">
             <SchoolSwitcher {...props} />
           </div>
@@ -81,15 +86,65 @@ export function StaffShell(props: StaffShellProps) {
   );
 }
 
+/** A thin decorative band in the school's secondary accent; interactive color stays Ember. */
+function AccentBand({ color }: { color: string }) {
+  return (
+    <div
+      aria-hidden
+      className="fixed inset-x-0 top-0 z-50 h-[3px]"
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
+/** "Rumi for <School>", with the school's logo when it has one. */
+function SchoolMark({
+  brand,
+  compact = false,
+  className,
+}: {
+  brand: StaffShellProps["brand"];
+  compact?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex items-center gap-2", className)}>
+      {brand.logoUrl ? (
+        <span className="relative size-6 shrink-0 overflow-hidden rounded-sm bg-surface ring-1 ring-line">
+          <Image src={brand.logoUrl} alt="" fill sizes="24px" className="object-contain" />
+        </span>
+      ) : brand.accent ? (
+        <span
+          aria-hidden
+          className="size-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: brand.accent }}
+        />
+      ) : null}
+      <span className={cn("truncate text-ink-2", compact ? "text-caption" : "text-body-sm")}>
+        Rumi for {brand.name}
+      </span>
+    </div>
+  );
+}
+
 function DemoBanner() {
   return (
-    <div role="note" className="border-b border-line bg-warning-soft px-4 py-2 text-center text-caption font-medium text-ink sm:px-6">
+    <div
+      role="note"
+      className="border-b border-line bg-warning-soft px-4 py-2 text-center text-caption font-medium text-ink sm:px-6"
+    >
       Demo data — a fictional school for demonstrations. No real students.
     </div>
   );
 }
 
-function SidebarNav({ sections, onNavigate }: { sections: StaffNavSection[]; onNavigate?: () => void }) {
+function SidebarNav({
+  sections,
+  onNavigate,
+}: {
+  sections: StaffNavSection[];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   return (
     <nav aria-label="Staff" className="flex flex-1 flex-col gap-5 overflow-y-auto px-3">
@@ -232,7 +287,7 @@ function MobileBar(props: StaffShellProps & { sections: StaffNavSection[] }) {
         <Link href="/staff" className="rounded-sm text-ink" aria-label="Rumi staff — overview">
           <Wordmark height={20} />
         </Link>
-        <span className="ml-auto truncate text-caption text-ink-3">{props.school.name}</span>
+        <SchoolMark brand={props.brand} compact className="ml-auto min-w-0" />
       </div>
       <Sheet open={open} onOpenChange={setOpen} title="Staff menu" hideHeader>
         <div className="flex flex-col gap-4">

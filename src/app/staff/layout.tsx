@@ -4,6 +4,8 @@ import Link from "next/link";
 import { getUser } from "@/lib/supabase/server";
 import { can, getStaffContext } from "@/lib/staff/context";
 import { ROLE_INFO } from "@/lib/staff/roles";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { brandName, logoUrl, parseBranding } from "@/lib/staff/branding";
 import { StaffShell } from "@/components/staff/staff-shell";
 import { STAFF_NAV } from "@/components/staff/staff-nav";
 import { Wordmark } from "@/components/brand/wordmark";
@@ -22,6 +24,13 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const context = await getStaffContext();
   if (!context) return <NoAccess email={user.email ?? ""} />;
 
+  const { data: row } = await createAdminClient()
+    .from("schools")
+    .select("short_name, branding")
+    .eq("id", context.school.id)
+    .maybeSingle();
+  const branding = parseBranding(row?.branding);
+
   const allowed = STAFF_NAV.flatMap((section) => section.items)
     .filter((item) => can(context, item.capability))
     .map((item) => item.href);
@@ -32,6 +41,11 @@ export default async function StaffLayout({ children }: { children: React.ReactN
       roleLabel={context.role === "platform_admin" ? "Rumi team" : ROLE_INFO[context.role].label}
       isPlatformAdmin={context.isPlatformAdmin}
       school={{ id: context.school.id, name: context.school.name, isDemo: context.school.isDemo }}
+      brand={{
+        name: brandName(branding, row?.short_name ?? context.school.shortName),
+        logoUrl: logoUrl(branding.logoPath),
+        accent: branding.secondaryAccent,
+      }}
       schools={context.schools.map((s) => ({ id: s.id, name: s.name }))}
       allowed={allowed}
     >

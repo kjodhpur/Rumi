@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { isSchoolSlug, normalizeSource } from "@/lib/integrations/attribution";
 import { publicEnv } from "@/lib/env";
+import Image from "next/image";
+import { brandName, logoUrl, parseBranding } from "@/lib/staff/branding";
 
 interface PageProps {
   params: { school: string };
@@ -20,7 +22,9 @@ async function loadSchool(slug: string) {
   if (!isSchoolSlug(slug)) return null;
   const { data } = await createAdminClient()
     .from("schools")
-    .select("id, name, short_name, email_domains, active, sso_provider, pre_arrival_enabled")
+    .select(
+      "id, name, short_name, email_domains, active, sso_provider, pre_arrival_enabled, branding",
+    )
     .eq("id", slug)
     .maybeSingle();
   return data?.active ? data : null;
@@ -29,8 +33,9 @@ async function loadSchool(slug: string) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const school = await loadSchool(params.school.toLowerCase());
   if (!school) return { title: "Rumi" };
+  const brand = brandName(parseBranding(school.branding), school.short_name ?? school.name);
   return {
-    title: `Rumi for ${school.short_name ?? school.name} students`,
+    title: `Rumi for ${brand} students`,
     description: `Roommate matching for verified ${school.name} students: two-way scores, dealbreakers respected, free.`,
   };
 }
@@ -44,6 +49,11 @@ export default async function SchoolLandingPage({ params, searchParams }: PagePr
   if (!school) notFound();
   const source = normalizeSource(searchParams.src);
   const short = school.short_name ?? school.name;
+  // White-label (Phase 9): the school's logo and name beside Rumi's wordmark, and an optional
+  // decorative band. Rumi's own colors, Ember included, stay as they are.
+  const branding = parseBranding(school.branding);
+  const brand = brandName(branding, short);
+  const logo = logoUrl(branding.logoPath);
   const domain = school.email_domains?.[0];
   const ssoReady = publicEnv.ssoEnabled && Boolean(school.sso_provider);
   const start = `/s/${school.id}/start${source === "direct" ? "" : `?src=${source}`}`;
@@ -70,10 +80,32 @@ export default async function SchoolLandingPage({ params, searchParams }: PagePr
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
+      {branding.secondaryAccent ? (
+        <div
+          aria-hidden
+          className="h-[3px]"
+          style={{ backgroundColor: branding.secondaryAccent }}
+        />
+      ) : null}
       <header className="mx-auto flex w-full max-w-[1200px] items-center justify-between px-4 py-5 sm:px-8">
-        <Link href="/" aria-label="Rumi home" className="rounded-md text-ink">
-          <Wordmark height={26} />
-        </Link>
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" aria-label="Rumi home" className="rounded-md text-ink">
+            <Wordmark height={26} />
+          </Link>
+          <span className="h-6 w-px shrink-0 bg-line" aria-hidden />
+          {logo ? (
+            <span className="relative size-7 shrink-0 overflow-hidden rounded-sm bg-surface ring-1 ring-line">
+              <Image
+                src={logo}
+                alt={`${school.name} logo`}
+                fill
+                sizes="28px"
+                className="object-contain"
+              />
+            </span>
+          ) : null}
+          <span className="truncate text-body-sm text-ink-2">for {brand}</span>
+        </div>
         <Button asChild variant="ghost" size="sm">
           <Link href="/login">Sign in</Link>
         </Button>

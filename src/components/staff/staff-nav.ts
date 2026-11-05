@@ -21,6 +21,7 @@ import {
   GraduationCap,
   KeyRound,
   FileSignature,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import type { Capability } from "@/lib/staff/roles";
@@ -140,6 +141,12 @@ export const STAFF_NAV: StaffNavSection[] = [
         capability: "configureSchool",
       },
       { href: "/staff/settings/team", label: "Team", icon: Users, capability: "manageTeam" },
+      {
+        href: "/staff/settings/branding",
+        label: "Branding",
+        icon: Palette,
+        capability: "configureSchool",
+      },
       {
         href: "/staff/settings/escalation",
         label: "Escalation routes",
