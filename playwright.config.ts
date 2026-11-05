@@ -19,6 +19,9 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // Production builds register Rumi's service worker, and page.route can't see requests
+    // it handles (the calendar test mocks Google that way).
+    serviceWorkers: "block",
     launchOptions: executablePath ? { executablePath } : undefined,
   },
   projects: [

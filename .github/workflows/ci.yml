@@ -1,0 +1,92 @@
+# CI gate (master prompt §5): lint, typecheck, unit, e2e and build must be green before main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      # Includes the i18n checks: every English key has Spanish, matching {placeholders},
+      # Mandarin/Hindi hold no unreviewed strings, and every server error a student can see
+      # has a Spanish translation.
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    name: End-to-end (local Supabase)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start the local Supabase stack
+        run: npm run db:start
+      - name: Point the app at it
+        run: |
+          eval "$(npx --yes supabase@2 status -o env)"
+          {
+            echo "NEXT_PUBLIC_APP_URL=http://localhost:3000"
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SMTP_URL=smtp://127.0.0.1:54325"
+            echo "EMAIL_FROM=Rumi <hello@rumimatch.app>"
+            echo "TOKEN_ENCRYPTION_KEY=$(openssl rand -hex 32)"
+            echo "CRON_SECRET=$(openssl rand -hex 16)"
+            echo "ADMIN_EMAILS=admin@asu.edu"
+            echo "NEXT_PUBLIC_SPOTIFY_ENABLED=true"
+            # Calendar e2e runs against mocked providers; these are not real credentials.
+            echo "NEXT_PUBLIC_CALENDAR_ENABLED=true"
+            echo "GOOGLE_CALENDAR_CLIENT_ID=e2e-google-client"
+            echo "GOOGLE_CALENDAR_CLIENT_SECRET=e2e-google-secret"
+          } > .env.local
+      - name: Seed students to match against
+        run: npm run seed
+      - run: npx playwright install --with-deps chromium
+      - name: Build and start the app
+        run: |
+          npm run build
+          nohup npm run start > next.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:3000/login && exit 0; sleep 2; done
+          cat next.log
+          exit 1
+      - name: Playwright
+        run: npx playwright test
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+            next.log
+          retention-days: 7
