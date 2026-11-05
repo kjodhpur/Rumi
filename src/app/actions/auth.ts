@@ -13,6 +13,8 @@ import { publicEnv, serverEnv } from "@/lib/env";
 import { LAUNCH_SCHOOL } from "@/lib/school";
 import { hashPersonalEmail } from "@/lib/admissions/allowlist";
 import { isSsoUser, ssoStudentStatus } from "@/lib/auth/sso";
+import { syncAuthLocale } from "@/lib/auth-locale";
+import { requestLocale } from "@/lib/i18n/errors";
 
 const SUSPENDED_MESSAGE = `This account is suspended. Email ${publicEnv.supportEmail} if you think that's a mistake.`;
 
@@ -65,6 +67,14 @@ export async function afterSignIn(user: User) {
     if (profile && !profile.onboarding_completed_at)
       await admin.from("user_settings").update({ locale: cookieLocale }).eq("user_id", user.id);
   }
+  // The next sign-in code email goes out in the account's language.
+  const { data: settings } = await admin
+    .from("user_settings")
+    .select("locale")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const accountLocale = isSelectableLocale(settings?.locale) ? settings.locale : "en";
+  await syncAuthLocale(user.id, accountLocale, user.user_metadata?.locale);
   if (serverEnv.adminEmails.includes(email)) {
     await admin.from("admins").upsert({ user_id: user.id }, { onConflict: "user_id" });
   }
@@ -130,7 +140,12 @@ export async function requestCode(rawEmail: string): Promise<ActionResult<{ emai
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true, emailRedirectTo: `${publicEnv.appUrl}/auth/confirm` },
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: `${publicEnv.appUrl}/auth/confirm`,
+      // A new account's first code email follows the language picked on the login page.
+      data: { locale: requestLocale(() => cookies().get(LOCALE_COOKIE)?.value) },
+    },
   });
   if (error) {
     if (error.status === 429) return fail("Too many codes requested. Wait a minute and try again.");

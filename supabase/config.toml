@@ -251,12 +251,13 @@ otp_expiry = 900
 
 # Branded templates. Both include the 6-digit {{ .Token }} used by Rumi's code-entry
 # sign-in. (New accounts receive "confirmation"; returning ones receive "magic_link".)
+# They switch to Spanish on the auth user's metadata locale (lib/auth-locale.ts).
 [auth.email.template.confirmation]
-subject = "Your Rumi code: {{ .Token }}"
+subject = "{{ if eq (printf \"%v\" .Data.locale) \"es\" }}Tu código de Rumi: {{ .Token }}{{ else }}Your Rumi code: {{ .Token }}{{ end }}"
 content_path = "./supabase/templates/otp.html"
 
 [auth.email.template.magic_link]
-subject = "Your Rumi code: {{ .Token }}"
+subject = "{{ if eq (printf \"%v\" .Data.locale) \"es\" }}Tu código de Rumi: {{ .Token }}{{ else }}Your Rumi code: {{ .Token }}{{ end }}"
 content_path = "./supabase/templates/otp.html"
 
 # Uncomment to customize notification email template

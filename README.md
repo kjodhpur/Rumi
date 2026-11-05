@@ -260,9 +260,9 @@ What keeps it fast:
    - Add `https://<your-domain>/auth/callback` and `https://<your-domain>/auth/confirm` to the redirect URLs.
 3. **Authentication → Email Templates**: for both **Confirm signup** (first sign-in) and **Magic Link** (returning students):
    - Paste `supabase/templates/otp.html`.
-   - Set the subject to `Your Rumi code: {{ .Token }}`.
+   - Set the subject to `{{ if eq (printf "%v" .Data.locale) "es" }}Tu código de Rumi: {{ .Token }}{{ else }}Your Rumi code: {{ .Token }}{{ end }}`.
 
-   The app signs people in with the 6-digit code; local development uses the same template via `supabase/config.toml`.
+   The app signs people in with the 6-digit code; local development uses the same template via `supabase/config.toml`. The template and subject switch to Spanish on the auth user's `locale` metadata, which the app keeps in step with each student's language setting (and, for a brand-new account, the language picked on the login page).
 4. **Authentication → SMTP Settings**: use your own SMTP (for example Resend's SMTP). The built-in sender is rate-limited and meant only for testing.
 5. *(Optional)* **Authentication → Providers → Google**: enable it and set `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`.
 
