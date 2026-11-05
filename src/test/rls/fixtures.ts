@@ -101,3 +101,46 @@ export const letters = (s: string, max = 30) =>
     .replace(/[0-9]/g, (d) => "abcdefghij"[Number(d)]!)
     .replace(/[^a-z_]/g, "x")
     .slice(0, max);
+
+/** A fresh student moved into Hall A (the RA's building), with no case open. */
+export async function freshAssignment(db: Admin, w: World, n: string) {
+  const userId = await freshUser(db, w, n);
+  const { data, error } = await db
+    .from("assignments")
+    .insert({
+      user_id: userId,
+      school_id: w.school,
+      building: "Hall A",
+      room: "102",
+      moved_in_at: "2027-08-16",
+      term_id: w.termId,
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`fresh assignment: ${error?.message}`);
+  return { assignmentId: data.id, userId };
+}
+
+/** An RA case staff can see: the fresh student asked for help in a check-in. */
+export async function freshCase(db: Admin, w: World, n: string) {
+  const { assignmentId, userId } = await freshAssignment(db, w, n);
+  const checkin = await db
+    .from("checkins")
+    .insert({ assignment_id: assignmentId, user_id: userId, due_on: "2027-09-02", ask_ra: true });
+  if (checkin.error) throw new Error(`fresh check-in: ${checkin.error.message}`);
+  const { data, error } = await db
+    .from("ra_cases")
+    .insert({
+      school_id: w.school,
+      assignment_id: assignmentId,
+      user_id: userId,
+      building: "Hall A",
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`fresh case: ${error?.message}`);
+  return data.id;
+}
+
+/** A random 64-character hex string, for token and code hashes. */
+export const randomHex64 = () => crypto.randomUUID().replace(/-/g, "").repeat(2);

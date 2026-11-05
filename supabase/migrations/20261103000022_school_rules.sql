@@ -68,8 +68,12 @@ revoke all on public.school_options, public.school_rules from anon, authenticate
 grant select on public.school_options, public.school_rules to authenticated;
 grant select on public.school_options to anon;
 
+-- Two policies, not one: has_role isn't executable by anon, and Postgres checks that even when
+-- `active` alone would decide the row.
 create policy "school_options: anyone reads active" on public.school_options
-  for select to anon, authenticated using (active or public.has_role(school_id, array['housing_admin']));
+  for select to anon, authenticated using (active);
+create policy "school_options: admins read retired" on public.school_options
+  for select to authenticated using (public.has_role(school_id, array['housing_admin']));
 create policy "school_rules: school reads" on public.school_rules
   for select to authenticated using (
     school_id = (select p.school_id from public.profiles p where p.id = auth.uid())

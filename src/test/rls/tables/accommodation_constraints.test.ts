@@ -24,6 +24,10 @@ rlsTable("accommodation_constraints", {
   },
   cleanup: async (w, db) => {
     await cleanupFresh(db);
-    await db.from("accommodation_types").delete().eq("school_id", w.school);
+    await db
+      .from("accommodation_types")
+      .delete()
+      .eq("school_id", w.school)
+      .eq("key", "single_bathroom");
   },
 });
