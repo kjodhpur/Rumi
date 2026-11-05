@@ -47,6 +47,8 @@ export interface ShellUser {
   isAdmin: boolean;
   /** Theme saved to the account — applied on a device that hasn't picked one yet. */
   theme: "system" | "light" | "dark";
+  /** A demo account or a fictional demo school: everyone here is synthetic (seed spec §6). */
+  demo: boolean;
 }
 
 export function AppShell({
@@ -76,6 +78,14 @@ export function AppShell({
               <Sidebar user={user} />
             </HydrateForMedia>
             <div className="lg:pl-[248px]">
+              {user.demo ? (
+                <div
+                  role="note"
+                  className="border-b border-line bg-warning-soft px-4 py-2 text-center text-caption font-medium text-ink sm:px-6"
+                >
+                  {t("demoBanner")}
+                </div>
+              ) : null}
               <TopBar />
               <Main>{children}</Main>
             </div>

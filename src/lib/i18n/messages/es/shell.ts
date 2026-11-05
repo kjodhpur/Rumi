@@ -1,6 +1,8 @@
 import type { Messages } from "../en";
 
 export const shell: Messages["shell"] = {
+  demoBanner:
+    "Datos de demostración: una escuela ficticia para demostraciones. Las personas aquí no son estudiantes reales.",
   skip: "Ir al contenido",
   nav: {
     matches: "Compatibles",

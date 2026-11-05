@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     supabase
       .from("profiles")
       .select(
-        "id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at, is_staff, last_active_at, sso_non_student",
+        "id, first_name, last_initial, avatar_path, onboarding_completed_at, banned_at, is_staff, last_active_at, sso_non_student, is_demo, schools(is_demo)",
       )
       .eq("id", user.id)
       .single(),
@@ -48,6 +48,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           avatarUrl: photoUrl(profile.avatar_path),
           isAdmin: Boolean(admin),
           theme: (settings?.theme as "system" | "light" | "dark" | undefined) ?? "system",
+          demo:
+            profile.is_demo || Boolean((profile.schools as { is_demo: boolean } | null)?.is_demo),
         }}
         initialCounts={counts}
       >

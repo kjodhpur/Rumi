@@ -1,4 +1,6 @@
 export const shell = {
+  demoBanner:
+    "Demo data — a fictional school for demonstrations. The people here aren't real students.",
   skip: "Skip to content",
   nav: {
     matches: "Matches",
