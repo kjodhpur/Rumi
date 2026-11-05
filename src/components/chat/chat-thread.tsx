@@ -76,6 +76,10 @@ export function ChatThread({
   const router = useRouter();
   const t = useT("chat");
   const [messages, setMessages] = React.useState<ChatMessage[]>(thread.messages);
+  const messagesRef = React.useRef(messages);
+  React.useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   const [members, setMembers] = React.useState<ChatMember[]>(thread.members);
   const [hasMore, setHasMore] = React.useState(thread.hasMore);
   const [loadingOlder, setLoadingOlder] = React.useState(false);
@@ -206,7 +210,34 @@ export function ChatThread({
         setOnline(new Set(Object.keys(channel.presenceState()).filter((key) => key !== userId)));
       })
       .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") await channel.track({ at: Date.now() });
+        if (status !== "SUBSCRIBED") return;
+        await channel.track({ at: Date.now() });
+        // Catch up on anything that arrived between the page render and the channel joining
+        // (or while it was reconnecting), such as a safety tip posted right after a send.
+        const latest = messagesRef.current.filter((m) => !m.status).at(-1)?.createdAt;
+        let missed = supabase
+          .from("messages")
+          .select("id, sender_id, kind, body, created_at, client_id")
+          .eq("conversation_id", thread.id)
+          .order("created_at")
+          .limit(100);
+        if (latest) missed = missed.gt("created_at", latest);
+        const { data } = await missed;
+        if (data?.length)
+          setMessages((list) =>
+            data.reduce(
+              (acc, row) =>
+                upsertMessage(acc, {
+                  id: row.id,
+                  senderId: row.sender_id,
+                  kind: row.kind as ChatMessage["kind"],
+                  body: row.body,
+                  createdAt: row.created_at,
+                  clientId: row.client_id,
+                }),
+              list,
+            ),
+          );
       });
 
     channelRef.current = channel;
