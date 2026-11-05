@@ -52,3 +52,22 @@ describe("segment analytics", () => {
     expect(compareSet(undefined, ["a"])).toEqual([]);
   });
 });
+
+describe("complementary suppression", () => {
+  it("labels a segment hidden to protect a small one as hidden, not as under 5", async () => {
+    const { displayCount, displayValue, barValue } = await import("./segments");
+    const hidden = {
+      value: "senior",
+      n: null,
+      numerator: null,
+      rate: null,
+      average: null,
+      suppressed: true,
+      complementary: true,
+    };
+    expect(displayValue(hidden, "matched")).toBe("Hidden");
+    expect(displayCount(hidden.n, hidden.complementary)).toBe("Hidden");
+    expect(barValue(hidden, "matched")).toBeNull();
+    expect(displayCount(null)).toBe("<5");
+  });
+});

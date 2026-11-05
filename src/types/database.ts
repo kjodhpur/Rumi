@@ -2845,7 +2845,7 @@ isOneToOne: false
                            },
 "staff_segments":
 { Args: { "p_dimension": string,"p_metric": string,"p_school": string }; Returns: {
-              "average": number,"n": number,"numerator": number,"rate": number,"suppressed": boolean,"value": string
+              "average": number,"complementary": boolean,"n": number,"numerator": number,"rate": number,"suppressed": boolean,"value": string
             }[]
                            },
 "staff_signups_by_source":

@@ -108,12 +108,15 @@ export default async function SegmentsPage({
               label: segmentLabel(dimension, r.value, labels),
               bar: barValue(r, metric),
               display: displayValue(r, metric),
-              n: displayCount(r.n),
+              n: displayCount(r.n, r.complementary),
             }))}
           />
           <p className="text-caption text-ink-3">
             Segments come only from what students entered or your imports; nothing is inferred.
             Students without a value are under &quot;{segmentLabel(dimension, "unknown")}&quot;.
+            {shown.some((r) => r.complementary)
+              ? " “Hidden” keeps a group under 5 from being worked out as the total minus the others."
+              : ""}
           </p>
         </>
       )}

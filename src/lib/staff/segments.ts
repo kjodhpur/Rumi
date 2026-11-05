@@ -40,6 +40,11 @@ export interface SegmentRow {
   rate: number | null;
   average: number | null;
   suppressed: boolean;
+  /**
+   * Hidden even though it isn't small, so a single small segment can't be worked out as the
+   * total minus the others (complementary suppression).
+   */
+  complementary?: boolean;
 }
 
 export function isDimension(v: string | undefined): v is SegmentDimension {
@@ -79,6 +84,7 @@ export function barValue(row: SegmentRow, metric: SegmentMetric): number | null 
 
 export function displayValue(row: SegmentRow, metric: SegmentMetric): string {
   const kind = metricInfo(metric).kind;
+  if (row.complementary) return "Hidden";
   if (row.n === null) return "<5";
   if (kind === "rate")
     return row.rate === null
@@ -90,7 +96,8 @@ export function displayValue(row: SegmentRow, metric: SegmentMetric): string {
   return kind === "score" ? String(Math.round(row.average)) : row.average.toFixed(1);
 }
 
-export const displayCount = (n: number | null) => (n === null ? "<5" : n.toLocaleString("en-US"));
+export const displayCount = (n: number | null, complementary = false) =>
+  complementary ? "Hidden" : n === null ? "<5" : n.toLocaleString("en-US");
 
 /** Up to three values to compare, kept in the order the table shows them. */
 export function compareSet(raw: string | undefined, available: string[]): string[] {

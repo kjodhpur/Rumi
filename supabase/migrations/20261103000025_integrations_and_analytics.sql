@@ -367,7 +367,8 @@ $$;
 revoke execute on function public.staff_segment_base(text) from public, anon, authenticated;
 
 create or replace function public.staff_segments(p_school text, p_dimension text, p_metric text)
-returns table (value text, n integer, numerator integer, rate numeric, average numeric, suppressed boolean)
+returns table (value text, n integer, numerator integer, rate numeric, average numeric, suppressed boolean,
+               complementary boolean)
 language plpgsql
 stable
 security definer
@@ -436,17 +437,35 @@ begin
       case when p_metric = 'best_score' then percentile_cont(0.5) within group (order by val)
            when p_metric = 'checkin_avg' then avg(val) end
     from scoped where den > 0
+  ),
+  flagged as (
+    select agg.*,
+      agg.d < 5 or (p_metric not in ('best_score', 'checkin_avg') and agg.nu between 1 and 4) as small
+    from agg
+  ),
+  -- Complementary suppression: with exactly one segment hidden, it could be worked out as the
+  -- total minus the others, so the smallest visible segment is hidden alongside it.
+  partner as (
+    select f.v from flagged f
+    where f.v <> '__total' and not f.small
+      and (select count(*) from flagged x where x.v <> '__total' and x.small) = 1
+    order by f.d asc, f.v
+    limit 1
+  ),
+  marked as (
+    select f.*, f.v in (select partner.v from partner) as extra from flagged f
   )
   select
-    agg.v,
-    case when agg.d < 5 then null else agg.d end,
-    case when agg.d < 5 or agg.nu between 1 and 4 then null else agg.nu end,
-    case when agg.d < 5 or agg.nu between 1 and 4 or p_metric in ('best_score', 'checkin_avg') then null
-         else round(agg.nu::numeric / nullif(agg.d, 0), 4) end,
-    case when agg.d < 5 then null else round(agg.av::numeric, 2) end,
-    agg.d < 5 or (p_metric not in ('best_score', 'checkin_avg') and agg.nu between 1 and 4)
-  from agg
-  order by (agg.v = '__total'), agg.d desc nulls last;
+    marked.v,
+    case when marked.d < 5 or marked.extra then null else marked.d end,
+    case when marked.small or marked.extra then null else marked.nu end,
+    case when marked.small or marked.extra or p_metric in ('best_score', 'checkin_avg') then null
+         else round(marked.nu::numeric / nullif(marked.d, 0), 4) end,
+    case when marked.d < 5 or marked.extra then null else round(marked.av::numeric, 2) end,
+    marked.small or marked.extra,
+    marked.extra
+  from marked
+  order by (marked.v = '__total'), marked.d desc nulls last;
 end;
 $$;
 
