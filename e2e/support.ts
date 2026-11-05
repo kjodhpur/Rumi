@@ -8,15 +8,19 @@ for (const file of [".env.local", ".env"]) {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
+export const MAILPIT = process.env.MAILPIT_URL ?? "http://127.0.0.1:54324";
 export const SCHOOL_DOMAIN = process.env.NEXT_PUBLIC_LAUNCH_SCHOOL_DOMAIN ?? "asu.edu";
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
 if (!/^https?:\/\/(127\.0\.0\.1|localhost)/.test(SUPABASE_URL)) {
-  throw new Error("E2E tests create and delete users — point NEXT_PUBLIC_SUPABASE_URL at a local stack.");
+  throw new Error(
+    "E2E tests create and delete users — point NEXT_PUBLIC_SUPABASE_URL at a local stack.",
+  );
 }
 
-export const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+export const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 export function uniqueEmail(tag: string) {
   return `e2e-${tag}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}@${SCHOOL_DOMAIN}`;
@@ -25,14 +29,18 @@ export function uniqueEmail(tag: string) {
 /** Waits for the sign-in email in Mailpit and returns its 6-digit code and one-tap link. */
 export async function signInEmailFor(email: string, since: number) {
   for (let attempt = 0; attempt < 60; attempt++) {
-    const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=1`);
+    const res = await fetch(
+      `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=1`,
+    );
     const message = (await res.json()).messages?.[0];
     if (message && Date.parse(message.Created) >= since) {
       const code = String(message.Subject ?? "").match(/\b(\d{6})\b/)?.[1];
       if (code) {
         const detail = await fetch(`${MAILPIT}/api/v1/message/${message.ID}`);
         const html = String((await detail.json()).HTML ?? "");
-        const link = html.match(/href="([^"]*\/auth\/confirm\?[^"]*)"/)?.[1]?.replace(/&amp;/g, "&");
+        const link = html
+          .match(/href="([^"]*\/auth\/confirm\?[^"]*)"/)?.[1]
+          ?.replace(/&amp;/g, "&");
         return { code, link: link ?? null };
       }
     }
@@ -76,7 +84,10 @@ export interface Student {
  * for specs that aren't about onboarding. Scores are computed by the same
  * repair job production runs (`/api/cron/recompute`).
  */
-export async function createStudent(firstName: string, overrides: Record<string, unknown> = {}): Promise<Student> {
+export async function createStudent(
+  firstName: string,
+  overrides: Record<string, unknown> = {},
+): Promise<Student> {
   const email = uniqueEmail(firstName.toLowerCase());
   const { data, error } = await admin.auth.admin.createUser({ email, email_confirm: true });
   if (error || !data.user) throw error ?? new Error("createUser failed");

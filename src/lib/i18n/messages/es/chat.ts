@@ -37,6 +37,7 @@ export const chat: Messages["chat"] = {
     members: { one: "{count} miembro", other: "{count} miembros" },
     online: " · {count} en línea",
     activeNow: "Activo ahora",
+    onlineDot: "En línea",
     verified: "Estudiante verificado",
     options: "Opciones de la conversación",
     findTime: "Buscar un horario para reunirse",

@@ -35,6 +35,7 @@ export const chat = {
     members: { one: "{count} member", other: "{count} members" },
     online: " · {count} online",
     activeNow: "Active now",
+    onlineDot: "Online",
     verified: "Verified student",
     options: "Conversation options",
     findTime: "Find a time to meet",

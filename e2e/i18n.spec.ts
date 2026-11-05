@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { admin, deleteUsers, otpFor, ready, uniqueEmail } from "./support";
+import { MAILPIT, admin, deleteUsers, otpFor, ready, uniqueEmail } from "./support";
 
 /** Phase 8: a student picks Spanish before signing in and onboards in Spanish. */
 const created: string[] = [];
@@ -29,6 +29,11 @@ test("Spanish onboarding: login, wizard, validation messages and finish", async 
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByText("Revisa tu correo.")).toBeVisible();
   await page.getByLabel("Código de 6 dígitos").fill(await otpFor(email, since));
+  // Supabase's code email follows the language picked on the login page.
+  const mail = await fetch(
+    `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}&limit=1`,
+  ).then((r) => r.json() as Promise<{ messages?: { Subject?: string }[] }>);
+  expect(mail.messages?.[0]?.Subject).toMatch(/^Tu código de Rumi: \d{6}$/);
   await expect(page).toHaveURL(/\/onboarding/, { timeout: 30_000 });
   await ready(page);
 
@@ -104,4 +109,19 @@ test("Spanish onboarding: login, wizard, validation messages and finish", async 
   await expect(page).toHaveURL(/\/matches/);
   await ready(page);
   await expect(page.getByRole("link", { name: "Mensajes" }).first()).toBeVisible();
+
+  // Groups and check-ins read in Spanish too.
+  await page.goto("/groups");
+  await ready(page);
+  await expect(page.getByRole("heading", { name: "Grupos", exact: true })).toBeVisible();
+  await expect(page.getByText("Más espacio, mejor alquiler.")).toBeVisible();
+  await page.getByRole("button", { name: "Crear un grupo" }).last().click();
+  await expect(page.getByLabel("Nombre del grupo")).toBeVisible();
+  await expect(page.getByText("Una casa o departamento de tres habitaciones.")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.goto("/check-in");
+  await ready(page);
+  await expect(page.getByText("Ya nos mudamos")).toBeVisible();
+  await expect(page.getByLabel("Edificio")).toBeVisible();
 });

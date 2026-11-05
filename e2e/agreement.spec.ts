@@ -110,7 +110,12 @@ test("two roommates draft, edit, accept and sign an agreement; chat offers start
   await b.page.goto(`/groups/${groupId}/agreement`);
   await ready(b.page);
   await expect(b.page.getByText("Changed by Amira")).toBeVisible();
-  await b.page.getByRole("button", { name: "See previous" }).click();
+  // A change waiting on Bruno shows what changed until he hides it.
+  await expect(b.page.getByRole("button", { name: "Hide changes" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(b.page.getByLabel("What changed")).toBeVisible();
   await acceptEverything(b.page);
   await b.page.getByLabel("Type your full name").fill("Someone Else");
   await b.page.getByRole("button", { name: "Sign agreement" }).click();
