@@ -43,6 +43,8 @@ const STUDENT_FILES = [
   "lib/validation.ts",
   // friendlyDbError: database errors mapped to plain words
   "lib/action.ts",
+  // Class-schedule feed errors, passed to fail() as they are
+  "lib/calendar/fetch-feed.ts",
 ];
 
 /** Messages built with template literals, with sample values filled in. */
@@ -98,7 +100,8 @@ const translated = (message: string) =>
   localizeError(message, "es") !== message || localizeNotice(message, "es") !== message;
 
 /** Messages returned to students: fail("…"), validation messages and notification bodies. */
-const MESSAGE = /(?:fail\(\s*|message:\s*|error:\s*|,\s*|^\s+\w+:\s*)"([A-Z][^"\n]{3,}?[.!?])"/gm;
+const MESSAGE =
+  /(?:fail\(\s*|Error\(\s*|message:\s*|error:\s*|,\s*|^\s+\w+:\s*|=\s*)"([A-Z][^"\n]{3,}?[.!?])"/gm;
 
 function messagesIn(file: string) {
   const source = readFileSync(join(__dirname, "..", "..", file), "utf8");

@@ -17,6 +17,7 @@ export const errors: Messages["errors"] = {
   youCantDoThat: "No puedes hacer eso.",
   thatsNoLongerAvailable: "Eso ya no está disponible.",
   thatRequestIsntAvailable: "Esa solicitud no está disponible.",
+  calendarTooSlow: "Ese calendario tardó demasiado en responder. Inténtalo más tarde.",
   signInAsAStudentTo: "Inicia sesión como estudiante para hacer eso.",
   tooManyUpdatesTryAgainTomorrow: "Demasiadas actualizaciones. Inténtalo mañana.",
   thatEmailIsTooLong: "Ese correo es demasiado largo.",
